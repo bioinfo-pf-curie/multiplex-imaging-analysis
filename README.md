@@ -34,7 +34,7 @@ Launching `main.nf` [stupefied_darwin] - revision: aa905ab621
 Usage:
 
 Mandatory arguments:
---images [file]                   Path to input images (multiple profiles can be specified with comma separated values)
+--images [file]                   Path to input images directory 
 --markers [file]                  Path to markers file (one file per image, must be a csv file listing markers name and metadata about it, see docs for more information)
 
 Skip options: All are false by default

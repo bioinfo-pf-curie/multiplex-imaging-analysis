@@ -2,7 +2,7 @@
 
 <!-- TODO update with the output of your pipeline -->
 
-This document describes the output produced by the pipeline. Most of the plots are taken from the MultiQC report, which summarises results at the end of the pipeline.
+This document describes the output produced by the pipeline. 
 
 ## Pipeline overview
 
@@ -13,11 +13,6 @@ Briefly, its goal is to process <!-- TODO --> data for any protocol, with or wit
 The directories listed below will be created in the output directory after the pipeline has finished. 
 
 ## Sequencing quality
-
-### FastQC
-[FastQC](http://www.bioinformatics.babraham.ac.uk/projects/fastqc/) gives general quality metrics about your reads. It provides information about the quality score distribution across your reads, the per base sequence content (%T/A/G/C). You get information about adapter contamination and other overrepresented sequences.
-
-For further reading and documentation see the [FastQC help](http://www.bioinformatics.babraham.ac.uk/projects/fastqc/Help/).
 
 **Output directory: `fastqc`**
 

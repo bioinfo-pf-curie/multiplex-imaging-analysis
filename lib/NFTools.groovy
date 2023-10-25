@@ -606,4 +606,12 @@ Available Profiles
             """.stripIndent() : "[$workflow.manifest.name]${colors.green} Pipeline completed successfully${colors.reset}": "[$workflow.manifest.name]${colors.red} Pipeline completed with errors${colors.reset}"
         log.info endMessage.toString()
     }
+
+    public static String getFileID(f, delim) {
+        return f.getName().toString().split(delim).head()
+    }
+
+    public static String getImageID(f) {
+    f.getBaseName().toString().replaceFirst(/\.ome$/, "")
+}
 }

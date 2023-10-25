@@ -60,7 +60,7 @@ outputDocsImagesCh = file("$projectDir/docs/images/", checkIfExists: true)
 */
 
 if (!params.images){
-  exit 1, "Missing input image (use --images to list image path)" 
+  exit 1, "Missing input image (use --images to indicate image path directory)" 
 }
 if (!params.markers){
   exit 1, "Missing markers file (use --markers to list markers file path)"
@@ -124,6 +124,10 @@ workflowSummaryCh = NFTools.summarize(summary, workflow, params)
 // Processes
 include { getSoftwareVersions } from './nf-modules/common/process/utils/getSoftwareVersions'
 include { outputDocumentation } from './nf-modules/common/process/utils/outputDocumentation'
+include { mergechannels } from './lib/merge_channels'
+include { displayoutline } from './lib/display_outline'
+include { segmentation } from './lib/segmentation'
+
 
 /*
 =====================================
@@ -136,7 +140,16 @@ workflow {
 
   main:
     // Init Channels
-    fastqcMqcCh = Channel.empty()
+    imgCh = Channel.fromPath("${params.images}/*.tiff")
+    imgCh.dump(tag:"Images input")
+    id_img = imgCh.map{it -> tuple(NFTools.getImageID(it), it)}
+    id_img.dump(tag:"id input")
+    markersCh = Channel.fromPath("${params.markers}/*.csv")
+    markersCh.dump(tag:"markers")
+    id_markers = markersCh.map{it -> tuple(NFTools.getImageID(it), it)}
+
+    inputs = id_img.join(id_markers)
+    inputs.dump(tag:"input")
 
     // subroutines
     outputDocumentation(
@@ -144,39 +157,23 @@ workflow {
       outputDocsImagesCh
     )
 
-    // PROCESS: fastqc
-    if (! params.skipFastqc){
-      fastqc(
-        rawReadsCh
-      )
-      fastqcMqcCh = fastqc.out.results.collect()
-      versionsCh = versionsCh.mix(fastqc.out.versions)
+    // PROCESS
+    merged = mergechannels(inputs)
+
+    segmented = segmentation(merged.out)
+
+    result = segmented.out.branch{ mask_and_outline ->
+      outline: mask_and_outline =~ /png$/
+      mask: mask_and_outline =~ /tiff?$/
     }
+
+    outline = displayoutline(merged.out, result.outline)
+
+    //quant = quantification(inputs, result.mask)
 
     //*******************************************
-    // MULTIQC
-  
     // Warnings that will be printed in the mqc report
     warnCh = Channel.empty()
-
-    if (!params.skipMultiQC){
-
-      getSoftwareVersions(
-        versionsCh.unique().collectFile()
-      )
-
-      multiqc(
-        customRunName,
-        sPlanCh.collect(),
-        metadataCh.ifEmpty([]),
-        multiqcConfigCh.ifEmpty([]),
-        fastqcMqcCh.ifEmpty([]),
-        getSoftwareVersions.out.versionsYaml.collect().ifEmpty([]),
-        workflowSummaryCh.collectFile(name: "workflow_summary_mqc.yaml"),
-        warnCh.collect().ifEmpty([])
-      )
-      mqcReport = multiqc.out.report.toList()
-    }
 }
 
 workflow.onComplete {
