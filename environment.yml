@@ -1,0 +1,18 @@
+# You can use this file to create a conda environment for this pipeline:
+#   conda env create -f environment.yml
+name: pipeline_env
+channels:
+  - bioconda
+  - conda-forge
+  - defaults 
+dependencies:
+  - which 
+  - bc
+  - bioconda::fastqc=0.11.6=2
+  - bioconda::multiqc=1.8=py_2
+  - conda-forge::lzstring=1.0.4=py_1001
+  - conda-forge::matplotlib-base=3.1.1=py37h250f245_2
+  - conda-forge::openjdk=8.0.192=h14c3975_1003
+  - conda-forge::spectra=0.0.11=py_1
+  - pymdown-extensions=7.1=pyh9f0ad1d_0
+  - python=3.7.6=cpython_h8356626_6
