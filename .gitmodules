@@ -1,0 +1,3 @@
+[submodule "geniac"]
+	path = geniac
+	url = ../../bioinfo-guidelines/geniac.git
