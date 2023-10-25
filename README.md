@@ -34,21 +34,13 @@ Launching `main.nf` [stupefied_darwin] - revision: aa905ab621
 Usage:
 
 Mandatory arguments:
---reads [file]                   Path to input data (must be surrounded with quotes)
---samplePlan [file]              Path to sample plan file if '--reads' is not specified
---genome [str]                   Name of the reference genome. See the `--genomeAnnotationPath` to defined the annotation path
--profile [str]                   Configuration profile to use (multiple profiles can be specified with comma separated values)
-
-Inputs:
---design [file]                  Path to design file for extended analysis
---singleEnd [bool]               Specifies that the input is single-end reads
+--images [file]                   Path to input images (multiple profiles can be specified with comma separated values)
+--markers [file]                  Path to markers file (one file per image, must be a csv file listing markers name and metadata about it, see docs for more information)
 
 Skip options: All are false by default
 --skipSoftVersion [bool]         Do not report software version
---skipMultiQC [bool]             Skip MultiQC
 
 Other options:
---metadata [dir]                Add metadata file for multiQC report
 --outDir [dir]                  The output directory where the results will be saved
 -w/--work-dir [dir]             The temporary directory where intermediate data will be saved
 -name [str]                      Name for the pipeline run. If not specified, Nextflow will automatically generate a random mnemonic
@@ -69,27 +61,21 @@ Available profiles
 
 ### Quick run
 
-The pipeline can be run on any infrastructure from a list of input files or from a sample plan as follows:
+The pipeline can be run on any infrastructure from a list of input files as follows:
 
 #### Run the pipeline on a test dataset
 
-See the file `conf/test.config` to set your test dataset.
+See the file `conf/test.config` to set your test image.
 
 ```bash
 nextflow run main.nf -profile test,conda
 
 ```
 
-#### Run the pipeline from a `sample plan` and a `design` file
-
-```bash
-nextflow run main.nf --samplePlan mySamplePlan.csv --design myDesign.csv --genome 'hg19' --genomeAnnotationPath /my/annotation/path --outDir /my/output/dir
-
-```
 
 ### Defining the '-profile'
 
-By default (whithout any profile), Nextflow excutes the pipeline locally, expecting that all tools are available from your `PATH` environment variable.
+By default (whithout any profile), Nextflow executes the pipeline locally, expecting that all tools are available from your `PATH` environment variable.
 
 In addition, several Nextflow profiles are available that allow:
 * the use of [conda](https://docs.conda.io) or containers instead of a local installation,
@@ -117,50 +103,39 @@ Here are a few examples to set the profile options:
 
 For details about the different profiles available, see [Profiles](docs/profiles.md).
 
-### Sample plan
+### Markers.csv
 
-A sample plan is a csv file (comma separated) that lists all the samples with a biological IDs.
-The sample plan is expected to contain the following fields (with no header):
-
-```
-SAMPLE_ID,SAMPLE_NAME,path/to/R1/fastq/file,path/to/R2/fastq/file (for paired-end only)
-```
-
-### Design control
-
-A design file is a csv file that provides additional details on the samples and how they should be processed.
+A marker file is a csv file that provides additional details on the marker of the image.
 Here is a simple example:
 
 ```
-SAMPLEID,CONTROLID,GROUP
-A949C08,A949C02,1
+cycle,marker_name,segmentation
+0,01_Hoechst,False
+1,AF1,
+2,04_CD31_Argo515,true
+3,05_CD45_Argo555L,True
+4,06_CD68_Argo535,True
+5,07_Vimentin_Argo550,true
+6,08_CD4_Argo572,True
+7,09_FOXP3_Argo584,True
+8,10_CD8a_Argo602,True
+
 ...
 ```
 
-<!-- TODO - update the design -->
-
-### Genome annotations
-
-The pipeline does not provide any genomic annotations but expects them to be already available on your system. The path to the genomic annotations can be set with the `--genomeAnnotationPath` option as follows:
-
-```bash
-nextflow run main.nf --samplePlan mySamplePlan.csv --design myDesign.csv --genome 'hg19' --genomeAnnotationPath /my/annotation/path --outDir /my/output/dir
-
-```
-
-For more details see  [Reference genomes](docs/referenceGenomes.md).
+Cycle indicate the laser number used by orion technology, and segmentation is used to create a merge channels with cyto or membrane channels that can help segmentation.
+Other columns can be added but will not be used. 
 
 ## Full Documentation
 
 1. [Installation](docs/installation.md)
-2. [Reference genomes](docs/referenceGenomes.md)
 3. [Running the pipeline](docs/usage.md)
 4. [Output and how to interpret the results](docs/output.md)
 5. [Troubleshooting](docs/troubleshooting.md)
 
 ## Credits
 
-This pipeline has been written by <!-- TODO -->
+This pipeline has been written by Maxime CORBÉ
 
 ## Contacts
 

@@ -11,7 +11,12 @@ The fact that you are presently reading this means that you have had knowledge o
 
 /*
 ========================================================================================
-                         DSL2 Template
+                         
+                           __  __ ___   _   
+                          |  \/  |_ _| /_\  
+                          | |\/| || | / _ \ 
+                          |_|  |_|___/_/ \_\
+                   
 ========================================================================================
 Analysis Pipeline DSL2 template.
 https://patorjk.com/software/taag/
@@ -31,8 +36,8 @@ params.putAll(NFTools.lint(params, paramsWithUsage))
 customRunName = NFTools.checkRunName(workflow.runName, params.name)
 
 // Custom functions/variables
-mqcReport = []
-include {checkAlignmentPercent} from './lib/functions'
+// mqcReport = []
+// include {checkAlignmentPercent} from './lib/functions'
 
 /*
 ===================================
@@ -40,20 +45,11 @@ include {checkAlignmentPercent} from './lib/functions'
 ===================================
 */
 
-// Genome-based variables
-if (!params.genome){
-  exit 1, "No genome provided. The --genome option is mandatory"
-}
-
-if (params.genomes && params.genome && !params.genomes.containsKey(params.genome)) {
-  exit 1, "The provided genome '${params.genome}' is not available in the genomes file. Currently the available genomes are ${params.genomes.keySet().join(", ")}"
-}
-
 // Initialize variable from the genome.conf file
 //params.bowtie2Index = NFTools.getGenomeAttribute(params, 'bowtie2')
 
 // Stage config files
-multiqcConfigCh = Channel.fromPath(params.multiqcConfig)
+//multiqcConfigCh = Channel.fromPath(params.multiqcConfig)
 outputDocsCh = Channel.fromPath("$projectDir/docs/output.md")
 outputDocsImagesCh = file("$projectDir/docs/images/", checkIfExists: true)
 
@@ -63,8 +59,11 @@ outputDocsImagesCh = file("$projectDir/docs/images/", checkIfExists: true)
 ==========================
 */
 
-if ((params.reads && params.samplePlan) || (params.readPaths && params.samplePlan)){
-  exit 1, "Input reads must be defined using either '--reads' or '--samplePlan' parameter. Please choose one way"
+if (!params.images){
+  exit 1, "Missing input image (use --images to list image path)" 
+}
+if (!params.markers){
+  exit 1, "Missing markers file (use --markers to list markers file path)"
 }
 
 /*
@@ -73,12 +72,12 @@ if ((params.reads && params.samplePlan) || (params.readPaths && params.samplePla
 ==========================
 */
 
-if ( params.metadata ){
-  Channel
-    .fromPath( params.metadata )
-    .ifEmpty { exit 1, "Metadata file not found: ${params.metadata}" }
-    .set { metadataCh }
-}
+// if ( params.metadata ){
+//   Channel
+//     .fromPath( params.metadata )
+//     .ifEmpty { exit 1, "Metadata file not found: ${params.metadata}" }
+//     .set { metadataCh }
+// }
 
 /*
 ===========================
@@ -91,8 +90,7 @@ summary = [
   'Version': workflow.manifest.version ?: null,
   'DOI': workflow.manifest.doi ?: null,
   'Run Name': customRunName,
-  'Inputs' : params.samplePlan ?: params.reads ?: null,
-  'Genome' : params.genome,
+  'Inputs' : params.images ?: null,
   'Max Resources': "${params.maxMemory} memory, ${params.maxCpus} cpus, ${params.maxTime} time per job",
   'Container': workflow.containerEngine && workflow.container ? "${workflow.containerEngine} - ${workflow.container}" : null,
   'Profile' : workflow.profile,
@@ -110,10 +108,10 @@ workflowSummaryCh = NFTools.summarize(summary, workflow, params)
 */
 
 // Load raw reads
-rawReadsCh = NFTools.getInputData(params.samplePlan, params.reads, params.readPaths, params.singleEnd, params)
+//rawReadsCh = NFTools.getInputData(params.samplePlan, params.reads, params.readPaths, params.singleEnd, params)
 
 // Make samplePlan if not available
-sPlanCh = NFTools.getSamplePlan(params.samplePlan, params.reads, params.readPaths, params.singleEnd)
+//sPlanCh = NFTools.getSamplePlan(params.samplePlan, params.reads, params.readPaths, params.singleEnd)
 
 /*
 ==================================
@@ -126,8 +124,6 @@ sPlanCh = NFTools.getSamplePlan(params.samplePlan, params.reads, params.readPath
 // Processes
 include { getSoftwareVersions } from './nf-modules/common/process/utils/getSoftwareVersions'
 include { outputDocumentation } from './nf-modules/common/process/utils/outputDocumentation'
-include { fastqc } from './nf-modules/common/process/fastqc/fastqc'
-include { multiqc } from './nf-modules/local/process/multiqc'
 
 /*
 =====================================

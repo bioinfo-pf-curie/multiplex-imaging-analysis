@@ -1,1 +1,1 @@
-Put here test data, such as FASTQ files.
+Put here test data
