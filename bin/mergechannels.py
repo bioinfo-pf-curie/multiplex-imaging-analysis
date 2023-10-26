@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 """
 Script for merging channels into one. 
 It will be used for an approximation of a cytoplasm channel, as our channels are only specific to a cell subpopulation.
@@ -50,6 +52,7 @@ def merge_channels(in_path, out_path, nuclei_chan=0, channels_to_merge=None, chu
     None
 
     """
+    print(zarr.__version__)
     if nuclei_chan in channels_to_merge:
         raise ValueError("There is conflict between channels to merge and nuclei channels")
     tiff = tifffile.TiffFile(in_path)

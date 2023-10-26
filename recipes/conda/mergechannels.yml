@@ -7,4 +7,4 @@ dependencies:
   - pip
   - pip:
     - ome_types==0.4.2
-    - zarr==2.14.2
+    - zarr==2.16.1

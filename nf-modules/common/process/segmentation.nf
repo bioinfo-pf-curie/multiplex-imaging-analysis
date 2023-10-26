@@ -1,4 +1,5 @@
 process segmentation {
+  label 'cellpose'
   //conda "${projectDir}/env/conda_env.yml"
   //container "${params.contPfx}${module.container}:${module.version}"
 
@@ -6,7 +7,11 @@ process segmentation {
       path(image)
 
   output:
-    path("*.tiff"), emit: out
+    path('*.ti{f,ff}')
+    path('*.png')
+
+  when:
+  task.ext.when == null || task.ext.when
 
   script:
     """

@@ -124,9 +124,10 @@ workflowSummaryCh = NFTools.summarize(summary, workflow, params)
 // Processes
 include { getSoftwareVersions } from './nf-modules/common/process/utils/getSoftwareVersions'
 include { outputDocumentation } from './nf-modules/common/process/utils/outputDocumentation'
-include { mergechannels } from './lib/merge_channels'
-include { displayoutline } from './lib/display_outline'
-include { segmentation } from './lib/segmentation'
+include { mergechannels } from './nf-modules/common/process/merge_channels'
+include { displayoutline } from './nf-modules/common/process/display_outline'
+include { segmentation } from './nf-modules/common/process/segmentation'
+include { quantification } from './nf-modules/common/process/quantification'
 
 
 /*
@@ -141,13 +142,9 @@ workflow {
   main:
     // Init Channels
     imgCh = Channel.fromPath("${params.images}/*.tiff")
-    imgCh.dump(tag:"Images input")
     id_img = imgCh.map{it -> tuple(NFTools.getImageID(it), it)}
-    id_img.dump(tag:"id input")
     markersCh = Channel.fromPath("${params.markers}/*.csv")
-    markersCh.dump(tag:"markers")
     id_markers = markersCh.map{it -> tuple(NFTools.getImageID(it), it)}
-
     inputs = id_img.join(id_markers)
     inputs.dump(tag:"input")
 
@@ -160,16 +157,10 @@ workflow {
     // PROCESS
     merged = mergechannels(inputs)
 
-    segmented = segmentation(merged.out)
+    (masks, outlines) = segmentation(merged.out)
+    outline = displayoutline(merged.out, outlines)
 
-    result = segmented.out.branch{ mask_and_outline ->
-      outline: mask_and_outline =~ /png$/
-      mask: mask_and_outline =~ /tiff?$/
-    }
-
-    outline = displayoutline(merged.out, result.outline)
-
-    //quant = quantification(inputs, result.mask)
+    quant = quantification(inputs, masks)
 
     //*******************************************
     // Warnings that will be printed in the mqc report

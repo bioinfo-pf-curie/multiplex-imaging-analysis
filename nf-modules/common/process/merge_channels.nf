@@ -1,4 +1,6 @@
 process mergechannels {
+  label 'mergechannels'
+  
   input:
       tuple val(filename), path(img), path(ch)
 
@@ -11,6 +13,6 @@ process mergechannels {
 
   script:
     """
-    python mergechannels.py --in $img --channels $ch
+    mergechannels.py --in $img --channels $ch
     """
 }
