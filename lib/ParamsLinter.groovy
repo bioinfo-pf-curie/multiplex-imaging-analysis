@@ -31,16 +31,16 @@ class ParamsLinter {
     }
 
     void check() {
-        checkGenomes(this.params)
+        // checkGenomes(this.params)
         checkUsage(this.params, this.paramsWithUsage)
     }
 
-    static void checkGenomes(params) {
-        if (params.genomes && params.genome && !params.genomes.containsKey(params.genome)) {
-            log.error "The provided genome '${params.genome}' is not available in the iGenomes file. Currently the available genomes are ${params.genomes.keySet().join(", ")}"
-            System.exit(1)
-        }
-    }
+    // static void checkGenomes(params) {
+    //     if (params.genomes && params.genome && !params.genomes.containsKey(params.genome)) {
+    //         log.error "The provided genome '${params.genome}' is not available in the iGenomes file. Currently the available genomes are ${params.genomes.keySet().join(", ")}"
+    //         System.exit(1)
+    //     }
+    // }
 
     static void checkUsage(params, paramsWithUsage) {
         paramsWithUsage.each { usage ->

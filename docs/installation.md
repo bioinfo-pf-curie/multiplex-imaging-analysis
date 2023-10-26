@@ -40,10 +40,10 @@ See [nextflow.io](https://www.nextflow.io/) for further instructions on how to i
 You just need to download/clone the source code and transfer the pipeline files manually:
 
 ```bash
-wget https://myPipeline/archive/master.zip
-mkdir -p ~/myPipeline
-unzip master.zip -d ~/myPipeline/
-cd ~/myPipeline
+wget https://gitlab.curie.fr/data-analysis/microscopic-imaging-analysis/-/archive/main/microscopic-imaging-analysis-main.zip
+mkdir -p ~/microscopic-imaging-analysis
+unzip main.zip -d ~/microscopic-imaging-analysis/
+cd ~/microscopic-imaging-analysis
 nextflow run main.nf
 ```
 
@@ -52,9 +52,9 @@ nextflow run main.nf
 If you would like to make changes to the pipeline, it's better to fork the repository on your github account and then clone the pipeline from your personal repository.
 
 ```bash
-git clone --recursive https://myPipeline.git
+git clone --recursive https://gitlab.curie.fr/data-analysis/microscopic-imaging-analysis
 ### the option --recursive is needed if you use geniac as a submodule
-cd ~/myPipeline
+cd ~/microscopic-imaging-analysis
 nextflow run main.nf
 ```
 
@@ -124,7 +124,3 @@ In this case, the pipeline will look for `Docker` containers as defined in the [
 
 By default, we set up a `cluster` profile to execute the pipeline on a computational cluster.
 Please, edit the `cluster.config` file to set up your own cluster configuration.
-
-### Reference genomes
-
-See [`docs/referenceGenomes.md`](referenceGenomes.md).

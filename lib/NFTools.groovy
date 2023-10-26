@@ -244,15 +244,15 @@ Available Profiles
      * @return
      */
 
-     public static String getGenomeAttribute(params, attribute, genome=params.genome) {
-        def val = ''
-        if (params.genomes && params.genomes.containsKey(genome)) {
-            if (params.genomes[ genome ].containsKey(attribute)) {
-                val = params.genomes[ genome ][ attribute ]
-            }
-        }
-        return val
-    }
+    //  public static String getGenomeAttribute(params, attribute, genome=params.genome) {
+    //     def val = ''
+    //     if (params.genomes && params.genomes.containsKey(genome)) {
+    //         if (params.genomes[ genome ].containsKey(attribute)) {
+    //             val = params.genomes[ genome ][ attribute ]
+    //         }
+    //     }
+    //     return val
+    // }
 
 
     /*****************************************

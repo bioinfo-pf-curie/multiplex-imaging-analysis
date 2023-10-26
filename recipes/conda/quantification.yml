@@ -1,9 +1,9 @@
 name: quantification
 dependencies:
-  - python=3.11.*
+  - python=3.11
   - h5py=3.9
-  - pandas=2.1.*
-  - numpy=1.25.*
+  - pandas=2.1
+  - numpy=1.25
   - pathlib=1.0.1
   - scikit-image=0.20.0 
   - imagecodecs=2023.1.23

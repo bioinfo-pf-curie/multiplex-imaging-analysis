@@ -32,9 +32,9 @@ conda activate geniac
 ### Check the code, install and run the pipeline with the multiconda profile
 
 ```bash
-export WORK_DIR="${HOME}/tmp/myPipeline"
+export WORK_DIR="${HOME}/tmp/microscopic-imaging-analysis"
 export INSTALL_DIR="${WORK_DIR}/install"
-export GIT_URL="https://myPipeline/myPipeline.git"
+export GIT_URL="https://gitlab.curie.fr/mcorbe/microscopic-imaging-analysis.git"
 
 # Initialization of a working directory
 # with the src and build folders
@@ -56,9 +56,9 @@ geniac test multiconda
 Note that you need `sudo` privilege to build the singularity images.
 
 ```bash
-export WORK_DIR="${HOME}/tmp/myPipeline"
+export WORK_DIR="${HOME}/tmp/microscopic-imaging-analysis"
 export INSTALL_DIR="${WORK_DIR}/install"
-export GIT_URL="https://myPipeline/myPipeline.git"
+export GIT_URL="https://gitlab.curie.fr/mcorbe/microscopic-imaging-analysis.git"
 
 # Initialization of a working directory
 # with the src and build folders
@@ -81,11 +81,11 @@ geniac test singularity --check-cluster
 Note that the geniac command line interface provides a wrapper to `git`, `cmake` and `make` commands. Advanced users familiar with these commands can run the following (see [geniac documentation](https://geniac.readthedocs.io) for more details):
 
 ```bash
-export WORK_DIR="${HOME}/tmp/myPipeline"
+export WORK_DIR="${HOME}/tmp/microscopic-imaging-analysis"
 export SRC_DIR="${WORK_DIR}/src"
 export INSTALL_DIR="${WORK_DIR}/install"
 export BUILD_DIR="${WORK_DIR}/build"
-export GIT_URL="https://myPipeline/myPipeline.git"
+export GIT_URL="https://gitlab.curie.fr/mcorbe/microscopic-imaging-analysis.git"
 
 mkdir -p ${INSTALL_DIR} ${BUILD_DIR}
 

@@ -101,24 +101,6 @@ summary = [
 
 workflowSummaryCh = NFTools.summarize(summary, workflow, params)
 
-/*
-==============================
-  LOAD INPUT DATA
-==============================
-*/
-
-// Load raw reads
-//rawReadsCh = NFTools.getInputData(params.samplePlan, params.reads, params.readPaths, params.singleEnd, params)
-
-// Make samplePlan if not available
-//sPlanCh = NFTools.getSamplePlan(params.samplePlan, params.reads, params.readPaths, params.singleEnd)
-
-/*
-==================================
-           INCLUDE
-==================================
-*/ 
-
 // Workflows
 
 // Processes
