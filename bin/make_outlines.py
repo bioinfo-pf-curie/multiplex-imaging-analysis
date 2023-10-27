@@ -39,12 +39,13 @@ def make_outline(merged_file, png_file, mask, out_path, nuclei_channel=0, cyto_c
 
     if png_file is not None:
         from PIL import Image
+        # ===! VULNERABILITY !===
         Image.MAX_IMAGE_PIXELS = None # raise DOSbombing error when too many pixels
         png = np.array(Image.open(png_file)) 
     else:
         png = create_outline_mask(mask)
 
-    result = np.append(np.zeros_like(png[..., [0]]), np.flip(result, axis=2), axis=2) # cv2 are XYC
+    result = np.append(np.zeros_like(png[..., [0]]), np.flip(result, axis=2), axis=2) 
     result[(png[..., 0] == 255) & np.all(png[..., [1,2]] == 0, axis=2), 0] = 255
     return tifffile.imwrite(out_path, result)
 

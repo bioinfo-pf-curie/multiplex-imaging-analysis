@@ -9,9 +9,10 @@ from pandas import read_csv
 import numpy as np
 import ome_types
 import tifffile
-import zarr
 import argparse
 import os
+
+from utils import read_tiff_orion
 
 def tile_generator(arr, nuclei_chan, to_merge_chan, x, y, chunk_x, chunk_y, agg=np.max):
     for ci in [nuclei_chan, to_merge_chan]:
@@ -52,12 +53,9 @@ def merge_channels(in_path, out_path, nuclei_chan=0, channels_to_merge=None, chu
     None
 
     """
-    print(zarr.__version__)
     if nuclei_chan in channels_to_merge:
         raise ValueError("There is conflict between channels to merge and nuclei channels")
-    tiff = tifffile.TiffFile(in_path)
-    zarray = zarr.open(tiff.series[0].aszarr())
-    img_level = zarray[0] if tiff.series[0].is_pyramidal else zarray
+    img_level, metadata = read_tiff_orion(in_path)
 
     if channels_to_merge is None:
         channels_to_merge = list(range(2, img_level.shape[0]))
@@ -66,16 +64,16 @@ def merge_channels(in_path, out_path, nuclei_chan=0, channels_to_merge=None, chu
             tiff_out.write(
                 data=tile_generator(img_level, nuclei_chan, channels_to_merge, 
                                     *img_level.shape[1:], *chunk_size, agg=agg),
-                software=tiff.pages[0].software,
+                software=metadata.software,
                 shape=(2, *img_level.shape[1:3]),
                 #subifds=int(self.num_levels - 1),
-                dtype=tiff.pages[0].dtype,
+                dtype=metadata.dtype,
                 resolution=(
-                    tiff.pages[0].tags["XResolution"].value,
-                    tiff.pages[0].tags["YResolution"].value,
-                    tiff.pages[0].tags["ResolutionUnit"].value),
+                    metadata.tags["XResolution"].value,
+                    metadata.tags["YResolution"].value,
+                    metadata.tags["ResolutionUnit"].value),
                 tile=chunk_size,
-                photometric=tiff.pages[0].photometric,
+                photometric=metadata.photometric,
                 compression="adobe_deflate",
                 predictor=True,
             )

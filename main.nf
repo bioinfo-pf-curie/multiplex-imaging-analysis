@@ -106,10 +106,12 @@ workflowSummaryCh = NFTools.summarize(summary, workflow, params)
 // Processes
 include { getSoftwareVersions } from './nf-modules/common/process/utils/getSoftwareVersions'
 include { outputDocumentation } from './nf-modules/common/process/utils/outputDocumentation'
-include { mergechannels } from './nf-modules/common/process/merge_channels'
-include { displayoutline } from './nf-modules/common/process/display_outline'
+include { mergeChannels } from './nf-modules/common/process/merge_channels'
+include { displayOutline } from './nf-modules/common/process/display_outline'
 include { segmentation } from './nf-modules/common/process/segmentation'
 include { quantification } from './nf-modules/common/process/quantification'
+include { splitImage } from './nf-modules/common/process/split_image'
+include { mergeImage } from './nf-modules/common/process/merge_image'
 
 
 /*
@@ -127,9 +129,7 @@ workflow {
     id_img = imgCh.map{it -> tuple(NFTools.getImageID(it), it)}
     markersCh = Channel.fromPath("${params.markers}/*.csv")
     id_markers = markersCh.map{it -> tuple(NFTools.getImageID(it), it)}
-    inputs = id_img.join(id_markers)
-    inputs.dump(tag:"input")
-
+    
     // subroutines
     outputDocumentation(
       outputDocsCh,
@@ -137,12 +137,28 @@ workflow {
     )
 
     // PROCESS
-    merged = mergechannels(inputs)
+    splitedImg = splitImage(id_img)
 
-    (masks, outlines) = segmentation(merged.out)
-    outline = displayoutline(merged.out, outlines)
+    inputs = splitedImg.transpose().combine(id_markers, by: 0)
+    inputs.dump(tag:"input")
 
-    quant = quantification(inputs, masks)
+    mergedCh = mergeChannels(inputs)
+    
+
+    (masks, outlines) = segmentation(mergedCh.out)
+    outline = displayOutline(mergedCh.out, outlines)
+    resultMasks = masks.groupTuple(by: [0,1])
+    imgToMerge = resultMasks.mix(outline.groupTuple(by: [0,1]))
+    resultMasks.dump(tag:"imgtomerge")
+    
+    mergedImg = mergeImage(imgToMerge, inputs)
+
+    filterThings = mergedImg.branch{name, tag, myfile ->
+      outline: tag =~ /outline/
+      masks: tag =~ /masks/
+    }
+
+    quant = quantification(inputs, filterThings.masks)
 
     //*******************************************
     // Warnings that will be printed in the mqc report

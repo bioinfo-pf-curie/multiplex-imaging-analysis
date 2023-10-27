@@ -1,12 +1,12 @@
-process displayoutline {
+process displayOutline {
   label 'displayoutline'
   
   input:
-      path(merge_tiff)
-      path(png_files)
+      tuple val(filename), path(merge_tiff)
+      tuple val(filename), val(tag), path(png_files)
 
   output:
-    path("*.tiff"), emit: out
+    tuple val(filename), val(tag), path("*.tiff"), emit: out
     
   when:
   task.ext.when == null || task.ext.when

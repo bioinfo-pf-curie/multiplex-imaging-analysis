@@ -4,11 +4,11 @@ process segmentation {
   //container "${params.contPfx}${module.container}:${module.version}"
 
   input:
-      path(image)
+      tuple val(filename), path(image)
 
   output:
-    path('*.ti{f,ff}')
-    path('*.png')
+    tuple val(filename), val("mask"), path('*.ti{f,ff}')
+    tuple val(filename), val("outline"), path('*.png')
 
   when:
   task.ext.when == null || task.ext.when
