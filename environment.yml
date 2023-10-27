@@ -13,4 +13,5 @@ dependencies:
   - conda-forge::openjdk=8.0.192=h14c3975_1003
   - conda-forge::spectra=0.0.11=py_1
   - pymdown-extensions=7.1=pyh9f0ad1d_0
+  - markdown=3.4.1=py37h06a4308_0
   - python=3.7.6=cpython_h8356626_6

@@ -7,3 +7,4 @@ dependencies:
   # Add required software dependencies here
   - python=3.7.6=cpython_h8356626_6
   - pymdown-extensions=7.1=pyh9f0ad1d_0
+  - markdown=3.4.1=py37h06a4308_0
