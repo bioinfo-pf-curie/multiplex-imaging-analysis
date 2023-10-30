@@ -2,11 +2,10 @@ process displayOutline {
   label 'displayoutline'
   
   input:
-      tuple val(filename), path(merge_tiff)
-      tuple val(filename), val(tag), path(png_files)
+    tuple val(filename), val(splitted_name), path(merge_tiff), val(tag), path(png_files)
 
   output:
-    tuple val(filename), val(tag), path("*.tiff"), emit: out
+    tuple val(filename), val(splitted_name), val(tag), path("*.tiff"), emit: out
     
   when:
   task.ext.when == null || task.ext.when

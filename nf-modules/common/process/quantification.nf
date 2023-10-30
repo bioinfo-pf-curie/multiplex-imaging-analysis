@@ -2,8 +2,7 @@ process quantification {
   label 'quantification'
   
   input:
-      tuple val(filename), path(img), path(ch)
-      path(markers)
+      tuple val(filename), path(img), path(ch), val("mask"), path(mask)
 
   output:
     path("*.csv"), emit: out
@@ -14,6 +13,6 @@ process quantification {
 
   script:
     """
-    SingleCellDataExtraction.py --image $img --masks $markers --output . --channel_names $ch
+    SingleCellDataExtraction.py --image $img --masks $mask --output . --channel_names $ch
     """
 }

@@ -4,7 +4,7 @@ process splitImage {
   //container "${params.contPfx}${module.container}:${module.version}"
 
   input:
-      tuple val(img_name), path(image)
+    tuple val(img_name), path(image)
 
   output:
     tuple val(img_name), path('*.ti{f,ff}')

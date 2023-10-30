@@ -44,7 +44,7 @@ def make_outline(merged_file, png_file, mask, out_path, nuclei_channel=0, cyto_c
         png = np.array(Image.open(png_file)) 
     else:
         png = create_outline_mask(mask)
-
+    print(f"result = {result.shape}, png = {png.shape}")
     result = np.append(np.zeros_like(png[..., [0]]), np.flip(result, axis=2), axis=2) 
     result[(png[..., 0] == 255) & np.all(png[..., [1,2]] == 0, axis=2), 0] = 255
     return tifffile.imwrite(out_path, result)

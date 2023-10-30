@@ -2,10 +2,10 @@ process mergeChannels {
   label 'mergechannels'
   
   input:
-      tuple val(filename), path(img), path(ch)
+      tuple val(original_name), val(splitted_name), path(img), path(ch)
 
   output:
-    tuple val(filename), path("*.tif"), emit: out
+    tuple val(original_name), val(splitted_name), path("*.tif"), emit: out
 
 
   when:

@@ -129,6 +129,8 @@ workflow {
     id_img = imgCh.map{it -> tuple(NFTools.getImageID(it), it)}
     markersCh = Channel.fromPath("${params.markers}/*.csv")
     id_markers = markersCh.map{it -> tuple(NFTools.getImageID(it), it)}
+
+    inputs_original = id_img.combine(id_markers, by: 0)
     
     // subroutines
     outputDocumentation(
@@ -139,26 +141,29 @@ workflow {
     // PROCESS
     splitedImg = splitImage(id_img)
 
-    inputs = splitedImg.transpose().combine(id_markers, by: 0)
-    inputs.dump(tag:"input")
+    splitedImgCh = splitedImg.transpose().map{
+      original_name, splitted -> tuple(original_name, NFTools.getImageID(splitted), splitted)
+    }.combine(id_markers, by:0)
 
-    mergedCh = mergeChannels(inputs)
-    
+    mergedCh = mergeChannels(splitedImgCh)
 
     (masks, outlines) = segmentation(mergedCh.out)
-    outline = displayOutline(mergedCh.out, outlines)
-    resultMasks = masks.groupTuple(by: [0,1])
-    imgToMerge = resultMasks.mix(outline.groupTuple(by: [0,1]))
-    resultMasks.dump(tag:"imgtomerge")
+
+    outlineInput = mergedCh.out.combine(outlines, by:[0,1])
+    outline = displayOutline(outlineInput)
+
+    resultMasks = masks.groupTuple(by: [0,2]).combine(inputs_original, by:0)
+    out_line = outline.groupTuple(by: [0,2]).combine(inputs_original, by:0)
+
+    imgToMerge = resultMasks.mix(out_line)
     
-    mergedImg = mergeImage(imgToMerge, inputs)
+    mergedImg = mergeImage(imgToMerge)
 
-    filterThings = mergedImg.branch{name, tag, myfile ->
+    filterThings = mergedImg.branch{name, input_img, markers, tag, myfile ->
       outline: tag =~ /outline/
-      masks: tag =~ /masks/
+      masks: tag =~ /mask/
     }
-
-    quant = quantification(inputs, filterThings.masks)
+    quant = quantification(filterThings.masks)
 
     //*******************************************
     // Warnings that will be printed in the mqc report
