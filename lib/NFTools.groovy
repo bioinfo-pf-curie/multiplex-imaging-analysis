@@ -607,11 +607,17 @@ Available Profiles
         log.info endMessage.toString()
     }
 
-    public static String getFileID(f, delim) {
-        return f.getName().toString().split(delim).head()
-    }
+  public static String getFileID(f, delim) {
+      return f.getName().toString().split(delim).head()
+  }
 
-    public static String getImageID(f) {
-    f.getBaseName().toString().replaceFirst(/\.ome$/, "")
-}
+  public static String getImageID(f) {
+  f.getBaseName().toString().replaceFirst(/\.ome$/, "")
+  }
+
+  public static Object setTag(channel, tagName) {
+    def new_tag = { it -> new Tuple(tagName, *it) }
+    return channel.map(new_tag)
+  }
+
 }

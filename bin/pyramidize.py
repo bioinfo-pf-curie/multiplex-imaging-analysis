@@ -50,7 +50,7 @@ if __name__ == "__main__":
     assert out_path not in in_paths
 
     # Detect pixel size in ome-xml
-    pixel_size = detect_pixel_size(in_path)
+    pixel_size = detect_pixel_size(in_paths[0])
     if pixel_size is None: pixel_size = 1
 
     # Use palom to pyramidize the input image

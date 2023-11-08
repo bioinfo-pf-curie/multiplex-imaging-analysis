@@ -2,11 +2,10 @@ process quantification {
   label 'quantification'
   
   input:
-      tuple val(filename), path(img), path(ch), val("mask"), path(mask)
+      tuple val(filename), path(img), path(ch), path(mask), path(merged_img)
 
   output:
-    path("*.csv"), emit: out
-
+    path("*.csv")
 
   when:
     task.ext.when == null || task.ext.when

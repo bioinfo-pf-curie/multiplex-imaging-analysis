@@ -79,6 +79,9 @@ if (!params.markers){
 //     .set { metadataCh }
 // }
 
+
+
+
 /*
 ===========================
    SUMMARY
@@ -111,7 +114,8 @@ include { displayOutline } from './nf-modules/common/process/display_outline'
 include { segmentation } from './nf-modules/common/process/segmentation'
 include { quantification } from './nf-modules/common/process/quantification'
 include { splitImage } from './nf-modules/common/process/split_image'
-include { mergeImage } from './nf-modules/common/process/merge_image'
+include { mergeSegmentation } from './nf-modules/common/process/merge_segmentation'
+include { pyramidize } from './nf-modules/common/process/pyramidize'
 
 
 /*
@@ -119,6 +123,7 @@ include { mergeImage } from './nf-modules/common/process/merge_image'
             WORKFLOW 
 =====================================
 */
+
 
 workflow {
   versionsCh = Channel.empty()
@@ -139,31 +144,29 @@ workflow {
     )
 
     // PROCESS
-    splitedImg = splitImage(id_img)
+    mergedCh = mergeChannels(inputs_original)
 
+    splitedImg = splitImage(mergedCh)
     splitedImgCh = splitedImg.transpose().map{
-      original_name, splitted -> tuple(original_name, NFTools.getImageID(splitted), splitted)
-    }.combine(id_markers, by:0)
-
-    mergedCh = mergeChannels(splitedImgCh)
-
-    (masks, outlines) = segmentation(mergedCh.out)
-
-    outlineInput = mergedCh.out.combine(outlines, by:[0,1])
-    outline = displayOutline(outlineInput)
-
-    resultMasks = masks.groupTuple(by: [0,2]).combine(inputs_original, by:0)
-    out_line = outline.groupTuple(by: [0,2]).combine(inputs_original, by:0)
-
-    imgToMerge = resultMasks.mix(out_line)
-    
-    mergedImg = mergeImage(imgToMerge)
-
-    filterThings = mergedImg.branch{name, input_img, markers, tag, myfile ->
-      outline: tag =~ /outline/
-      masks: tag =~ /mask/
+      original_name, splitted, original_path -> tuple(original_name, NFTools.getImageID(splitted), splitted, original_path)
     }
-    quant = quantification(filterThings.masks)
+
+    segmented = segmentation(splitedImgCh)
+    segmCh = segmented.groupTuple().combine(inputs_original, by:0)
+
+    plainSegm = mergeSegmentation(segmCh)
+    plainSegmCh = plainSegm.combine(mergedCh, by:0)
+    
+    outline = displayOutline(plainSegmCh)
+
+    pyramidizeInput = Channel.empty()
+    .mix(NFTools.setTag(mergedCh, "merge_channels"))
+    .mix(NFTools.setTag(outline, "outlines"))
+    .mix(NFTools.setTag(plainSegm.map{f, inp, mrk, img -> tuple(f, img)}, 'mask'))
+    
+    pyramidize(pyramidizeInput)
+  
+    quant = quantification(plainSegmCh)
 
     //*******************************************
     // Warnings that will be printed in the mqc report

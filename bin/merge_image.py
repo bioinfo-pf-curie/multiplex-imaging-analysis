@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 
+import re
 import os
 import argparse
 from tifffile import TiffFile, memmap, imwrite, imread
-from numpy import newaxis, moveaxis
+import numpy as np
 import zarr
 
 def create_empty_img(out_path, input_img_path, example_img):
@@ -54,9 +55,9 @@ def merge_image(img_path_list, out_path, input_img_path):
         img = img.series[0][0].asarray()
 
         if len(img.shape) == 2:
-            img = img[..., newaxis]
+            img = img[..., np.newaxis]
 
-        img = moveaxis(img, 2, 0)
+        img = np.moveaxis(img, 2, 0)
 
         if out_img is None:
             # create_empty_img(out_path, input_img_path, img)
@@ -75,4 +76,6 @@ if __name__ == '__main__':
     parser.add_argument('--original', type=str, required=True, help="File path of original image (to get metadata from)")
     args = parser.parse_args()
 
-    merge_image(vars(args)['in'], args.out, args.original)
+    flows = stich_flow(vars(args)['in'], args.original)
+    masks = compute_masks(flows[:-1], flows[-1])[0] # todo : modifier ça pour ne pas tout mettre en mémoire
+    imwrite(args.out, masks, ome=True, bigtiff=True, compression="adobe_deflate", predictor=True,)

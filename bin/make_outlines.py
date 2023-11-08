@@ -6,7 +6,10 @@ import tifffile
 import numpy as np
 import os
 import cv2
+from PIL import Image
 from scipy.ndimage import find_objects
+# ===! VULNERABILITY !===
+Image.MAX_IMAGE_PIXELS = None # raise DOSbombing error when too many pixels
 
 def to_8int(arr, method="median_unbiased", percentile=[0.1,99.9], channel_axis=0):
     min_, max_ = np.percentile(arr, percentile, axis=[a for a in range(len(arr.shape)) if a != channel_axis], 
@@ -18,7 +21,7 @@ def to_8int(arr, method="median_unbiased", percentile=[0.1,99.9], channel_axis=0
 
 def create_outline_mask(masks):
     # see cellpose code source to know how to do it
-    outlines = np.zeros(masks.shape, bool)
+    outlines = np.zeros(masks.shape, np.uint8)
     slices = find_objects(masks.astype(int))
     for i, slice in enumerate(slices):
         if slice is not None:
@@ -27,10 +30,10 @@ def create_outline_mask(masks):
             contours = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
             pvc, pvr = np.concatenate(contours[-2], axis=0).squeeze().T            
             vr, vc = pvr + sr.start, pvc + sc.start 
-            outlines[vr, vc] = 1
+            outlines[vr, vc] = 255
     return outlines
 
-def make_outline(merged_file, png_file, mask, out_path, nuclei_channel=0, cyto_channel=1):
+def make_outline(merged_file, png_file, mask_path, out_path, nuclei_channel=0, cyto_channel=1):
     tiff = tifffile.TiffFile(merged_file) # blue = nuclei = 0, green = cyto = 1
     channel_to_keep = [int(nuclei_channel)]
     if int(cyto_channel) >= 0:
@@ -38,15 +41,15 @@ def make_outline(merged_file, png_file, mask, out_path, nuclei_channel=0, cyto_c
     result = np.moveaxis(to_8int(tiff.series[0].asarray()[channel_to_keep, ...]), 0, -1).copy() # tiff are CYX
 
     if png_file is not None:
-        from PIL import Image
-        # ===! VULNERABILITY !===
-        Image.MAX_IMAGE_PIXELS = None # raise DOSbombing error when too many pixels
-        png = np.array(Image.open(png_file)) 
+        png = np.array(Image.open(png_file))
+        outline = np.zeros_like(png[..., [0]])
+        outline[(png[..., 0] == 255) & np.all(png[..., [1,2]] == 0, axis=2)] = 255
     else:
-        png = create_outline_mask(mask)
-    print(f"result = {result.shape}, png = {png.shape}")
-    result = np.append(np.zeros_like(png[..., [0]]), np.flip(result, axis=2), axis=2) 
-    result[(png[..., 0] == 255) & np.all(png[..., [1,2]] == 0, axis=2), 0] = 255
+        mask = np.array(Image.open(mask_path))
+        outline = create_outline_mask(mask)
+        print(np.unique(outline))
+    print(f"result = {result.shape}, outline = {outline.shape}")
+    result = np.append(outline[..., np.newaxis], np.flip(result, axis=2), axis=2) 
     return tifffile.imwrite(out_path, result)
 
 

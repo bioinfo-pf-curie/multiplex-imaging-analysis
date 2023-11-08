@@ -7,12 +7,12 @@ from tifffile import TiffWriter
 from utils import read_tiff_orion
 
 
-def split_img(img_path, height=224, overlap=50):
+def split_img(img_path, height=224, overlap=0.1):
     """Will split an image into height x image_width crop (with some overlap) to get a better memory footprint """
     img_name, ext = os.path.splitext(os.path.basename(img_path))
     img_zarr, metadata = read_tiff_orion(img_path)
     ch, total_height, total_width = img_zarr.shape
-    for cur_height in range(0, total_height, height - overlap):
+    for cur_height in range(0, total_height, int(height * (1 - overlap))):
         out_path = img_name + f"_{cur_height}" + ext
         with TiffWriter(out_path, ome=True, bigtiff=True) as tiff_out:
             tmp_arr = img_zarr[:, cur_height: cur_height+height, :]
