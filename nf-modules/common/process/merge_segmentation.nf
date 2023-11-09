@@ -1,5 +1,4 @@
 process mergeSegmentation {
-  label 'mergeSegmentation'
   label 'cellpose'
   //container "${params.contPfx}${module.container}:${module.version}"
 

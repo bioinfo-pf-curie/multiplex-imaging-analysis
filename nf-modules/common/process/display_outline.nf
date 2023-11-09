@@ -1,5 +1,4 @@
 process displayOutline {
-  label 'displayoutline'
   label 'img_utils'
   
   input:

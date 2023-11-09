@@ -1,5 +1,4 @@
 process splitImage {
-  label 'splitImage'
   label 'img_utils'
   //conda "${projectDir}/env/conda_env.yml"
   //container "${params.contPfx}${module.container}:${module.version}"

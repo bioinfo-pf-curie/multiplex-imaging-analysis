@@ -1,5 +1,4 @@
 process mergeChannels {
-  label 'mergechannels'
   label 'img_utils'
   
   input:
