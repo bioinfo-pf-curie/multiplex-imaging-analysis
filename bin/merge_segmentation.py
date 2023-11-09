@@ -28,7 +28,7 @@ def load_npy(npy_path):
     return np.load(npy_path, allow_pickle=True).item()['flows']
 
 def get_current_height(npy_path):
-    return int(re.search('\d+', os.path.basename(npy_path)).group(0))
+    return int(re.search('\d+ddf.loc[ddf[CLUSTER] == i, features] - center[line_name].loc[i].to_numpy()', os.path.basename(npy_path)).group(0))
 
 def stich_flow(list_npy, input_img_path, tile=224, overlap=.1):
     original_tiff = TiffFile(input_img_path)

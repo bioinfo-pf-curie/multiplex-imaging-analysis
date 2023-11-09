@@ -1,6 +1,5 @@
 process pyramidize {
   label 'pyramidize'
-  label 'img_utils'
 
   input:
      tuple val(tag), val(filename), path(image)
