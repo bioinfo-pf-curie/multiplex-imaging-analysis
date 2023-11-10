@@ -147,3 +147,4 @@ if __name__ == "__main__":
     else:
         _, channels = guess_channels_to_merge(in_path)
     merge_channels(in_path, out_path, channels_to_merge=channels, nuclei_chan=args.nuclei_channels)
+ 

@@ -1,6 +1,7 @@
 name: pyramidize
 dependencies:
   - python=3.11.5=h955ad1f_0
+  - scikit-image=0.19.3=py311h6a678d5_2
   - pip=23.3=py311h06a4308_0
   - pip:
     - ome_types==0.4.2
