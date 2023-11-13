@@ -162,7 +162,7 @@ workflow {
     pyramidizeInput = Channel.empty()
     .mix(NFTools.setTag(mergedCh, "merge_channels"))
     .mix(NFTools.setTag(outline, "outlines"))
-    .mix(NFTools.setTag(plainSegm.map{f, inp, mrk, img -> tuple(f, img)}, 'mask'))
+    //.mix(NFTools.setTag(plainSegm.map{f, inp, mrk, img -> tuple(f, img)}, 'mask'))
     
     pyramidize(pyramidizeInput)
   
