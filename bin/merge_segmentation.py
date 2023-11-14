@@ -1,12 +1,13 @@
 #!/usr/bin/env python
 
-import re
 import os
 import argparse
 
 import numpy as np
 from tifffile import TiffFile, imwrite
 from cellpose.dynamics import compute_masks
+
+from utils import transfer_metadata
 
 
 def get_weight(tile):
@@ -56,4 +57,4 @@ if __name__ == '__main__':
 
     flows = stich_flow(vars(args)['in'], args.original)
     masks = compute_masks(flows[:-1], flows[-1])[0] # todo : modifier ça pour ne pas tout mettre en mémoire
-    imwrite(args.out, masks, ome=True, bigtiff=True, compression="adobe_deflate", predictor=True,)
+    imwrite(args.out, masks, ome=True, bigtiff=True, **transfer_metadata(TiffFile(args.original).pages[0], func='write'))

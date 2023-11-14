@@ -9,6 +9,7 @@ import cv2
 from PIL import Image
 from scipy.ndimage import find_objects
 import zarr
+from utils import transfer_metadata
 
 # ===! VULNERABILITY !===
 Image.MAX_IMAGE_PIXELS = None # raise DOSbombing error when too many pixels
@@ -61,24 +62,23 @@ def make_outline(merged_file, png_file, mask_path, out_path, nuclei_channel=0, c
     else:
         result = zarr.open(tiff.series[0].aszarr())
         c, x, y = tiff.series[0].shape
+
         def tile_gen(original, outline, c, x, y, chunk_size=(256,256)):
             for c_cur in range(c+1):
                 for x_cur in range(0, x, chunk_size[0]):
                     for y_cur in range(0, y, chunk_size[1]):
                         try:
                             yield original[c_cur, x_cur:x_cur+chunk_size[0], y_cur:y_cur+chunk_size[1]]
-                        except IndexError:
+                        except (IndexError, zarr.errors.BoundsCheckError):
                             yield outline[np.newaxis, x_cur:x_cur+chunk_size[0], y_cur:y_cur+chunk_size[1]].astype(original.dtype)
                                 
         with tifffile.TiffWriter(out_path, ome=True, bigtiff=True) as tiff_out:
             tiff_out.write(
-                data=tile_gen(result[0] if tiff.series[0].is_pyramidal else result, outline, c=c, x=x, y=y), software=metadata.software, 
+                data=tile_gen(result[0] if tiff.series[0].is_pyramidal else result, outline, c=c, x=x, y=y), 
                 shape=[c+1, x, y], 
                 dtype=metadata.dtype, 
-                resolution=(metadata.tags["XResolution"].value, metadata.tags["YResolution"].value,metadata.tags["ResolutionUnit"].value), 
                 tile=(256, 256), 
-                photometric=metadata.photometric, compression="adobe_deflate", 
-                predictor=True
+                **transfer_metadata(metadata, func='write')
             )
 
     

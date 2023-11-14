@@ -12,7 +12,7 @@ import tifffile
 import argparse
 import os
 
-from utils import read_tiff_orion
+from utils import read_tiff_orion, transfer_metadata
 
 def tile_generator(arr, nuclei_chan, to_merge_chan, x, y, chunk_x, chunk_y, agg=np.max):
     for ci in [nuclei_chan, to_merge_chan]:
@@ -64,18 +64,11 @@ def merge_channels(in_path, out_path, nuclei_chan=0, channels_to_merge=None, chu
             tiff_out.write(
                 data=tile_generator(img_level, nuclei_chan, channels_to_merge, 
                                     *img_level.shape[1:], *chunk_size, agg=agg),
-                software=metadata.software,
                 shape=(2, *img_level.shape[1:3]),
                 #subifds=int(self.num_levels - 1),
                 dtype=metadata.dtype,
-                resolution=(
-                    metadata.tags["XResolution"].value,
-                    metadata.tags["YResolution"].value,
-                    metadata.tags["ResolutionUnit"].value),
                 tile=chunk_size,
-                photometric=metadata.photometric,
-                compression="adobe_deflate",
-                predictor=True,
+                **transfer_metadata(metadata, func='write')
             )
 
 def guess_channels_to_merge(img_path):
