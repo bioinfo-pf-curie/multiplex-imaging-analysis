@@ -13,7 +13,8 @@ process splitImage {
   task.ext.when == null || task.ext.when
 
   script:
+    def max_height = task.memory.getBytes() / task.cpus
     """
-    split_image.py $image 
+    split_image.py --file_in $image --memory $max_height
     """
 }
