@@ -9,7 +9,7 @@ import cv2
 from PIL import Image
 from scipy.ndimage import find_objects
 import zarr
-from utils import transfer_metadata
+from utils import OmeTifffile
 
 # ===! VULNERABILITY !===
 Image.MAX_IMAGE_PIXELS = None # raise DOSbombing error when too many pixels
@@ -46,7 +46,9 @@ def make_outline(merged_file, png_file, mask_path, out_path, nuclei_channel=0, c
         outline = create_outline_mask(mask)
     
     tiff = tifffile.TiffFile(merged_file) # blue = nuclei = 0, green = cyto = 1
-    metadata = tiff.pages[0]
+    metadata = OmeTifffile(tiff.pages[0])
+
+    metadata.add_channel_metadata(channel_name="Outline")
 
     if not all_channels:
         channel_to_keep = [int(nuclei_channel)]
@@ -78,11 +80,8 @@ def make_outline(merged_file, png_file, mask_path, out_path, nuclei_channel=0, c
                 shape=[c+1, x, y], 
                 dtype=metadata.dtype, 
                 tile=(256, 256), 
-                **transfer_metadata(metadata, func='write')
+                **metadata.to_dict()
             )
-
-    
-    
 
 
 if __name__ == "__main__":

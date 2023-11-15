@@ -1,42 +1,113 @@
+from typing import ClassVar, Any
+
 import tifffile
 import zarr
+from ome_types import OME, model
 
 def read_tiff_orion(img_path, idx_serie=0, idx_level=0, *args, **kwargs):
     tiff = tifffile.TiffFile(img_path, *args, **kwargs)
     zarray = zarr.open(tiff.series[idx_serie].aszarr())
-    return (zarray[idx_level] if idx_level is not None and tiff.series[idx_level].is_pyramidal else zarray), tiff.pages[0]
+    return (zarray[idx_level] if idx_level is not None and tiff.series[idx_level].is_pyramidal else zarray), OmeTifffile(tiff.pages[0])
 
-def transfer_metadata(original_metadata, func='save'):
-    result = {}
-    other_props = ["ImageWidth", "ImageLength", "BitsPerSample", "SamplesPerPixel", 
-                    "TileWidth", "TileLength", "TileOffsets", "TileByteCounts", "SubIFDs", "SampleFormat"]
-    
-    direct_props = ['PhotometricInterpretation',  "PlanarConfiguration", 'Compression', "Software", "ImageDescription"]
+class OmeTifffile(object):
+    direct_props = {'PhotometricInterpretation': "photometric",  
+                    "PlanarConfiguration": "planarconfig", 
+                    'Compression': "compress", 
+                    "Software": "software"}
 
-    def set_tag(tag, tag_name, param_name):
-        if tag.name == tag_name:
-            result[param_name] = tag.value
+    def __init__(self, tifffile_metadata, **kwargs):
+        self.tags = {"resolution": [None, None, None], "extratags": []}
 
-    for tag in original_metadata.tags:
-
-        set_tag(tag, 'PhotometricInterpretation', "photometric")
-        set_tag(tag, "PlanarConfiguration", "planarconfig")
-
-        set_tag(tag, 'Compression', "compress" if func != 'write' else 'compression')
+        for t in tifffile_metadata.tags:
+            if t.name == "ImageDescription":
+                self.ome = OME.from_xml(t.value, **kwargs)
+                break
+        else:
+            raise ValueError("No image description tag was found")
         
-        set_tag(tag, "Software", "software")
-        set_tag(tag, "ImageDescription", "description")
+        for tag in tifffile_metadata.tags:
+            if t.name == "ImageDescription":
+                continue
 
-        if tag.name in ("XResolution", "YResolution", "ResolutionUnit"):
-            if "resolution" not in result:
-                result["resolution"] = [0,0,0]
-            result["resolution"][("XResolution", "YResolution", "ResolutionUnit").index(tag.name)] = tag.value
+            if tag.name in self.direct_props.keys():
+                self.tags[self.direct_props[tag.name]] = tag.value
 
-        if tag not in direct_props:
-            if 'extratags' not in result:
-                result['extratags'] = []
-            result['extratags'].append((tag.code, tag.dtype, tag.count, tag.value, True))
+            elif tag.name in ("XResolution", "YResolution", "ResolutionUnit"):
+                self.tags["resolution"][("XResolution", "YResolution", "ResolutionUnit").index(tag.name)] = tag.value
 
-    return result
-            
+            else:
+                self.tags['extratags'].append((tag.code, tag.dtype, tag.count, tag.value, True)) # true for tag.writeonce (orion is one image per tiff)
+    
+        self.dtype = tifffile_metadata.dtype
 
+    @property
+    def fimg(self):
+        return self.ome.images[0]
+    
+    @fimg.setter
+    def fimg(self, value):
+        self.ome.images[0] = value
+    
+    @property
+    def pix(self):
+        return self.fimg.pixels
+    
+    @pix.setter
+    def pix(self, value):
+        self.fimg.pixels = value
+
+    def to_dict(self, func_name="write"):
+        this_dict = self.tags.copy()
+        if func_name == 'save':
+            this_dict['compression'] = this_dict.pop('compress')
+        this_dict['description'] = self.ome.to_xml()
+        if any(resolution is None for resolution in self.tags["resolution"]):
+            # was not set
+            this_dict.pop('resolution')
+        return this_dict
+    
+    def add_channel(self, channel_data):
+        self.pix.channels.append(channel_data)
+        self.pix.planes.append({'the_z': 0, 'the_t': 0, 'the_c': int(self.pix.size_c)})
+        self.pix.size_c = len(self.pix.channels)
+    
+    def add_channel_metadata(self, channel_name, add_prefix=True, **kwargs):
+        if 'samples_per_pixel' not in kwargs:
+            kwargs['samples_per_pixel'] = 1
+        if 'light_path' not in kwargs:
+            kwargs['light_path'] = {}
+
+        try:
+            old_id = self.pix.channels[-1].id
+            new_id = int(old_id.split(':')[-1]) + 1
+        except (IndexError, ValueError, AttributeError):
+            new_id = len(self.pix.channels)
+        new_id_name = f"Channel:{new_id}"
+
+        if add_prefix:
+            try:
+                prefix = int(self.pix.channels[-1].name.split('_')[0]) + 1
+            except (IndexError, ValueError, AttributeError):
+                prefix = 1
+            channel_name = f"{prefix:02d}_{channel_name}"
+        
+        self.add_channel(model.Channel(
+            id=new_id_name, name=channel_name, **kwargs
+        ))
+
+    def remove_all_channels(self):
+        self.pix.planes = []
+        self.pix.channels = []
+        self.pix.size_c = 1 # can't put 0 validation error
+
+    def get_channel(self, id_chan):
+        return self.pix.channels[id_chan]
+        
+"""
+img_path = "/data/users/mcorbe/orion/data/2017206/220516_Lung_18p_P39_A28_C76dX_E16_Curie18@20220519_110224_090101.ome.tiff"
+import tifffile
+from orion.MIA.bin.utils import OmeTifffile
+info = tifffile.TiffFile(img_path)
+o = OmeTifffile(info.pages[0])
+
+"""

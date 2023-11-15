@@ -12,7 +12,7 @@ import tifffile
 import argparse
 import os
 
-from utils import read_tiff_orion, transfer_metadata
+from utils import read_tiff_orion
 
 def tile_generator(arr, nuclei_chan, to_merge_chan, x, y, chunk_x, chunk_y, agg=np.max):
     for ci in [nuclei_chan, to_merge_chan]:
@@ -57,6 +57,13 @@ def merge_channels(in_path, out_path, nuclei_chan=0, channels_to_merge=None, chu
         raise ValueError("There is conflict between channels to merge and nuclei channels")
     img_level, metadata = read_tiff_orion(in_path)
 
+    nuclei_chan_metadata = metadata.get_channel(nuclei_chan)
+    metadata.remove_all_channels()
+    metadata.add_channel(nuclei_chan_metadata)
+    metadata.add_channel_metadata(channel_name="merged_channels")
+
+    # todo : add annotation about channels used
+
     if channels_to_merge is None:
         channels_to_merge = list(range(2, img_level.shape[0]))
 
@@ -68,7 +75,7 @@ def merge_channels(in_path, out_path, nuclei_chan=0, channels_to_merge=None, chu
                 #subifds=int(self.num_levels - 1),
                 dtype=metadata.dtype,
                 tile=chunk_size,
-                **transfer_metadata(metadata, func='write')
+                **metadata.to_dict()
             )
 
 def guess_channels_to_merge(img_path):

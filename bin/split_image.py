@@ -4,7 +4,7 @@ import os
 from tifffile import TiffWriter
 import argparse
 
-from utils import read_tiff_orion, transfer_metadata
+from utils import read_tiff_orion
 
 
 def split_img(img_path, out_dir, height=224, overlap=0.1, memory=0):
@@ -25,11 +25,12 @@ def split_img(img_path, out_dir, height=224, overlap=0.1, memory=0):
         out_path = os.path.join(out_dir, img_name + f"_{cur_height}" + ext)
         with TiffWriter(out_path, ome=True, bigtiff=True) as tiff_out:
             tmp_arr = img_zarr[:, cur_height: cur_height+height, :]
+            metadata.pix.size_x = tmp_arr.shape[1] # last one is not height unless total_heigh % height = 0
             tiff_out.write(
                 data=tmp_arr,
                 shape=tmp_arr.shape,
                 dtype=metadata.dtype,
-                **transfer_metadata(metadata, func="write")
+                **metadata.to_dict()
             )
 
 
