@@ -14,6 +14,8 @@ dependencies:
   - pip=23.3=py311h06a4308_0
   - pip:
     - fastremap==1.14.0
+    - ome_types==0.4.2
+    - zarr==2.16.1
     - opencv-python-headless==4.8.1.78
     - cellpose==2.2.2
 
