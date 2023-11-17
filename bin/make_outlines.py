@@ -39,7 +39,7 @@ def create_outline_mask(masks):
 def make_outline(merged_file, png_file, mask_path, out_path, nuclei_channel=0, cyto_channel=1, all_channels=False, ):
     if png_file is not None:
         png = np.array(Image.open(png_file))
-        outline = np.zeros_like(png[..., [0]])
+        outline = np.zeros_like(png[..., 0])
         outline[(png[..., 0] == 255) & np.all(png[..., [1,2]] == 0, axis=2)] = 255
     else:
         mask = np.array(Image.open(mask_path))
@@ -72,7 +72,7 @@ def make_outline(merged_file, png_file, mask_path, out_path, nuclei_channel=0, c
                         try:
                             yield original[c_cur, x_cur:x_cur+chunk_size[0], y_cur:y_cur+chunk_size[1]]
                         except (IndexError, zarr.errors.BoundsCheckError):
-                            yield outline[np.newaxis, x_cur:x_cur+chunk_size[0], y_cur:y_cur+chunk_size[1]].astype(original.dtype)
+                            yield outline[x_cur:x_cur+chunk_size[0], y_cur:y_cur+chunk_size[1]].astype(original.dtype)
                                 
         with tifffile.TiffWriter(out_path, ome=True, bigtiff=True) as tiff_out:
             tiff_out.write(
