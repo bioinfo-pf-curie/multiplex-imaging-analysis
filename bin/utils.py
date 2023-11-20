@@ -64,6 +64,10 @@ class OmeTifffile(object):
         if any(resolution is None for resolution in self.tags["resolution"]):
             # was not set
             this_dict.pop('resolution')
+
+        for key in this_dict:
+            if type(this_dict[key]) is dict:
+                this_dict[key] = str(this_dict[key])
         return this_dict
     
     def add_channel(self, channel_data):

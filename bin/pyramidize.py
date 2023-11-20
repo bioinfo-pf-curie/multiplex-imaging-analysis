@@ -3,15 +3,15 @@
 import argparse
 import pathlib
 
-import ome_types
+import tifffile
 import palom.pyramid
 import palom.reader
+from utils import OmeTifffile
 
 
-def detect_pixel_size(img_path):
+def detect_pixel_size(metadata):
     try:
-        metadata = ome_types.from_tiff(img_path)
-        pixel_size = metadata.images[0].pixels.physical_size_x
+        pixel_size = metadata.pix.physical_size_x
     except Exception as err:
         print(err)
         print()
@@ -49,6 +49,8 @@ if __name__ == "__main__":
     # pixel data is read into RAM lazily, cannot overwrite input file
     assert out_path not in in_paths
 
+    metadata = OmeTifffile(tifffile.TiffFile(in_paths[0]).pages[0])
+
     # Detect pixel size in ome-xml
     pixel_size = detect_pixel_size(in_paths[0])
     if pixel_size is None: pixel_size = 1
@@ -57,5 +59,6 @@ if __name__ == "__main__":
     readers = [palom.reader.OmePyramidReader(in_path) for in_path in in_paths]
     mosaics = [reader.pyramid[0] for reader in readers]
     palom.pyramid.write_pyramid(
-        mosaics, out_path, downscale_factor=2, pixel_size=pixel_size
+        mosaics, out_path, downscale_factor=2, pixel_size=pixel_size,
+        kwargs_tifffile=metadata.to_dict()
     )
