@@ -39,13 +39,19 @@ def get_current_height(npy_path):
 
 def stich_flow(list_npy, input_img_path, tile=224, overlap=.1):
     original_tiff = TiffFile(input_img_path)
-    total_flow = np.zeros((3, *original_tiff.series[0].shape[1:]))
+    dtype = original_tiff.series[0].dtype
+    total_flow = np.memmap('.tmp_flow.arr', dtype=dtype, mode="write", shape=(3, *original_tiff.series[0].shape[1:]))
     for npy in list_npy:
         cur_height = get_current_height(npy)
         flow = load_npy(npy)
         weighted_flow = np.array(flow[4]) * get_weight(flow[4].shape[1])[np.newaxis, :, np.newaxis]
-        total_flow[:, cur_height:cur_height+weighted_flow.shape[1], :] += weighted_flow
-    total_flow /= sum_of_weight_on_axis(tile, overlap, original_tiff.series[0].shape[1])
+        total_flow[:, cur_height:cur_height+weighted_flow.shape[1], :] += weighted_flow.astype(dtype)
+        total_flow.flush()
+    flow = None # force garbage
+    y_weight = sum_of_weight_on_axis(tile, overlap, original_tiff.series[0].shape[1]).astype(dtype)
+    for chunk in range(0, total_flow.shape[2], tile):
+        total_flow[..., chunk:chunk+tile] = total_flow[..., chunk:chunk+tile] / y_weight
+        total_flow.flush()
     return total_flow
 
 if __name__ == '__main__':

@@ -40,7 +40,7 @@ if __name__ == "__main__":
     parser.add_argument('--out', type=str, required=False, help="Output directory for resulting images")
     parser.add_argument('--height', type=int, required=False, help="height of tiles")
     parser.add_argument('--overlap', type=float, required=False, default=0.1, help="percentage of overlap for tiles")
-    parser.add_argument('--memory', type=str, required=False, default=0.1, help="percentage of overlap for tiles")
+    parser.add_argument('--memory', type=str, required=False, default=0, help="memory size available for each crop")
     args = parser.parse_args()
 
     split_img(img_path=args.file_in, out_dir=args.out, height=args.height, overlap=args.overlap, memory=args.memory)
