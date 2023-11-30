@@ -4,6 +4,13 @@ import tifffile
 import zarr
 from ome_types import OME, model
 
+
+def _tile_generator(arr, channel, x, y, chunk_x, chunk_y):
+    for x_cur in range(0, x, chunk_x):
+        for y_cur in range(0, y, chunk_y):
+            yield arr[channel, x_cur: x_cur + chunk_x, y_cur: y_cur + chunk_y]
+
+
 def read_tiff_orion(img_path, idx_serie=0, idx_level=0, *args, **kwargs):
     tiff = tifffile.TiffFile(img_path, *args, **kwargs)
     zarray = zarr.open(tiff.series[idx_serie].aszarr())

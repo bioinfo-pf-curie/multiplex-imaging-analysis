@@ -3,6 +3,7 @@ process mergeChannels {
   
   input:
       tuple val(original_name), path(img), path(ch)
+      each mode
 
   output:
     tuple val(original_name), path("*.tif")
@@ -12,6 +13,6 @@ process mergeChannels {
 
   script:
     """
-    mergechannels.py --in $img --channels $ch
+    mergechannels.py --in $img --channels $ch --out ${img}_${mode}_merged.tif --norm $mode
     """
 }
