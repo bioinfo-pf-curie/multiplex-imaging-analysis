@@ -27,9 +27,25 @@ def compute_hist(img, channel, x, y, chunk_x, chunk_y, img_min=None, img_max=Non
         return bins[-2], bins[-1]
     else:
         return bins[idx_min], bins[-2]
+from scipy.ndimage import gaussian_filter
+
+from utils import read_tiff_orion, _tile_generator
+
+def compute_hist(img, channel, x, y, chunk_x, chunk_y, img_min=None, img_max=None, num_bin=100):
+    if img_min is None or img_max is None:
+        img_min, img_max = 0, 65535
+    bins = np.linspace(img_min, img_max, num_bin)
+    hist = np.zeros(num_bin-1)
+    for tile in _tile_generator(img, channel, x, y, chunk_x, chunk_y):
+        hist += np.histogram(tile, bins)[0]
+    idx_min = hist.argmax()+1
+    if idx_min >= len(hist)-2:
+        return bins[-2], bins[-1]
+    else:
+        return bins[idx_min], bins[-2]
 
 
-def tile_generator(arr, nuclei_chan, to_merge_chan, x, y, chunk_x, chunk_y, agg=np.max, norm='hist'):
+def tile_generator(arr, nuclei_chan, to_merge_chan, x, y, chunk_x, chunk_y, agg=np.max, norm='hist', norm_val=None):
     norm_min = np.zeros(shape=max(nuclei_chan, max(to_merge_chan))+1)
     norm_max = np.zeros(shape=max(nuclei_chan, max(to_merge_chan))+1)
     for ci in [nuclei_chan, to_merge_chan]:
@@ -45,18 +61,25 @@ def tile_generator(arr, nuclei_chan, to_merge_chan, x, y, chunk_x, chunk_y, agg=
                 tmp_arr = (tmp_arr - norm_min[ci, None, None]) / (norm_max[ci, None, None] - norm_min[ci, None, None])
                 tmp_arr[tmp_arr < 0] = 0
                 tmp_arr[tmp_arr > 1] = 1
-                tmp_arr = (tmp_arr * 255)
+                tmp_arr = (tmp_arr * 65535)
             elif norm == "gaussian":
                 tmp_arr = gaussian_filter(tmp_arr, 1)
+            elif norm == "custom" and norm_val is not None and ci == to_merge_chan:
+                tmp_arr = tmp_arr.astype('float')
+                for i, c in enumerate(ci):
+                    tmp_arr[i] = (tmp_arr[i] - norm_val[c][0]) / (norm_val[c][1] - norm_val[c][0])
+                tmp_arr[tmp_arr < 0] = 0
+                tmp_arr[tmp_arr > 1] = 1
+                tmp_arr = (tmp_arr * 65535)                
 
             if ci != to_merge_chan:
-                yield tmp_arr.astype('uint8')
+                yield tmp_arr.astype('uint16')
             else:
-                yield agg(tmp_arr, axis=0).astype('uint8')
+                yield agg(tmp_arr, axis=0).astype('uint16')
     tmp_arr = None # don't wait for next iteration to flush this
 
 
-def merge_channels(in_path, out_path, nuclei_chan=0, channels_to_merge=None, chunk_size=(256,256), agg=np.max, norm=None):
+def merge_channels(in_path, out_path, nuclei_chan=0, channels_to_merge=None, chunk_size=(256,256), agg=np.max, norm=None, norm_val=None):
     """
     take an image on disk, load chunks of it and merged all channels (first dimension) into one by agg function (np.max or np.mean mostly).
     Make exception for first and second channel (by default) to not be merged
@@ -79,7 +102,9 @@ def merge_channels(in_path, out_path, nuclei_chan=0, channels_to_merge=None, chu
         and an axis argument to point the dimension of the merge (0)
     norm: str
         name of normalization for channels, accepts either 'hist' (filter pixel based on histogram intensity) 
-        or 'gaussian' for gaussian filter
+        'gaussian' for gaussian filter, 'custom' to custom normalization based on norm_val. None for no normalization.
+    norm_val: dict of list of int
+        value to normalize each channel separately (only work if norm 'custom' is selected)
 
     Returns
     -------
@@ -103,17 +128,17 @@ def merge_channels(in_path, out_path, nuclei_chan=0, channels_to_merge=None, chu
     with tifffile.TiffWriter(out_path, ome=True, bigtiff=True) as tiff_out:
             tiff_out.write(
                 data=tile_generator(img_level, nuclei_chan, channels_to_merge, 
-                                    *img_level.shape[1:], *chunk_size, agg=agg, norm=norm),
+                                    *img_level.shape[1:], *chunk_size, agg=agg, norm=norm, norm_val=norm_val),
                 shape=(2, *img_level.shape[1:3]),
                 #subifds=int(self.num_levels - 1),
-                dtype='uint8',
+                dtype='uint16',
                 tile=chunk_size,
                 **metadata.to_dict()
             )
 
 def guess_channels_to_merge(img_path):
     """we want to keep the nuclei marker and 
-    remove the autofluorescen channel before merging"""
+    remove the autofluorescence channel before merging"""
     info = ome_types.from_tiff(img_path)
     channels_info = info.images[0].pixels.channels
     try:
@@ -133,21 +158,34 @@ def guess_channels_to_merge(img_path):
 def parse_markers(img_path, markers_path):
     """Use of markers.csv mandatory file for mcmicro to point channel to be merge for helping segmentation"""
     segmentation_col_name = "segmentation"
+    normalization_col_name = "normalization"
+    marker_name = "marker_name"
 
     mrk = read_csv(markers_path)
+    result = {}
+    norm = {}
+
     if segmentation_col_name in mrk.columns:
         mrk[segmentation_col_name] = mrk[segmentation_col_name].fillna(False).astype(bool)
-        result = {idx: row["marker_name"] for idx, row in mrk.iterrows() if row[segmentation_col_name]}
     else:
         print(f"no column {segmentation_col_name} found in markers.csv... guessing channels")
-        return guess_channels_to_merge(img_path)[1]
+        return guess_channels_to_merge(img_path)[1], None
+
+    for idx, row in mrk.iterrows():
+        if row[segmentation_col_name]:
+            result[idx] = row[marker_name]
+            if normalization_col_name in row:
+                try:
+                    norm[idx] = [int(k) for k in row[normalization_col_name].split(';')]
+                except AttributeError:
+                    norm[idx] = [0, 65535]
     
     # need to compare channel name with metadata to get order 
      
      
 
     # (or its the same in both and we dont care)
-    return list(result.keys())
+    return list(result.keys()), norm
     
 
 if __name__ == "__main__":
@@ -160,6 +198,7 @@ if __name__ == "__main__":
     parser.add_argument("--norm", type=str, required=False, default="no_norm", help="normalization channels type")
     args = parser.parse_args()
 
+    norm_val = None
     in_path = vars(args)['in']
     out_path = args.out
     if out_path is None:
@@ -175,10 +214,12 @@ if __name__ == "__main__":
             channels = [int(c) for c in channels.split(',')]
         except ValueError:
             if os.path.exists(channels):
-                channels = parse_markers(in_path, channels)
+                channels, norm_val = parse_markers(in_path, channels)
+                if args.norm != "custom":
+                    norm_val = None
             else:
                 raise ValueError('Wrong format for channels')
     else:
         _, channels = guess_channels_to_merge(in_path)
-    merge_channels(in_path, out_path, channels_to_merge=channels, nuclei_chan=args.nuclei_channels, norm=args.norm)
+    merge_channels(in_path, out_path, channels_to_merge=channels, nuclei_chan=args.nuclei_channels, norm=args.norm, norm_val=norm_val)
  
