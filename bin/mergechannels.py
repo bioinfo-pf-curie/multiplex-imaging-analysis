@@ -27,22 +27,6 @@ def compute_hist(img, channel, x, y, chunk_x, chunk_y, img_min=None, img_max=Non
         return bins[-2], bins[-1]
     else:
         return bins[idx_min], bins[-2]
-from scipy.ndimage import gaussian_filter
-
-from utils import read_tiff_orion, _tile_generator
-
-def compute_hist(img, channel, x, y, chunk_x, chunk_y, img_min=None, img_max=None, num_bin=100):
-    if img_min is None or img_max is None:
-        img_min, img_max = 0, 65535
-    bins = np.linspace(img_min, img_max, num_bin)
-    hist = np.zeros(num_bin-1)
-    for tile in _tile_generator(img, channel, x, y, chunk_x, chunk_y):
-        hist += np.histogram(tile, bins)[0]
-    idx_min = hist.argmax()+1
-    if idx_min >= len(hist)-2:
-        return bins[-2], bins[-1]
-    else:
-        return bins[idx_min], bins[-2]
 
 
 def tile_generator(arr, nuclei_chan, to_merge_chan, x, y, chunk_x, chunk_y, agg=np.max, norm='hist', norm_val=None):
@@ -119,19 +103,18 @@ def merge_channels(in_path, out_path, nuclei_chan=0, channels_to_merge=None, chu
     metadata.remove_all_channels()
     metadata.add_channel(nuclei_chan_metadata)
     metadata.add_channel_metadata(channel_name="merged_channels")
+    metadata.dtype='uint16'
 
     # todo : add annotation about channels used
 
     if channels_to_merge is None:
         channels_to_merge = list(range(2, img_level.shape[0]))
 
-    with tifffile.TiffWriter(out_path, ome=True, bigtiff=True) as tiff_out:
+    with tifffile.TiffWriter(out_path, bigtiff=True, shaped=False) as tiff_out:
             tiff_out.write(
                 data=tile_generator(img_level, nuclei_chan, channels_to_merge, 
                                     *img_level.shape[1:], *chunk_size, agg=agg, norm=norm, norm_val=norm_val),
                 shape=(2, *img_level.shape[1:3]),
-                #subifds=int(self.num_levels - 1),
-                dtype='uint16',
                 tile=chunk_size,
                 **metadata.to_dict()
             )
@@ -181,12 +164,10 @@ def parse_markers(img_path, markers_path):
                     norm[idx] = [0, 65535]
     
     # need to compare channel name with metadata to get order 
-     
-     
 
     # (or its the same in both and we dont care)
-    return list(result.keys()), norm
-    
+    return list(result.keys()), norm or None
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

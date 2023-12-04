@@ -23,13 +23,12 @@ def split_img(img_path, out_dir, height=224, overlap=0.1, memory=0):
 
     for cur_height in range(0, total_height, int(height * (1 - overlap))):
         out_path = os.path.join(out_dir, img_name + f"_{cur_height}" + ext)
-        with TiffWriter(out_path, ome=True, bigtiff=True) as tiff_out:
+        with TiffWriter(out_path, bigtiff=True, shaped=False) as tiff_out:
             tmp_arr = img_zarr[:, cur_height: cur_height+height, :]
             metadata.pix.size_x = tmp_arr.shape[1] # last one is not height unless total_heigh % height = 0
             tiff_out.write(
                 data=tmp_arr,
                 shape=tmp_arr.shape,
-                dtype=metadata.dtype,
                 **metadata.to_dict()
             )
 

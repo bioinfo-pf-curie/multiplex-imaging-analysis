@@ -24,27 +24,27 @@ class OmeTifffile(object):
 
     def __init__(self, tifffile_metadata, **kwargs):
         self.tags = {"resolution": [None, None, None], "extratags": []}
+        self.ome = None
 
-        for t in tifffile_metadata.tags:
-            if t.name == "ImageDescription":
-                self.ome = OME.from_xml(t.value, **kwargs)
-                break
-        else:
-            raise ValueError("No image description tag was found")
-        
         for tag in tifffile_metadata.tags:
-            if t.name == "ImageDescription":
-                continue
+            if tag.name == "ImageDescription":
+                self.ome = OME.from_xml(tag.value, **kwargs)
 
-            if tag.name in self.direct_props.keys():
-                self.tags[self.direct_props[tag.name]] = tag.value
+            elif tag.name in self.direct_props.keys():
+                try:
+                    self.tags[self.direct_props[tag.name]] = tag.value.value
+                except AttributeError:
+                    self.tags[self.direct_props[tag.name]] = tag.value
 
             elif tag.name in ("XResolution", "YResolution", "ResolutionUnit"):
                 self.tags["resolution"][("XResolution", "YResolution", "ResolutionUnit").index(tag.name)] = tag.value
 
             else:
                 self.tags['extratags'].append((tag.code, tag.dtype, tag.count, tag.value, True)) # true for tag.writeonce (orion is one image per tiff)
-    
+
+        if self.ome is None:
+            raise ValueError("No image description tag was found")
+            
         self.dtype = tifffile_metadata.dtype
 
     @property
@@ -63,11 +63,14 @@ class OmeTifffile(object):
     def pix(self, value):
         self.fimg.pixels = value
 
-    def to_dict(self, func_name="write"):
+    def update_shape(self, arr_shape, order="CXY"):
+        for idx, char in enumerate(order):
+            self.pix.__setattr__(f"size_{char.lower()}", arr_shape[idx])
+
+    def to_dict(self, dtype=True):
         this_dict = self.tags.copy()
-        if func_name == 'save':
-            this_dict['compression'] = this_dict.pop('compress')
-        this_dict['description'] = self.ome.to_xml()
+        this_dict['compression'] = this_dict.pop('compress')
+
         if any(resolution is None for resolution in self.tags["resolution"]):
             # was not set
             this_dict.pop('resolution')
@@ -75,11 +78,16 @@ class OmeTifffile(object):
         for key in this_dict:
             if type(this_dict[key]) is dict:
                 this_dict[key] = str(this_dict[key])
+        
+        this_dict['description'] = self.ome.to_xml().encode()
+        if dtype:
+            this_dict['dtype'] = self.dtype
+
         return this_dict
-    
+
     def add_channel(self, channel_data):
         self.pix.channels.append(channel_data)
-        self.pix.planes.append({'the_z': 0, 'the_t': 0, 'the_c': int(self.pix.size_c)})
+        self.pix.planes.append(model.Plane(the_z=0, the_t=0, the_c=int(self.pix.size_c)))
         self.pix.size_c = len(self.pix.channels)
     
     def add_channel_metadata(self, channel_name, add_prefix=True, **kwargs):
@@ -120,5 +128,16 @@ import tifffile
 from orion.MIA.bin.utils import OmeTifffile
 info = tifffile.TiffFile(img_path)
 o = OmeTifffile(info.pages[0])
+
+from orion.MIA.bin.utils import read_tiff_orion
+from tifffile import TiffWriter
+img_path = "orion/data/2017206/220513_Kidney_18p_P39_A28_C76dX_E16_Curie18@20220513_112541_663280.ome.tiff"
+img, metadata = read_tiff_orion(img_path)
+
+with TiffWriter("autre_tile.ome.tiff", bigtiff=True, shaped=False) as tiff_out:
+    tmp_arr = img[:, 5000:6024, 5000:6024]
+    metadata.update_shape(tmp_arr.shape)
+    tiff_out.write(data=tmp_arr, shape=tmp_arr.shape, **metadata.to_dict())
+
 
 """

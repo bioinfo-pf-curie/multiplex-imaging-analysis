@@ -60,7 +60,7 @@ def make_outline(merged_file, png_file, mask_path, out_path, nuclei_channel=0, c
 
         result = np.moveaxis(to_8int(tiff.series[0].asarray()[channel_to_keep, ...]), 0, -1).copy() # tiff are CYX
         result = np.append(outline[..., np.newaxis], np.flip(result, axis=2), axis=2) 
-        return tifffile.imwrite(out_path, result)
+        return tifffile.imwrite(out_path, result, bigtiff=True, shaped=False, **metadata.to_dict())
     else:
         result = zarr.open(tiff.series[0].aszarr())
         c, x, y = tiff.series[0].shape
@@ -70,19 +70,11 @@ def make_outline(merged_file, png_file, mask_path, out_path, nuclei_channel=0, c
                 yield from _tile_generator(original, c_cur, x, y, *chunk_size)
             for tile in _tile_generator(outline, None, x, y, *chunk_size):
                 yield np.squeeze(tile).astype(original.dtype)
-        # for c_cur in range(c+1):
-        #     for x_cur in range(0, x, chunk_size[0]):
-        #         for y_cur in range(0, y, chunk_size[1]):
-        #             try:
-        #                 yield original[c_cur, x_cur:x_cur+chunk_size[0], y_cur:y_cur+chunk_size[1]]
-        #             except (IndexError, zarr.errors.BoundsCheckError):
-        #                 yield outline[x_cur:x_cur+chunk_size[0], y_cur:y_cur+chunk_size[1]].astype(original.dtype)
                                 
-        with tifffile.TiffWriter(out_path, ome=True, bigtiff=True) as tiff_out:
+        with tifffile.TiffWriter(out_path, bigtiff=True, shaped=False) as tiff_out:
             tiff_out.write(
                 data=tile_gen(result[0] if tiff.series[0].is_pyramidal else result, outline, c=c, x=x, y=y), 
                 shape=[c+1, x, y], 
-                dtype=metadata.dtype, 
                 tile=(256, 256), 
                 **metadata.to_dict()
             )

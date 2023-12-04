@@ -59,6 +59,4 @@ if __name__ == "__main__":
     readers = [palom.reader.OmePyramidReader(in_path) for in_path in in_paths]
     mosaics = [reader.pyramid[0] for reader in readers]
     palom.pyramid.write_pyramid(
-        mosaics, out_path, downscale_factor=2, pixel_size=pixel_size,
-        kwargs_tifffile=metadata.to_dict()
-    )
+        mosaics, out_path, downscale_factor=2, pixel_size=pixel_size)
