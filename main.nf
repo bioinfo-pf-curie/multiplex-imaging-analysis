@@ -143,10 +143,10 @@ workflow {
 
   main:
     // Init Channels
-    imgCh = Channel.fromPath([params.images, "${params.images}/*.tiff"])
+    imgCh = Channel.fromPath([params.images.endsWith('.tif{f}?') ? params.images : "${params.images}/*.tiff"])
     markersCh = Channel.fromPath(params.markers.endsWith(".csv") ? params.markers : "${params.markers}/*.csv")
     
-    inputs_original = formInputs(markersCh.count(), imgCh.collect(), markersCh.collect()).map(it -> tuple(*it))
+    inputs_original = formInputs(markersCh.count(), imgCh.collect(), markersCh.collect()).flatMap(it -> tuple(*it))
     
     // subroutines
     outputDocumentation(
