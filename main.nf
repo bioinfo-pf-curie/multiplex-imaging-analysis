@@ -117,6 +117,19 @@ include { splitImage } from './nf-modules/common/process/split_image'
 include { mergeSegmentation } from './nf-modules/common/process/merge_segmentation'
 include { pyramidize } from './nf-modules/common/process/pyramidize'
 
+process formInputs {
+    input: 
+      val count
+      val imgs
+      val markers
+
+    output: val out
+    
+    script:
+      imgsCh = imgs.collect{img -> tuple(NFTools.getImageID(img), img)}
+      out = (count == 1) ? imgsCh.collect {img -> tuple(*img, markers[0])} : [imgsCh, markers.collect{mrk -> tuple(NFTools.getImageID(mrk), mrk)}].groupBy{it.head()}
+      """echo $out"""
+}
 
 /*
 =====================================
@@ -130,12 +143,10 @@ workflow {
 
   main:
     // Init Channels
-    imgCh = Channel.fromPath("${params.images}/*.tiff")
-    id_img = imgCh.map{it -> tuple(NFTools.getImageID(it), it)}
-    markersCh = Channel.fromPath("${params.markers}/*.csv")
-    id_markers = markersCh.map{it -> tuple(NFTools.getImageID(it), it)}
-
-    inputs_original = id_img.combine(id_markers, by: 0)
+    imgCh = Channel.fromPath([params.images, "${params.images}/*.tiff"])
+    markersCh = Channel.fromPath(params.markers.endsWith(".csv") ? params.markers : "${params.markers}/*.csv")
+    
+    inputs_original = formInputs(markersCh.count(), imgCh.collect(), markersCh.collect()).map(it -> tuple(*it))
     
     // subroutines
     outputDocumentation(
@@ -162,7 +173,6 @@ workflow {
     pyramidizeInput = Channel.empty()
     .mix(NFTools.setTag(mergedCh, "merge_channels"))
     .mix(NFTools.setTag(outline, "outlines"))
-    //.mix(NFTools.setTag(plainSegm.map{f, inp, mrk, img -> tuple(f, img)}, 'mask'))
     
     pyramidize(pyramidizeInput)
   

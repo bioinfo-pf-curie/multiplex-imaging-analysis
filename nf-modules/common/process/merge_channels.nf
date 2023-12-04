@@ -13,6 +13,6 @@ process mergeChannels {
 
   script:
     """
-    mergechannels.py --in $img --channels $ch --out ${img}_${mode}_merged.tif --norm $mode
+    mergechannels.py --in $img --channels $ch --out ${original_name}_${mode}_merged.tif --norm $mode
     """
 }
