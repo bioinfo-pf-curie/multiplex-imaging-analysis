@@ -1,5 +1,3 @@
-from typing import ClassVar, Any
-
 import tifffile
 import zarr
 from ome_types import OME, model
@@ -47,6 +45,11 @@ class OmeTifffile(object):
             
         self.dtype = tifffile_metadata.dtype
 
+    @classmethod
+    def from_path(cls, tiff_path):
+        _, mtd = read_tiff_orion(tiff_path)
+        return mtd
+
     @property
     def fimg(self):
         return self.ome.images[0]
@@ -86,8 +89,14 @@ class OmeTifffile(object):
         return this_dict
 
     def add_channel(self, channel_data):
+        # sometimes planes are not registered here
+        if len(self.pix.planes) == len(self.pix.channels):
+            self.pix.planes.append(model.Plane(the_z=0, the_t=0, the_c=int(self.pix.size_c)))
+        try:
+            self.pix.tiff_data_blocks[0].plane_count += 1
+        except BaseException as e: 
+            print(e)
         self.pix.channels.append(channel_data)
-        self.pix.planes.append(model.Plane(the_z=0, the_t=0, the_c=int(self.pix.size_c)))
         self.pix.size_c = len(self.pix.channels)
     
     def add_channel_metadata(self, channel_name, add_prefix=True, **kwargs):
