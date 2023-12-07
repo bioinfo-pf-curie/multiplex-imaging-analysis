@@ -12,7 +12,6 @@ from cv2 import INTER_NEAREST
 
 from utils import OmeTifffile
 import sys
-import psutil
 
 
 def compute_masks(dP, cellprob, p=None, niter=200, 

@@ -140,7 +140,7 @@ workflow {
     }
     inputs_original = intermediate.solo.combine(
       img_id.combine(markersCh)
-    ).view().mix(intermediate.multi.combine(
+    ).mix(intermediate.multi.combine(
       img_id.join(mrk_id)
     )).map{count, name, ipath, mpath -> tuple(name, ipath, mpath)}
     
@@ -151,7 +151,7 @@ workflow {
     )
 
     // PROCESS
-    mergedCh = mergeChannels(inputs_original, ['custom'])
+    mergedCh = mergeChannels(inputs_original, ['hist'])
 
     splitedImg = splitImage(mergedCh)
     splitedImgCh = splitedImg.transpose().map{
