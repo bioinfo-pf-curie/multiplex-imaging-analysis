@@ -127,6 +127,10 @@ class OmeTifffile(object):
         self.pix.planes = []
         self.pix.channels = []
         self.pix.size_c = 1 # can't put 0 validation error
+        try:
+            self.pix.tiff_data_blocks[0].plane_count = 0
+        except BaseException as e: 
+            print(e)
 
     def get_channel(self, id_chan):
         return self.pix.channels[id_chan]
