@@ -12,7 +12,8 @@ process mergeChannels {
     task.ext.when == null || task.ext.when
 
   script:
+    def modeOpt = mode != "" ? "--norm $mode" : "" 
     """
-    mergechannels.py --in $img --channels $ch --out ${original_name}_${mode}_merged.tif --norm $mode
+    mergechannels.py --in $img --channels $ch --out ${original_name}_${mode}_merged.tif $modeOpt
     """
 }

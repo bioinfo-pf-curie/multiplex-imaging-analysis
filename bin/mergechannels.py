@@ -4,7 +4,6 @@
 Script for merging channels into one. 
 It will be used for an approximation of a cytoplasm channel, as our channels are only specific to a cell subpopulation.
 """
-from itertools import product
 from pandas import read_csv
 import numpy as np
 import ome_types
@@ -15,18 +14,22 @@ from scipy.ndimage import gaussian_filter
 
 from utils import read_tiff_orion, _tile_generator
 
-def compute_hist(img, channel, x, y, chunk_x, chunk_y, img_min=None, img_max=None, num_bin=100):
+def compute_hist(img, channel, x, y, chunk_x, chunk_y, img_min=None, img_max=None, num_bin=100, max_bin=0.9):
     if img_min is None or img_max is None:
         img_min, img_max = 0, 65535
     bins = np.linspace(img_min, img_max, num_bin)
     hist = np.zeros(num_bin-1)
     for tile in _tile_generator(img, channel, x, y, chunk_x, chunk_y):
         hist += np.histogram(tile, bins)[0]
+
     idx_min = hist.argmax()+1
+    idx_max = int(num_bin * max_bin)
+    idx_max = idx_max if len(hist) > idx_max > idx_min else idx_min + 1
+
     if idx_min >= len(hist)-2:
         return bins[-2], bins[-1]
     else:
-        return bins[idx_min], bins[-2]
+        return bins[idx_min], bins[idx_max]
 
 
 def tile_generator(arr, nuclei_chan, to_merge_chan, x, y, chunk_x, chunk_y, agg=np.max, norm='hist', norm_val=None):
@@ -176,7 +179,7 @@ if __name__ == "__main__":
     parser.add_argument('--channels', type=str, required=False, default=None, 
                         help="comma separated list or file with channels index to be merged (by default use every channels except the first)")
     parser.add_argument("--nuclei-channels", type=str, required=False, default=0, help="index of nuclei channel")
-    parser.add_argument("--norm", type=str, required=False, default="no_norm", help="normalization channels type")
+    parser.add_argument("--norm", type=str, required=False, default=None, help="normalization channels type")
     args = parser.parse_args()
 
     norm_val = None
@@ -196,8 +199,7 @@ if __name__ == "__main__":
         except ValueError:
             if os.path.exists(channels):
                 channels, norm_val = parse_markers(in_path, channels)
-                if args.norm != "custom":
-                    norm_val = None
+                norm = "custom" if norm_val is not None else args.norm if args.norm is not None else "hist"
             else:
                 raise ValueError('Wrong format for channels')
     else:

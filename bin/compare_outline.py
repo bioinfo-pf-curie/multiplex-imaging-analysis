@@ -48,9 +48,10 @@ def masks_comparison(list_of_masks, names=[]):
 
 if __name__ == "__main__":
     import sys
-    print(sys.argv[1:])
     list_masks = [read_tiff_orion(x)[0] for x in sys.argv[1:]]
-    masks_comparison(list_masks, names=["sans normalisation", "automatique", "manuelle"])
+    # list_masks.append(np.zeros(shape=(1024,1024)))
+    # masks_comparison(list_masks, names=["sans normalisation", "automatique", "manuelle"])
+    masks_comparison(list_masks, names=["80", "90", "99"])
     # o1 = read_tiff_orion(sys.argv[1])
     # o2 = read_tiff_orion(sys.argv[2])
     # print(compare(o1[-1], o2[-1]))
