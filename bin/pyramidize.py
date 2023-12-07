@@ -70,6 +70,8 @@ def write_pyramid(
         if kwargs_tifffile is None:
             kwargs_tifffile = {}
 
+        print(kwargs_tifffile)
+
         tif.write(
             data=tile_from_combined_mosaics(
                 mosaics, tile_shape=tile_shapes[0], save_RAM=save_RAM
@@ -137,4 +139,4 @@ if __name__ == "__main__":
     # Use palom to pyramidize the input image
     readers = [palom.reader.OmePyramidReader(in_path) for in_path in in_paths]
     mosaics = [reader.pyramid[0] for reader in readers]
-    write_pyramid(mosaics, out_path, downscale_factor=2, pixel_size=pixel_size)
+    write_pyramid(mosaics, out_path, downscale_factor=2, pixel_size=pixel_size, kwargs_tifffile=metadata.to_dict(dtype=False))
