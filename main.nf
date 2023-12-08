@@ -79,6 +79,9 @@ if (!params.markers){
 //     .set { metadataCh }
 // }
 
+
+
+
 /*
 ===========================
    SUMMARY
@@ -106,11 +109,13 @@ workflowSummaryCh = NFTools.summarize(summary, workflow, params)
 // Processes
 include { getSoftwareVersions } from './nf-modules/common/process/utils/getSoftwareVersions'
 include { outputDocumentation } from './nf-modules/common/process/utils/outputDocumentation'
-include { mergechannels } from './nf-modules/common/process/merge_channels'
-include { displayoutline } from './nf-modules/common/process/display_outline'
+include { mergeChannels } from './nf-modules/common/process/merge_channels'
+include { displayOutline } from './nf-modules/common/process/display_outline'
 include { segmentation } from './nf-modules/common/process/segmentation'
 include { quantification } from './nf-modules/common/process/quantification'
-
+include { splitImage } from './nf-modules/common/process/split_image'
+include { mergeSegmentation } from './nf-modules/common/process/merge_segmentation'
+include { pyramidize } from './nf-modules/common/process/pyramidize'
 
 /*
 =====================================
@@ -118,18 +123,27 @@ include { quantification } from './nf-modules/common/process/quantification'
 =====================================
 */
 
+
 workflow {
   versionsCh = Channel.empty()
 
   main:
     // Init Channels
-    imgCh = Channel.fromPath("${params.images}/*.tiff")
-    id_img = imgCh.map{it -> tuple(NFTools.getImageID(it), it)}
-    markersCh = Channel.fromPath("${params.markers}/*.csv")
-    id_markers = markersCh.map{it -> tuple(NFTools.getImageID(it), it)}
-    inputs = id_img.join(id_markers)
-    inputs.dump(tag:"input")
+    imgCh = Channel.fromPath((params.images =~ /\.tiff?$/) ? params.images : "${params.images}/*.ti{f,ff}")
+    img_id = imgCh.map{img -> tuple(NFTools.getImageID(img), img)}
+    markersCh = Channel.fromPath(params.markers.endsWith(".csv") ? params.markers : "${params.markers}/*.csv")
+    mrk_id = markersCh.map{img -> tuple(NFTools.getImageID(img), img)}
 
+    intermediate = markersCh.count().branch{
+      solo: it == 1
+      multi: it > 1
+    }
+    inputs_original = intermediate.solo.combine(
+      img_id.combine(markersCh)
+    ).mix(intermediate.multi.combine(
+      img_id.join(mrk_id)
+    )).map{count, name, ipath, mpath -> tuple(name, ipath, mpath)}
+    
     // subroutines
     outputDocumentation(
       outputDocsCh,
@@ -137,12 +151,28 @@ workflow {
     )
 
     // PROCESS
-    merged = mergechannels(inputs)
+    mergedCh = mergeChannels(inputs_original, [""])
 
-    (masks, outlines) = segmentation(merged.out)
-    outline = displayoutline(merged.out, outlines)
+    splitedImg = splitImage(mergedCh)
+    splitedImgCh = splitedImg.transpose().map{
+      original_name, splitted, original_path -> tuple(original_name, NFTools.getImageID(splitted), splitted, original_path)
+    }
 
-    quant = quantification(inputs, masks)
+    segmented = segmentation(splitedImgCh)
+    segmCh = segmented.groupTuple().combine(inputs_original, by:0)
+
+    plainSegm = mergeSegmentation(segmCh)
+    plainSegmCh = plainSegm.combine(mergedCh, by:0)
+    
+    outline = displayOutline(plainSegmCh)
+
+    pyramidizeInput = Channel.empty()
+    .mix(NFTools.setTag(mergedCh, "merge_channels"))
+    .mix(NFTools.setTag(outline, "outlines"))
+    
+    pyramidize(pyramidizeInput)
+  
+    quant = quantification(plainSegmCh)
 
     //*******************************************
     // Warnings that will be printed in the mqc report

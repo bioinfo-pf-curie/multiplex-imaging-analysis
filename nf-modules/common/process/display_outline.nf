@@ -1,18 +1,17 @@
-process displayoutline {
-  label 'displayoutline'
+process displayOutline {
+  label 'img_utils'
   
   input:
-      path(merge_tiff)
-      path(png_files)
+    tuple val(filename), path(original_path), path('markers.csv'), path(mask), path(merge_tiff)
 
   output:
-    path("*.tiff"), emit: out
+    tuple val(filename), path("*.ti{f,ff}")
     
   when:
   task.ext.when == null || task.ext.when
 
   script:
     """
-    make_outlines.py --merge_tiff $merge_tiff --png_outline $png_files
+    make_outlines.py --merge_tiff $original_path --mask $mask --all-channels
     """
 }

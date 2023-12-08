@@ -6,7 +6,13 @@ import tifffile
 import numpy as np
 import os
 import cv2
+from PIL import Image
 from scipy.ndimage import find_objects
+import zarr
+from utils import OmeTifffile, _tile_generator
+
+# ===! VULNERABILITY !===
+Image.MAX_IMAGE_PIXELS = None # raise DOSbombing error when too many pixels
 
 def to_8int(arr, method="median_unbiased", percentile=[0.1,99.9], channel_axis=0):
     min_, max_ = np.percentile(arr, percentile, axis=[a for a in range(len(arr.shape)) if a != channel_axis], 
@@ -18,7 +24,7 @@ def to_8int(arr, method="median_unbiased", percentile=[0.1,99.9], channel_axis=0
 
 def create_outline_mask(masks):
     # see cellpose code source to know how to do it
-    outlines = np.zeros(masks.shape, bool)
+    outlines = np.zeros(masks.shape, np.uint8)
     slices = find_objects(masks.astype(int))
     for i, slice in enumerate(slices):
         if slice is not None:
@@ -27,26 +33,51 @@ def create_outline_mask(masks):
             contours = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
             pvc, pvr = np.concatenate(contours[-2], axis=0).squeeze().T            
             vr, vc = pvr + sr.start, pvc + sc.start 
-            outlines[vr, vc] = 1
+            outlines[vr, vc] = 255
     return outlines
 
-def make_outline(merged_file, png_file, mask, out_path, nuclei_channel=0, cyto_channel=1):
-    tiff = tifffile.TiffFile(merged_file) # blue = nuclei = 0, green = cyto = 1
-    channel_to_keep = [int(nuclei_channel)]
-    if int(cyto_channel) >= 0:
-        channel_to_keep.append(int(cyto_channel))
-    result = np.moveaxis(to_8int(tiff.series[0].asarray()[channel_to_keep, ...]), 0, -1).copy() # tiff are CYX
-
+def make_outline(merged_file, png_file, mask_path, out_path, nuclei_channel=0, cyto_channel=1, all_channels=False, ):
     if png_file is not None:
-        from PIL import Image
-        Image.MAX_IMAGE_PIXELS = None # raise DOSbombing error when too many pixels
-        png = np.array(Image.open(png_file)) 
+        png = np.array(Image.open(png_file))
+        outline = np.zeros_like(png[..., 0])
+        outline[(png[..., 0] == 255) & np.all(png[..., [1,2]] == 0, axis=2)] = 255
     else:
-        png = create_outline_mask(mask)
+        mask = np.array(Image.open(mask_path))
+        outline = create_outline_mask(mask)
+    
+    tiff = tifffile.TiffFile(merged_file) # blue = nuclei = 0, green = cyto = 1
+    metadata = OmeTifffile(tiff.pages[0])
 
-    result = np.append(np.zeros_like(png[..., [0]]), np.flip(result, axis=2), axis=2) # cv2 are XYC
-    result[(png[..., 0] == 255) & np.all(png[..., [1,2]] == 0, axis=2), 0] = 255
-    return tifffile.imwrite(out_path, result)
+    metadata.add_channel_metadata(channel_name="Outline")
+
+    if not all_channels:
+        channel_to_keep = [int(nuclei_channel)]
+        try:
+            if int(cyto_channel) >= 0:
+                channel_to_keep.append(int(cyto_channel))
+        except ValueError:
+            pass
+
+        result = np.moveaxis(to_8int(tiff.series[0].asarray()[channel_to_keep, ...]), 0, -1).copy() # tiff are CYX
+        result = np.append(outline[..., np.newaxis], np.flip(result, axis=2), axis=2) 
+        return tifffile.imwrite(out_path, result, bigtiff=True, shaped=False, **metadata.to_dict())
+    else:
+        result = zarr.open(tiff.series[0].aszarr())
+        c, x, y = tiff.series[0].shape
+
+        def tile_gen(original, outline, c, x, y, chunk_size=(256,256)):
+            for c_cur in range(c):
+                yield from _tile_generator(original, c_cur, x, y, *chunk_size)
+            for tile in _tile_generator(outline, None, x, y, *chunk_size):
+                yield np.squeeze(tile).astype(original.dtype)
+                                
+        with tifffile.TiffWriter(out_path, bigtiff=True, shaped=False) as tiff_out:
+            tiff_out.write(
+                data=tile_gen(result[0] if tiff.series[0].is_pyramidal else result, outline, c=c, x=x, y=y), 
+                shape=[c+1, x, y], 
+                tile=(256, 256), 
+                **metadata.to_dict()
+            )
 
 
 if __name__ == "__main__":
@@ -58,6 +89,7 @@ if __name__ == "__main__":
     parser.add_argument('--out', type=str, required=False, help="Output filepath")
     parser.add_argument('--nuclei', type=str, required=False, default=0, help="index of nuclei channel in tiff file")
     parser.add_argument('--cyto', type=str, required=False, default=1, help="index of cytoplasm channel in tiff file")
+    parser.add_argument('--all-channels', required=False, dest="all_channels", action='store_true', help="if selected will use original image and append outline to it")
     args = parser.parse_args()
 
     merge_tiff = vars(args)['merge_tiff']
@@ -70,4 +102,4 @@ if __name__ == "__main__":
         else:                     stem = os.extsep.join(tokens[0:-1])
         out_path = stem + "_clear_outlines.tiff"
 
-    make_outline(merge_tiff, args.png_outline, args.mask, out_path, args.nuclei, args.cyto)
+    make_outline(merge_tiff, args.png_outline, args.mask, out_path, args.nuclei, args.cyto, args.all_channels)
