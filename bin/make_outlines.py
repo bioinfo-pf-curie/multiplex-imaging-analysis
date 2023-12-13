@@ -96,7 +96,7 @@ if __name__ == "__main__":
     out_path = args.out
     if out_path is None:
         tokens = os.path.basename(merge_tiff).split(os.extsep)
-        if "_merged" in tokens: tokens = tokens.rsplit('_', 1)[0]
+        if "_merged" in tokens: tokens[0] = tokens[0].rsplit('_', 1)[0]
         if len(tokens) < 2:       stem = merge_tiff
         elif tokens[-2] == "ome": stem = os.extsep.join(tokens[0:-2])
         else:                     stem = os.extsep.join(tokens[0:-1])

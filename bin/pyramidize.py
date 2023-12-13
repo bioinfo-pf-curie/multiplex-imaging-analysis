@@ -43,7 +43,6 @@ def write_pyramid(
 ):
     mosaics = normalize_mosaics(mosaics)
     ref_m = mosaics[0]
-    path = output_path
     num_channels = count_num_channels(mosaics)
     base_shape = ref_m.shape[1:3]
     assert int(downscale_factor) == downscale_factor
@@ -66,7 +65,7 @@ def write_pyramid(
 
     pixel_size = pixel_size
 
-    with tifffile.TiffWriter(path, bigtiff=True, shaped=False) as tif:
+    with tifffile.TiffWriter(output_path, bigtiff=True, shaped=False) as tif:
         if kwargs_tifffile is None:
             kwargs_tifffile = {}
 
@@ -88,7 +87,7 @@ def write_pyramid(
         ):
             tif.write(
                 data=tile_from_pyramid(
-                    path,
+                    output_path,
                     num_channels,
                     tile_shape=tile_shape,
                     downscale_factor=downscale_factor,
