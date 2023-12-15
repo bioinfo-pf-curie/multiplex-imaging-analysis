@@ -620,4 +620,9 @@ Available Profiles
     return channel.map(new_tag)
   }
 
+  public static Object getStartHeight(image_name) {
+    def m = image_name.getBaseName().toString() =~ /\_(\d+)\.tiff$/
+    return m
+  }
+
 }

@@ -44,10 +44,9 @@ def make_outline(merged_file, png_file, mask_path, out_path, nuclei_channel=0, c
     else:
         mask = np.array(Image.open(mask_path))
         outline = create_outline_mask(mask)
-    
+
     tiff = tifffile.TiffFile(merged_file) # blue = nuclei = 0, green = cyto = 1
     metadata = OmeTifffile(tiff.pages[0])
-
     metadata.add_channel_metadata(channel_name="Outline")
 
     if not all_channels:
@@ -70,7 +69,7 @@ def make_outline(merged_file, png_file, mask_path, out_path, nuclei_channel=0, c
                 yield from _tile_generator(original, c_cur, x, y, *chunk_size)
             for tile in _tile_generator(outline, None, x, y, *chunk_size):
                 yield np.squeeze(tile).astype(original.dtype)
-                                
+
         with tifffile.TiffWriter(out_path, bigtiff=True, shaped=False) as tiff_out:
             tiff_out.write(
                 data=tile_gen(result[0] if tiff.series[0].is_pyramidal else result, outline, c=c, x=x, y=y), 

@@ -66,7 +66,7 @@ class OmeTifffile(object):
     def pix(self, value):
         self.fimg.pixels = value
 
-    def update_shape(self, arr_shape, order="CXY"):
+    def update_shape(self, arr_shape, order="CYX"):
         for idx, char in enumerate(order):
             self.pix.__setattr__(f"size_{char.lower()}", arr_shape[idx])
 
@@ -94,7 +94,10 @@ class OmeTifffile(object):
             self.pix.planes.append(model.Plane(the_z=0, the_t=0, the_c=int(self.pix.size_c)))
         try:
             self.pix.tiff_data_blocks[0].plane_count += 1
+        except IndexError:
+            self.pix.tiff_data_blocks.append(model.TiffData(plane_count=len(self.pix.planes)))
         except BaseException as e: 
+            print("add channel error")
             print(e)
         self.pix.channels.append(channel_data)
         self.pix.size_c = len(self.pix.channels)

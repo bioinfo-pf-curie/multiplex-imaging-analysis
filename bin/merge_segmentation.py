@@ -114,6 +114,8 @@ def get_current_height(npy_path):
             return int(height)
         except ValueError:
             pass
+        if not npy_name:
+            raise ValueError(f'Height of image {npy_name} not found')
 
 def stich_flow(list_npy, input_img_path, tile=224, overlap=.1):
     original_tiff = TiffFile(input_img_path)

@@ -151,15 +151,15 @@ workflow {
     )
 
     // PROCESS
-    mergedCh = mergeChannels(inputs_original, ["hist", "custom", "no-norm"])
+    mergedCh = mergeChannels(inputs_original, [""])
 
     splitedImg = splitImage(mergedCh)
     splitedImgCh = splitedImg.transpose().map{
-      original_name, splitted, original_path -> tuple(original_name, NFTools.getImageID(splitted), splitted, original_path)
+      original_name, splitted, original_path -> tuple(original_name, splitted.getSimpleName(), NFTools.getStartHeight(splitted), splitted, original_path)
     }
 
     segmented = segmentation(splitedImgCh)
-    segmCh = segmented.groupTuple().combine(inputs_original, by:0)
+    segmCh = segmented.groupTuple(by: [0,1]).combine(inputs_original, by:0)
 
     plainSegm = mergeSegmentation(segmCh)
     plainSegmCh = plainSegm.combine(mergedCh, by:0)

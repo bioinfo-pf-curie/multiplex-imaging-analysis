@@ -1,13 +1,11 @@
 process segmentation {
   label 'cellpose'
-  //conda "${projectDir}/env/conda_env.yml"
-  //container "${params.contPfx}${module.container}:${module.version}"
 
   input:
-      tuple val(original_filename), val(splitted_filename), path(image), path(original_path)
+      tuple val(original_filename), val(splitted_filename), val(startHeight), path(image), path(original_path)
 
   output:
-    tuple val(original_filename), val(splitted_filename), path('*.npy')
+    tuple val(original_filename), val(splitted_filename), val(startHeight), path('*.npy')
 
   when:
   task.ext.when == null || task.ext.when

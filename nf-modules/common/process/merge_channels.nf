@@ -6,7 +6,7 @@ process mergeChannels {
       each mode
 
   output:
-    tuple val(original_name), path("*.tif")
+    tuple val(original_name), path("*.tiff")
 
   when:
     task.ext.when == null || task.ext.when
@@ -14,6 +14,6 @@ process mergeChannels {
   script:
     def modeOpt = mode != "" ? "--norm $mode" : "" 
     """
-    mergechannels.py --in $img --channels $ch --out ${original_name}_${mode}_merged.tif $modeOpt
+    mergechannels.py --in $img --channels $ch --out ${original_name}_${mode}.merged.tiff $modeOpt
     """
 }

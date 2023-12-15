@@ -10,7 +10,7 @@ process splitImage {
     tuple val(img_name), path('*.ti{f,ff}'), path(image)
 
   when:
-  task.ext.when == null || task.ext.when
+    task.ext.when == null || task.ext.when
 
   script:
     def max_height = task.memory.getBytes() / task.cpus
