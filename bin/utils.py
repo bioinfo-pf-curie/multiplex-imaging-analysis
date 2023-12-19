@@ -92,7 +92,9 @@ class OmeTifffile(object):
     def add_channel(self, channel_data):
         # sometimes planes are not registered here
         if len(self.pix.planes) == len(self.pix.channels):
-            self.pix.planes.append(model.Plane(the_z=0, the_t=0, the_c=int(self.pix.size_c)))
+            the_c = 0 if self.pix.size_c == 1 and len(self.pix.planes) == 0 else int(self.pix.size_c)
+            # particular case due to validation error on size_c if = 0
+            self.pix.planes.append(model.Plane(the_z=0, the_t=0, the_c=the_c))
         try:
             self.pix.tiff_data_blocks[0].plane_count += 1
         except IndexError:
