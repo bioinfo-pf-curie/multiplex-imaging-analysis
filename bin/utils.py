@@ -1,6 +1,7 @@
 import tifffile
 import zarr
 from ome_types import OME, model
+import copy
 
 
 def _tile_generator(arr, channel, x, y, chunk_x, chunk_y):
@@ -137,6 +138,9 @@ class OmeTifffile(object):
 
     def get_channel(self, id_chan):
         return self.pix.channels[id_chan]
+    
+    def copy(self):
+        return copy.deepcopy(self)
         
 """
 img_path = "/data/users/mcorbe/orion/data/2017206/220516_Lung_18p_P39_A28_C76dX_E16_Curie18@20220519_110224_090101.ome.tiff"

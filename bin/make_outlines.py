@@ -58,8 +58,9 @@ def make_outline(merged_file, png_file, mask_path, out_path, nuclei_channel=0, c
             pass
 
         result = np.moveaxis(to_8int(tiff.series[0].asarray()[channel_to_keep, ...]), 0, -1).copy() # tiff are CYX
-        result = np.append(outline[..., np.newaxis], np.flip(result, axis=2), axis=2) 
-        return tifffile.imwrite(out_path, result, bigtiff=True, shaped=False, **metadata.to_dict())
+        result = np.append(outline[..., np.newaxis], np.flip(result, axis=2), axis=2)
+        metadata.dtype = result.dtype
+        return tifffile.imwrite(out_path, result)#, bigtiff=True, shaped=False, **metadata.to_dict())
     else:
         result = zarr.open(tiff.series[0].aszarr())
         c, x, y = tiff.series[0].shape

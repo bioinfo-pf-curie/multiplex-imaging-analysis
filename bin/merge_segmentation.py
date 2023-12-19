@@ -77,6 +77,8 @@ def compute_masks(dP, cellprob, p=None, niter=200,
 
 
 def get_weight(tile, edge=False):
+    if edge == "both":
+        return np.ones(tile)
     xm = np.arange(tile)
     mean = xm.mean()
     if edge == 'f':
@@ -95,7 +97,7 @@ def sum_of_weight_on_axis(tile_height, overlap, img_height):
         # zarr doesnt support incorrect length in indexing
         if not cur_height:
             added_weight = get_weight(tile_height, edge="f")
-        elif cur_length < tile_height or cur_height == img_height:
+        elif cur_height + int(tile_height * (1-overlap)) >= img_height:
             added_weight = get_weight(tile_height, edge='l')[:cur_length]
         else:
             added_weight = per_title
@@ -117,19 +119,25 @@ def get_current_height(npy_path):
         if not npy_name:
             raise ValueError(f'Height of image {npy_name} not found')
 
-def stich_flow(list_npy, input_img_path, tile=224, overlap=.1):
+def stich_flow(list_npy, input_img_path, overlap):
     original_tiff = TiffFile(input_img_path)
     total_flow = np.memmap('.tmp_flow.arr', dtype='float32', mode="write", shape=(3, *original_tiff.series[0].shape[1:]))
-    for npy in list_npy:
+    tile_height = None
+
+    for i, npy in enumerate(list_npy):
         cur_height = get_current_height(npy)
         flow = load_npy(npy)
-        weighted_flow = np.array(flow[4]) * get_weight(flow[4].shape[1])[np.newaxis, :, np.newaxis]
+        weight = get_weight(flow[4].shape[1], edge=("f" if not i else "l" if i == len(list_npy) - 1 else None))
+
+        weighted_flow = np.array(flow[4]) * weight[np.newaxis, :, np.newaxis]
+        if tile_height is None:
+            tile_height = weighted_flow.shape[1]
         total_flow[:, cur_height:cur_height+weighted_flow.shape[1], :] += weighted_flow
         total_flow.flush()
     flow = None # can be collected
-    y_weight = sum_of_weight_on_axis(tile, overlap, original_tiff.series[0].shape[1])
-    for chunk in range(0, total_flow.shape[2], tile):
-        total_flow[..., chunk:chunk+tile] = total_flow[..., chunk:chunk+tile] / y_weight
+    y_weight = sum_of_weight_on_axis(tile_height, overlap, original_tiff.series[0].shape[1])
+    for chunk in range(0, total_flow.shape[2], tile_height):
+        total_flow[..., chunk:chunk+tile_height] = total_flow[..., chunk:chunk+tile_height] / y_weight
         total_flow.flush()
     return total_flow
 
@@ -138,9 +146,15 @@ if __name__ == '__main__':
     parser.add_argument('--in', type=str, required=True, nargs='+', help="list of Image Path (cropped) to merge")
     parser.add_argument('--out', type=str, required=True, help="Output path for resulting image")
     parser.add_argument('--original', type=str, required=True, help="File path of original image (to get metadata from)")
+    parser.add_argument('--overlap', type=float, required=False, default=0.1, help="value of overlap used for splitting images")
     args = parser.parse_args()
 
-    flows = stich_flow(vars(args)['in'], args.original)
+    list_npy = vars(args)['in']
+    if len(list_npy) == 1:
+        flows = load_npy(list_npy[0])[4]
+    else:
+        flows = stich_flow(list_npy, args.original, overlap=args.overlap)
+
     masks = compute_masks(flows[:-1], flows[-1])[0] # todo : modifier ça pour ne pas tout mettre en mémoire
 
     metadata = OmeTifffile(TiffFile(args.original).pages[0])

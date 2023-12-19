@@ -13,7 +13,8 @@ process mergeSegmentation {
 
   script:
     def out_name = splitted_filenames + "_masks.tiff"
+    def overlap = params.overlap ? " --overlap $params.overlap" : ""
     """
-    merge_segmentation.py --in $images --out $out_name --original $input_img
+    merge_segmentation.py --in $images --out $out_name --original $input_img $overlap
     """
 }
