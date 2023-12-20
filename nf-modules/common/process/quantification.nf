@@ -15,6 +15,6 @@ process quantification {
 
   script:
     """
-    SingleCellDataExtraction.py --image $img --masks $mask --output . --channel_names $ch
+    single_cell_data_extraction.py --image $img --masks $mask --output . --channel_names $ch
     """
 }

@@ -109,12 +109,12 @@ workflowSummaryCh = NFTools.summarize(summary, workflow, params)
 // Processes
 include { getSoftwareVersions } from './nf-modules/common/process/utils/getSoftwareVersions'
 include { outputDocumentation } from './nf-modules/common/process/utils/outputDocumentation'
-include { mergeChannels } from './nf-modules/common/process/merge_channels'
-include { displayOutline } from './nf-modules/common/process/display_outline'
+include { mergeChannels } from './nf-modules/common/process/mergeChannels'
+include { displayOutline } from './nf-modules/common/process/displayOutline'
 include { segmentation } from './nf-modules/common/process/segmentation'
 include { quantification } from './nf-modules/common/process/quantification'
-include { splitImage } from './nf-modules/common/process/split_image'
-include { mergeSegmentation } from './nf-modules/common/process/merge_segmentation'
+include { splitImage } from './nf-modules/common/process/splitImage'
+include { mergeSegmentation } from './nf-modules/common/process/mergeSegmentation'
 include { pyramidize } from './nf-modules/common/process/pyramidize'
 
 /*

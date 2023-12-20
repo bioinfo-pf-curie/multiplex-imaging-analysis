@@ -14,6 +14,6 @@ process mergeChannels {
   script:
     def modeOpt = mode != "" ? "--norm $mode" : "" 
     """
-    mergechannels.py --in $img --channels $ch --out ${original_name}_${mode}.merged.tiff $modeOpt
+    merge_channels.py --in $img --channels $ch --out ${original_name}_${mode}.merged.tiff $modeOpt
     """
 }
