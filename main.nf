@@ -151,28 +151,28 @@ workflow {
     )
 
     // PROCESS
-    mergedCh = mergeChannels(inputsOriginal, [""])
+    merged = mergeChannels(inputsOriginal, [""])
 
-    splitedImg = splitImage(mergedCh)
-    splitedImgCh = splitedImg.transpose().map{
+    splitedImg = splitImage(merged)
+    splitedImg = splitedImg.transpose().map{
       originalName, splitted, originalPath -> tuple(originalName, splitted.getSimpleName(), NFTools.getStartHeight(splitted), splitted, originalPath)
     }
 
-    segmented = segmentation(splitedImgCh)
-    segmCh = segmented.groupTuple(by: [0,1]).combine(inputsOriginal, by:0)
+    segmented = segmentation(splitedImg)
+    segmented = segmented.groupTuple(by: [0,1]).combine(inputsOriginal, by:0)
 
-    plainSegm = mergeSegmentation(segmCh)
-    plainSegmCh = plainSegm.combine(mergedCh, by:0)
+    plainSegm = mergeSegmentation(segmented)
+    plainSegm = plainSegm.combine(merged, by:0)
     
-    outline = displayOutline(plainSegmCh)
+    outline = displayOutline(plainSegm)
 
-    pyramidizeInput = Channel.empty()
-    .mix(NFTools.setTag(mergedCh, "merge_channels"))
+    pyramidizeCh = Channel.empty()
+    .mix(NFTools.setTag(merged, "merge_channels"))
     .mix(NFTools.setTag(outline, "outlines"))
     
-    pyramidize(pyramidizeInput)
+    pyramidize(pyramidizeCh)
   
-    quant = quantification(plainSegmCh)
+    quant = quantification(plainSegm)
 
     //*******************************************
     // Warnings that will be printed in the mqc report
