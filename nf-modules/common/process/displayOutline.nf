@@ -2,7 +2,7 @@ process displayOutline {
   label 'img_utils'
   
   input:
-    tuple val(filename), path(original_path), path('markers.csv'), path(mask), path(merge_tiff)
+    tuple val(filename), path(originalPath), path('markers.csv'), path(mask), path(mergeTiff)
 
   output:
     tuple val(filename), path("*.ti{f,ff}")
@@ -12,6 +12,6 @@ process displayOutline {
 
   script:
     """
-    make_outlines.py --merge_tiff $original_path --mask $mask --all-channels --out ${merge_tiff.getSimpleName()}_clear_outline.tiff
+    make_outlines.py --merge_tiff $originalPath --mask $mask --all-channels --out ${mergeTiff.getSimpleName()}_clear_outline.tiff
     """
 }

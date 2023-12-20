@@ -130,18 +130,18 @@ workflow {
   main:
     // Init Channels
     imgCh = Channel.fromPath((params.images =~ /\.tiff?$/) ? params.images : "${params.images}/*.ti{f,ff}")
-    img_id = imgCh.map{img -> tuple(NFTools.getImageID(img), img)}
+    imgId = imgCh.map{img -> tuple(NFTools.getImageID(img), img)}
     markersCh = Channel.fromPath(params.markers.endsWith(".csv") ? params.markers : "${params.markers}/*.csv")
-    mrk_id = markersCh.map{img -> tuple(NFTools.getImageID(img), img)}
+    mrkId = markersCh.map{img -> tuple(NFTools.getImageID(img), img)}
 
     intermediate = markersCh.count().branch{
       solo: it == 1
       multi: it > 1
     }
-    inputs_original = intermediate.solo.combine(
-      img_id.combine(markersCh)
+    inputsOriginal = intermediate.solo.combine(
+      imgId.combine(markersCh)
     ).mix(intermediate.multi.combine(
-      img_id.join(mrk_id)
+      imgId.join(mrkId)
     )).map{count, name, ipath, mpath -> tuple(name, ipath, mpath)}
     
     // subroutines
@@ -151,15 +151,15 @@ workflow {
     )
 
     // PROCESS
-    mergedCh = mergeChannels(inputs_original, [""])
+    mergedCh = mergeChannels(inputsOriginal, [""])
 
     splitedImg = splitImage(mergedCh)
     splitedImgCh = splitedImg.transpose().map{
-      original_name, splitted, original_path -> tuple(original_name, splitted.getSimpleName(), NFTools.getStartHeight(splitted), splitted, original_path)
+      originalName, splitted, originalPath -> tuple(originalName, splitted.getSimpleName(), NFTools.getStartHeight(splitted), splitted, originalPath)
     }
 
     segmented = segmentation(splitedImgCh)
-    segmCh = segmented.groupTuple(by: [0,1]).combine(inputs_original, by:0)
+    segmCh = segmented.groupTuple(by: [0,1]).combine(inputsOriginal, by:0)
 
     plainSegm = mergeSegmentation(segmCh)
     plainSegmCh = plainSegm.combine(mergedCh, by:0)

@@ -3,18 +3,18 @@ process mergeSegmentation {
   //container "${params.contPfx}${module.container}:${module.version}"
 
   input:
-      tuple val(base_name), val(splitted_filenames), val(startHeight), path(images), path(input_img), path('markers.csv')
+      tuple val(baseName), val(splittedFilenames), val(startHeight), path(images), path(inputImg), path('markers.csv')
 
   output:
-    tuple val(base_name), path(input_img), path('markers.csv'), path('*.ti{f,ff}')
+    tuple val(baseName), path(inputImg), path('markers.csv'), path('*.ti{f,ff}')
 
   when:
   task.ext.when == null || task.ext.when
 
   script:
-    def out_name = splitted_filenames + "_masks.tiff"
+    def outName = splittedFilenames + "_masks.tiff"
     def overlap = params.overlap ? " --overlap $params.overlap" : ""
     """
-    merge_segmentation.py --in $images --out $out_name --original $input_img $overlap
+    merge_segmentation.py --in $images --out $outName --original $inputImg $overlap
     """
 }
