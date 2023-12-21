@@ -161,4 +161,14 @@ if __name__ == "__main__":
     # Use palom to pyramidize the input image
     readers = [palom.reader.OmePyramidReader(in_path) for in_path in in_paths]
     mosaics = [reader.pyramid[0] for reader in readers]
-    write_pyramid(mosaics, out_path, downscale_factor=2, pixel_size=pixel_size, kwargs_tifffile=metadata.to_dict(dtype=False))
+
+    if max(mosaics[0].shape[1:3]) < 1024:
+        # image is too small to compute sub resolution level
+        with tifffile.TiffWriter(out_path, bigtiff=True, shaped=False) as tif:
+            tif.write(
+                data=mosaics[0],
+                shape=mosaics[0].shape,
+                **metadata.to_dict()
+            )
+    else:
+        write_pyramid(mosaics, out_path, downscale_factor=2, kwargs_tifffile=metadata.to_dict(dtype=False))

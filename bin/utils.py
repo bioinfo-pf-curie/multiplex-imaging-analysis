@@ -79,10 +79,10 @@ class OmeTifffile(object):
             
         self.dtype = tifffile_metadata.dtype
 
-        if self.tags.get('PlanarConfiguration', None) == 1 and kwargs.get('force_planarconfig', True):
-            warnings.warn("PlanarConfiguration read as 1 (contigue). Will automatically set to 2 (separate)."
-                          "Orion used to not correctly set this to 1 but write data as 2. To keep the same planarconfig set force_planarconfig to False")
-            self.tags['PlanarConfiguration'] = 2
+        if self.tags.get('planarconfig', None) == 1 and kwargs.get('force_planarconfig', True):
+            warnings.warn("Planar Configuration read as 1 (contigue) will be removed from metadata."
+                          "Orion used to not correctly set this to 1. To keep the same planarconfig set force_planarconfig to False")
+            self.tags.pop('planarconfig')
             
 
     @classmethod
@@ -227,6 +227,11 @@ img, metadata = read_tiff_orion(img_path)
 
 with TiffWriter("autre_tile.ome.tiff", bigtiff=True, shaped=False) as tiff_out:
     tmp_arr = img[:, 5000:6024, 5000:6024]
+    metadata.update_shape(tmp_arr.shape)
+    tiff_out.write(data=tmp_arr, shape=tmp_arr.shape, **metadata.to_dict())
+
+with TiffWriter("image_test.ome.tiff", bigtiff=True, shaped=False) as tiff_out:
+    tmp_arr = img[:, 5079:5150, 5698:5754]
     metadata.update_shape(tmp_arr.shape)
     tiff_out.write(data=tmp_arr, shape=tmp_arr.shape, **metadata.to_dict())
 
