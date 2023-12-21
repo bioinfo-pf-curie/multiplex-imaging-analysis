@@ -1,5 +1,7 @@
 process mergeSegmentation {
   label 'cellpose'
+  label 'minCpu'
+  label 'extraMem'
   //container "${params.contPfx}${module.container}:${module.version}"
 
   input:

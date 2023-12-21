@@ -1,5 +1,7 @@
 process displayOutline {
   label 'img_utils'
+  label 'minCpu'
+  label 'lowMem'
   
   input:
     tuple val(filename), path(originalPath), path('markers.csv'), path(mask), path(mergeTiff)

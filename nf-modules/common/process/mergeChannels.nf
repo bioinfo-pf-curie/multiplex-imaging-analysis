@@ -1,5 +1,7 @@
 process mergeChannels {
   label 'img_utils'
+  label 'minCpu'
+  label 'lowMem'
   
   input:
       tuple val(originalName), path(img), path(ch)

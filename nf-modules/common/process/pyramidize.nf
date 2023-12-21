@@ -1,5 +1,7 @@
 process pyramidize {
   label 'pyramidize'
+  label 'minCpu'
+  label "medMem"
 
   input:
      tuple val(tag), val(filename), path(image)

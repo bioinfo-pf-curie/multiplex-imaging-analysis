@@ -1,5 +1,7 @@
 process splitImage {
   label 'img_utils'
+  label 'minCpu'
+  label 'lowMem'
   //conda "${projectDir}/env/conda_env.yml"
   //container "${params.contPfx}${module.container}:${module.version}"
 

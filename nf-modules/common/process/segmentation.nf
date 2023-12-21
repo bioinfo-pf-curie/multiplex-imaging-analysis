@@ -1,5 +1,7 @@
 process segmentation {
   label 'cellpose'
+  label 'medCpu'
+  label 'medMem'
 
   input:
       tuple val(originalFilename), val(splittedFilename), val(startHeight), path(image), path(originalPath)
