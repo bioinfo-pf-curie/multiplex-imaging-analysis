@@ -2,10 +2,10 @@ process segmentation {
   label 'cellpose'
 
   input:
-      tuple val(original_filename), val(splitted_filename), val(startHeight), path(image), path(original_path)
+      tuple val(originalFilename), val(splittedFilename), val(startHeight), path(image), path(originalPath)
 
   output:
-    tuple val(original_filename), val(splitted_filename), val(startHeight), path('*.npy')
+    tuple val(originalFilename), val(splittedFilename), val(startHeight), path('*.npy')
 
   when:
   task.ext.when == null || task.ext.when

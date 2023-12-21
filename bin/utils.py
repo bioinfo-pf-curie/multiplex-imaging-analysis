@@ -2,6 +2,7 @@ import tifffile
 import zarr
 from ome_types import OME, model
 import copy
+import warnings
 
 def _tile_generator(arr, channel, x, y, chunk_x, chunk_y):
     for x_cur in range(0, x, chunk_x):
@@ -44,6 +45,12 @@ class OmeTifffile(object):
             raise ValueError("No image description tag was found")
             
         self.dtype = tifffile_metadata.dtype
+
+        if self.tags.get('PlanarConfiguration', None) == 1 and kwargs.get('force_planarconfig', True):
+            warnings.warn("PlanarConfiguration read as 1 (contigue). Will automatically set to 2 (separate)."
+                          "Orion used to not correctly set this to 1 but write data as 2. To keep the same planarconfig set force_planarconfig to False")
+            self.tags['PlanarConfiguration'] = 2
+            
 
     @classmethod
     def from_path(cls, tiff_path):

@@ -616,12 +616,12 @@ Available Profiles
   }
 
   public static Object setTag(channel, tagName) {
-    def new_tag = { it -> new Tuple(tagName, *it) }
-    return channel.map(new_tag)
+    def newTag = { it -> new Tuple(tagName, *it) }
+    return channel.map(newTag)
   }
 
-  public static Object getStartHeight(image_name) {
-    def m = image_name.getBaseName().toString() =~ /\_(\d+)\.tiff$/
+  public static Object getStartHeight(imageName) {
+    def m = imageName.getBaseName().toString() =~ /\_(\d+)\.tiff$/
     return m
   }
 

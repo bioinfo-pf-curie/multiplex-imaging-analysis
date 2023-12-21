@@ -15,6 +15,41 @@ from scipy.ndimage import gaussian_filter
 from utils import read_tiff_orion, _tile_generator
 
 def compute_hist(img, channel, x, y, chunk_x, chunk_y, img_min=None, img_max=None, num_bin=100, max_bin=0.9):
+    """
+    Compute the histogram of a channel from an image and get automatically min and max index for normalizing image afterward.
+    The method used to get those are more or less the one used to get it manually. 
+    'a little' after the pic (background) and remove 10% extremum for max
+    
+    Parameters
+    ----------
+
+    img: np.array
+        image to analyze
+    channel: int
+        index of the channel of interest
+    x: int
+        height of img
+    y: int
+        witdh of img
+    chunk_x: int
+        the size in x of the tile to compute hist from
+    chunk_y: int
+        the size in y of the tile to compute hist from
+    img_min: int
+        minimal intensity value from img (can not be computed easily without img in full memory)
+    img_max: int
+        maximal intensity value from img
+    num_bin: int
+        number of bin for histogram (more = more precise, less = efficient)    
+    max_bin: float
+        max percentage to keep
+
+    Return
+    ------
+
+    tuple of int
+        value of the bin to normalize img.
+    """
     if img_min is None or img_max is None:
         img_min, img_max = 0, 65535
     bins = np.linspace(img_min, img_max, num_bin)
@@ -33,6 +68,39 @@ def compute_hist(img, channel, x, y, chunk_x, chunk_y, img_min=None, img_max=Non
 
 
 def tile_generator(arr, nuclei_chan, to_merge_chan, x, y, chunk_x, chunk_y, agg=np.max, norm='hist', norm_val=None):
+    """
+    generate tile and compute the merge and normalization on the fly
+
+    Parameters
+    ----------
+
+    arr: np.array
+        image to get tile from
+    nuclei_chan: int
+        index of the channel for nuclei
+    to_merge_chan: list of int
+        indexes of the channels to be merged
+    x: int
+        height of arr
+    y: int
+        witdh of arr
+    chunk_x: int
+        height of the tile
+    chunk_y: int
+        witdh of the tile
+    agg: callable
+        function to aggregate channel from to_merge_chan
+    norm: str
+        name of the function to get values to normalize channels before merge
+    norm_val: None or list of float
+        if norm = "custom" it will be used to normalize data
+
+    Yield
+    -----
+
+    tile of the nuclei channel untouched and tile merged and normalized for others
+
+    """
     norm_min = np.zeros(shape=max(nuclei_chan, max(to_merge_chan))+1)
     norm_max = np.zeros(shape=max(nuclei_chan, max(to_merge_chan))+1)
     for ci in [nuclei_chan, to_merge_chan]:

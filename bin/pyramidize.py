@@ -32,8 +32,6 @@ def write_pyramid(
     mosaics,
     output_path,
     pixel_size=1,
-    channel_names=None,
-    verbose=True,
     downscale_factor=4,
     compression=None,
     is_mask=False,
@@ -41,6 +39,36 @@ def write_pyramid(
     save_RAM=False,
     kwargs_tifffile=None
 ):
+    """
+    Write a multi resolution image from a tiff
+
+    Parameters
+    ----------
+
+    mosaics:
+
+    output_path: Path or str
+        output filename
+
+    pixel_size:
+
+    downscale_factor: int
+        factor to diminish resolution of
+
+    compression: str
+        compression name 
+
+    is_mask: bool
+        flag if image is a mask file or not
+
+    tile_size: tuple of int
+        size of tile to work on
+
+    save_RAM: bool
+        if true, a other way will be use to save some RAM
+
+    kwargs_tifffile: kwargs to be pass at tifffile.write
+    """
     mosaics = normalize_mosaics(mosaics)
     ref_m = mosaics[0]
     num_channels = count_num_channels(mosaics)
