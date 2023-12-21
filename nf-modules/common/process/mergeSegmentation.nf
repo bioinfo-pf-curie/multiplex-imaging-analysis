@@ -14,9 +14,8 @@ process mergeSegmentation {
   task.ext.when == null || task.ext.when
 
   script:
-    def outName = splittedFilenames + "_masks.tiff"
-    def overlap = params.overlap ? " --overlap $params.overlap" : ""
+    def args = task.ext.args ?: ''
     """
-    merge_segmentation.py --in $images --out $outName --original $inputImg $overlap
+    merge_segmentation.py --in $images --out ${splittedFilenames}_masks.tiff --original $inputImg $args
     """
 }

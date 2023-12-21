@@ -1,6 +1,6 @@
 process segmentation {
   label 'cellpose'
-  label 'medCpu'
+  label 'lowCpu'
   label 'medMem'
 
   input:

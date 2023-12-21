@@ -151,7 +151,7 @@ workflow {
     )
 
     // PROCESS
-    merged = mergeChannels(inputsOriginal, [""])
+    merged = mergeChannels(inputsOriginal)
 
     splitedImg = splitImage(merged)
     splitedImg = splitedImg.transpose().map{
