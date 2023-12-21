@@ -31,7 +31,6 @@ def _file(path):
 def write_pyramid(
     mosaics,
     output_path,
-    pixel_size=1,
     downscale_factor=4,
     compression=None,
     is_mask=False,
@@ -45,12 +44,11 @@ def write_pyramid(
     Parameters
     ----------
 
-    mosaics:
+    mosaics: list of dask arrays
+        input data (from palom.reader.OmePyramidReader(in_path).pyramid[0])
 
     output_path: Path or str
         output filename
-
-    pixel_size:
 
     downscale_factor: int
         factor to diminish resolution of
@@ -67,7 +65,8 @@ def write_pyramid(
     save_RAM: bool
         if true, a other way will be use to save some RAM
 
-    kwargs_tifffile: kwargs to be pass at tifffile.write
+    kwargs_tifffile: dict
+        kwargs to be pass at tifffile.write
     """
     mosaics = normalize_mosaics(mosaics)
     ref_m = mosaics[0]
@@ -91,13 +90,9 @@ def write_pyramid(
 
     dtype = ref_m.dtype
 
-    pixel_size = pixel_size
-
     with tifffile.TiffWriter(output_path, bigtiff=True, shaped=False) as tif:
         if kwargs_tifffile is None:
             kwargs_tifffile = {}
-
-        print(kwargs_tifffile)
 
         tif.write(
             data=tile_from_combined_mosaics(

@@ -5,17 +5,50 @@ import copy
 import warnings
 
 def _tile_generator(arr, channel, x, y, chunk_x, chunk_y):
+    """Generate chunk of arr"""
     for x_cur in range(0, x, chunk_x):
         for y_cur in range(0, y, chunk_y):
             yield arr[channel, x_cur: x_cur + chunk_x, y_cur: y_cur + chunk_y]
 
 
 def read_tiff_orion(img_path, idx_serie=0, idx_level=0, *args, **kwargs):
+    """
+    Helper to read a ome tiff and get its metadata
+    
+    Parameters
+    ----------
+
+    img_path: Path or str
+        path of the ome tiff
+    idx_serie: int
+        index of the serie in tiff (a tiff format is a container and as such can hold multiple images). Not used in Orion ome tiff.
+    idx_level: int
+        index of the resolution (lower is better resolution, 0 is full) for pyramidal images
+    args: list of any
+        positional args to be passed to tifffile.TiffFile
+    kwargs: dict of any
+        keyword args to be passed to tifffile.TiffFile
+
+    Return
+    ------
+
+    img: Zarr array
+        return image in array format from zarr (lazily loaded)
+
+    metadata: OmeTifffile
+        metadata from ome tiff arranged in a pythonnic way (see OmeTifffile)
+    """
     tiff = tifffile.TiffFile(img_path, *args, **kwargs)
     zarray = zarr.open(tiff.series[idx_serie].aszarr())
     return (zarray[idx_level] if idx_level is not None and tiff.series[idx_level].is_pyramidal else zarray), OmeTifffile(tiff.pages[0])
 
 class OmeTifffile(object):
+    """
+    Create a storage for metadata from ome tiff file
+    It will read the imageDescription tag (among the others) to get ome tiff metadata based on OME library 
+    (and https://docs.openmicroscopy.org/ome-model/5.5.7/ome-tiff/specification.html)
+    That can be updated when manipulating images using methods from this class.
+    """
     direct_props = {'PhotometricInterpretation': "photometric",  
                     "PlanarConfiguration": "planarconfig", 
                     'Compression': "compress", 
@@ -74,10 +107,12 @@ class OmeTifffile(object):
         self.fimg.pixels = value
 
     def update_shape(self, arr_shape, order="CYX"):
+        """update the shape of image"""
         for idx, char in enumerate(order):
             self.pix.__setattr__(f"size_{char.lower()}", arr_shape[idx])
 
     def to_dict(self, dtype=True):
+        """transform this class to a dict of parameters, each of them can be passed to tifffile.write and assimilated"""
         this_dict = self.tags.copy()
         this_dict['compression'] = this_dict.pop('compress')
 
@@ -96,6 +131,15 @@ class OmeTifffile(object):
         return this_dict
 
     def add_channel(self, channel_data):
+        """Allow to add an existing channel from model.Channel into self 
+        (use add_channel_metadata when you want to create a new one)
+        
+        Parameters
+        ----------
+
+        channel_data: model.Channel
+            channel to be added
+        """
         # sometimes planes are not registered here
         if len(self.pix.planes) == len(self.pix.channels):
             the_c = 0 if self.pix.size_c == 1 and len(self.pix.planes) == 0 else int(self.pix.size_c)
@@ -112,6 +156,21 @@ class OmeTifffile(object):
         self.pix.size_c = len(self.pix.channels)
     
     def add_channel_metadata(self, channel_name, add_prefix=True, **kwargs):
+        """
+        Create a new channel object with name = channel_name and add it to the list.
+        
+        Parameters
+        ----------
+        
+        channel_name: str
+            name of channel
+        
+        add_prefix: bool
+            if true, it will add a number as a prefix of the channel name (respecting our convention)
+
+        kwargs: dict of any
+            keyword args to be passed at model.Channel when creating it.
+        """
         if 'samples_per_pixel' not in kwargs:
             kwargs['samples_per_pixel'] = 1
         if 'light_path' not in kwargs:
@@ -153,7 +212,9 @@ class OmeTifffile(object):
         return copy.deepcopy(self)
         
 """
-img_path = "/data/users/mcorbe/orion/data/2017206/220516_Lung_18p_P39_A28_C76dX_E16_Curie18@20220519_110224_090101.ome.tiff"
+# sample code to use this (it was used to make small images as test set)
+
+img_path = "orion/data/2017206/220516_Lung_18p_P39_A28_C76dX_E16_Curie18@20220519_110224_090101.ome.tiff"
 import tifffile
 from orion.MIA.bin.utils import OmeTifffile
 info = tifffile.TiffFile(img_path)
