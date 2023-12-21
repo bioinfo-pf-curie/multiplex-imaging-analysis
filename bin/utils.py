@@ -3,7 +3,6 @@ import zarr
 from ome_types import OME, model
 import copy
 
-
 def _tile_generator(arr, channel, x, y, chunk_x, chunk_y):
     for x_cur in range(0, x, chunk_x):
         for y_cur in range(0, y, chunk_y):
@@ -135,6 +134,8 @@ class OmeTifffile(object):
         self.pix.size_c = 1 # can't put 0 validation error
         try:
             self.pix.tiff_data_blocks[0].plane_count = 0
+        except IndexError:
+            self.pix.tiff_data_blocks.append(model.TiffData(plane_count=0))
         except BaseException as e: 
             print(e)
 

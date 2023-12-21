@@ -1,13 +1,26 @@
-version-0.0.1
-
+v-0.1
 NEW FEATURES
-  - add description with related issue numbers
+  - working pipeline
+
+v-0.2
+NEW FEATURES
+  - added a split-segmentation-merge flow to the pipeline as to save as much memory as possible
 
 SIGNIFICANT USER-VISIBLE CHANGES
-  - add description with related issue numbers
+  - metadata are now transferable between input image and output
 
 BUG FIXES
-  - add description with related issue numbers
+  - updated libraries
+  - py file are now executable
 
 DEPRECATED
-  - add description of deprecated options
+  - removed environment from profile conda to profile multiconda
+
+v-0.3dev
+SIGNIFICANT USER-VISIBLE CHANGES
+  - output filename are now more consistent between modules
+
+BUG FIXES
+  - correct some bugs with metadata transfer
+  - force planar configuration to separate (most of our data were not configured correctly)
+  - better code documentation

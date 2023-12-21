@@ -40,7 +40,7 @@ def tile_generator(arr, nuclei_chan, to_merge_chan, x, y, chunk_x, chunk_y, agg=
             # first pass for normalisation
             for c in (ci if not isinstance(ci, int) else [ci]):
                 norm_min[c], norm_max[c] = compute_hist(arr, c, x, y, chunk_x, chunk_y, img_min=None, img_max=None)
-                
+
         for tmp_arr in _tile_generator(arr, ci, x, y, chunk_x, chunk_y):
             if norm == 'hist':
                 tmp_arr = gaussian_filter(tmp_arr, 0.2)
