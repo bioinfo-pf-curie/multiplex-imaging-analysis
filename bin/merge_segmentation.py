@@ -173,7 +173,7 @@ def sum_of_weight_on_axis(tile_height, overlap, img_height):
         # zarr doesnt support incorrect length in indexing
         if not cur_height:
             added_weight = get_weight(tile_height, edge="f")
-        elif cur_height + int(tile_height * (1-overlap)) >= img_height:
+        elif cur_height + tile_height >= img_height:
             added_weight = get_weight(tile_height, edge='l')[:cur_length]
         else:
             added_weight = per_title
