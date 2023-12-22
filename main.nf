@@ -142,7 +142,12 @@ workflow {
       imgId.combine(markersCh)
     ).mix(intermediate.multi.combine(
       imgId.join(mrkId)
-    )).map{count, name, ipath, mpath -> tuple(name, ipath, mpath)}
+    )).map{count, name, ipath, mpath -> 
+      tuple([
+        originalName: name, 
+        imagePath: ipath, 
+        markersPath: mpath
+      ], ipath, mpath)}
     
     // subroutines
     outputDocumentation(
@@ -153,16 +158,28 @@ workflow {
     // PROCESS
     merged = mergeChannels(inputsOriginal)
 
-    splitedImg = splitImage(merged)
-    splitedImg = splitedImg.transpose().map{
-      originalName, splitted, originalPath -> tuple(originalName, splitted.getSimpleName(), NFTools.getStartHeight(splitted), splitted, originalPath)
+    splittedImg = splitImage(merged)
+    splittedImg = splittedImg.transpose().map{nb, meta, splitted -> 
+      def newMeta = [
+        originalName: meta.originalName, 
+        imagePath: meta.imagePath, 
+        markersPath: meta.markersPath, 
+        nbSplittedFile: nb, 
+        splittedName: splitted.getSimpleName(), 
+        startHeight: NFTools.getStartHeight(splitted)
+      ] 
+      tuple(newMeta, splitted)
     }
 
-    segmented = segmentation(splitedImg)
-    segmented = segmented.groupTuple(by: [0,1]).combine(inputsOriginal, by:0)
+    segmented = segmentation(splittedImg)
+
+    segmented = segmented.map{meta, segmentedImg ->
+      tuple(groupKey(meta.subMap("originalName", "imagePath", "markersPath"), meta.nbSplittedFile.toInteger()), meta, segmentedImg)
+    }.groupTuple().map{groupedkey, old_meta, segmentedImg -> 
+      tuple(groupedkey, segmentedImg)
+    }
 
     plainSegm = mergeSegmentation(segmented)
-    plainSegm = plainSegm.combine(merged, by:0)
     
     outline = displayOutline(plainSegm)
 

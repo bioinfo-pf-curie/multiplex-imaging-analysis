@@ -4,16 +4,16 @@ process displayOutline {
   label 'lowMem'
   
   input:
-    tuple val(filename), path(originalPath), path('markers.csv'), path(mask), path(mergeTiff)
+    tuple val(meta), path(mask)
 
   output:
-    tuple val(filename), path("*.ti{f,ff}")
+    tuple val(meta), path("*_clear_outline.tiff")
     
   when:
   task.ext.when == null || task.ext.when
 
   script:
     """
-    make_outlines.py --merge_tiff $originalPath --mask $mask --all-channels --out ${mergeTiff.getSimpleName()}_clear_outline.tiff
+    make_outlines.py --merge_tiff $meta.imagePath --mask $mask --all-channels --out ${meta.originalName}_clear_outline.tiff
     """
 }

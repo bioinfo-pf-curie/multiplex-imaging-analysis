@@ -4,10 +4,10 @@ process segmentation {
   label 'medMem'
 
   input:
-      tuple val(originalFilename), val(splittedFilename), val(startHeight), path(image), path(originalPath)
+    tuple val(meta), path(image)
 
   output:
-    tuple val(originalFilename), val(splittedFilename), val(startHeight), path('*.npy')
+    tuple val(meta), path('*.npy')
 
   when:
   task.ext.when == null || task.ext.when

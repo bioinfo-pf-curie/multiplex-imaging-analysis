@@ -7,7 +7,7 @@ process quantification {
   // can't use filename in config (or more likely idk how)
   
   input:
-      tuple val(filename), path(img), path(ch), path(mask), path(mergedImg)
+      tuple val(meta), path(mask)
 
   output:
     path("*.csv")
@@ -17,6 +17,6 @@ process quantification {
 
   script:
     """
-    single_cell_data_extraction.py --image $img --masks $mask --output . --channel_names $ch
+    single_cell_data_extraction.py --image $meta.imagePath --masks $mask --output . --channel_names $meta.markersPath
     """
 }

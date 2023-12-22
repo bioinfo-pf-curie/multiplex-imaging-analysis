@@ -4,10 +4,10 @@ process mergeChannels {
   label 'lowMem'
   
   input:
-      tuple val(originalName), path(img), path(ch)
+    tuple val(meta), path(img), path(ch)
 
   output:
-    tuple val(originalName), path("*.tiff")
+    tuple val(meta), path("*.tiff")
 
   when:
     task.ext.when == null || task.ext.when
@@ -15,6 +15,6 @@ process mergeChannels {
   script:
     def args = task.ext.args ?: ''
     """
-    merge_channels.py --in $img --channels $ch --out ${originalName}.merged.tiff $args
+    merge_channels.py --in $img --channels $ch --out ${meta.originalName}.merged.tiff $args
     """
 }

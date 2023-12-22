@@ -6,10 +6,10 @@ process splitImage {
   //container "${params.contPfx}${module.container}:${module.version}"
 
   input:
-    tuple val(imgName), path(image)
+    tuple val(meta), path(image)
 
   output:
-    tuple val(imgName), path('*.ti{f,ff}'), path(image)
+    tuple stdout, val(meta), path('*.ti{f,ff}')
 
   when:
     task.ext.when == null || task.ext.when

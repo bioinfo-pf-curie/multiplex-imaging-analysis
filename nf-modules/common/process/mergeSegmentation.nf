@@ -5,10 +5,10 @@ process mergeSegmentation {
   //container "${params.contPfx}${module.container}:${module.version}"
 
   input:
-      tuple val(baseName), val(splittedFilenames), val(startHeight), path(images), path(inputImg), path('markers.csv')
+      tuple val(meta), path(images)
 
   output:
-    tuple val(baseName), path(inputImg), path('markers.csv'), path('*.ti{f,ff}')
+    tuple val(meta), path('*_masks.tiff')
 
   when:
   task.ext.when == null || task.ext.when
@@ -16,6 +16,6 @@ process mergeSegmentation {
   script:
     def args = task.ext.args ?: ''
     """
-    merge_segmentation.py --in $images --out ${splittedFilenames}_masks.tiff --original $inputImg $args
+    merge_segmentation.py --in $images --out ${meta.splittedName}_masks.tiff --original $meta.imagePath $args
     """
 }
