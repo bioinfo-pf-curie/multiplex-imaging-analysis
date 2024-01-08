@@ -5,7 +5,6 @@ process mergeSegmentation {
   // maxMem is used untill I figure out if I can lower the memory from this step
   //container "${params.contPfx}${module.container}:${module.version}"
 
-  queue 'dev_gpu' 
 
   input:
       tuple val(meta), path(images)
