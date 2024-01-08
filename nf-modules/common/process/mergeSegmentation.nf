@@ -1,8 +1,11 @@
 process mergeSegmentation {
   label 'cellpose'
   label 'minCpu'
-  label 'extraMem'
+  label 'maxMem'
+  // maxMem is used untill I figure out if I can lower the memory from this step
   //container "${params.contPfx}${module.container}:${module.version}"
+
+  queue 'dev_gpu' 
 
   input:
       tuple val(meta), path(images)

@@ -1,6 +1,13 @@
-v-0.1
-NEW FEATURES
-  - working pipeline
+v-0.3dev
+SIGNIFICANT USER-VISIBLE CHANGES
+  - output filename are now more consistent between modules
+
+BUG FIXES
+  - correct some bugs with metadata transfer
+  - force planar configuration to separate (most of our data were not configured correctly)
+  - better code documentation
+
+
 
 v-0.2
 NEW FEATURES
@@ -16,11 +23,8 @@ BUG FIXES
 DEPRECATED
   - removed environment from profile conda to profile multiconda
 
-v-0.3dev
-SIGNIFICANT USER-VISIBLE CHANGES
-  - output filename are now more consistent between modules
 
-BUG FIXES
-  - correct some bugs with metadata transfer
-  - force planar configuration to separate (most of our data were not configured correctly)
-  - better code documentation
+
+v-0.1
+NEW FEATURES
+  - working pipeline
