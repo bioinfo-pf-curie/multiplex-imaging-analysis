@@ -2,6 +2,7 @@ process mergeSegmentation {
   label 'cellpose'
   label 'minCpu'
   label 'maxMem'
+  label 'higherTime'
   // maxMem is used untill I figure out if I can lower the memory from this step
   //container "${params.contPfx}${module.container}:${module.version}"
 
