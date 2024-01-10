@@ -5,7 +5,7 @@ import argparse
 
 import numpy as np
 from tifffile import TiffFile, imwrite
-from cellpose.dynamics import follow_flows, get_masks, remove_bad_flow_masks
+from cellpose.dynamics import steps2D_interp, get_masks, remove_bad_flow_masks
 from cellpose.utils import fill_holes_and_remove_small_masks
 from cellpose.transforms import resize_image
 from cv2 import INTER_NEAREST
@@ -16,6 +16,172 @@ import sys
 import plotly.express as px
 import plotly.graph_objects as go
 import numcodecs
+import fastremap
+from scipy.ndimage import maximum_filter1d
+
+
+def get_masks(p, iscell=None, rpad=20):
+    """ create masks using pixel convergence after running dynamics
+    
+    Makes a histogram of final pixel locations p, initializes masks 
+    at peaks of histogram and extends the masks from the peaks so that
+    they include all pixels with more than 2 final pixels p. Discards 
+    masks with flow errors greater than the threshold. 
+    Parameters
+    ----------------
+    p: float32, 3D or 4D array
+        final locations of each pixel after dynamics,
+        size [axis x Ly x Lx] or [axis x Lz x Ly x Lx].
+    iscell: bool, 2D or 3D array
+        if iscell is not None, set pixels that are 
+        iscell False to stay in their original location.
+    rpad: int (optional, default 20)
+        histogram edge padding
+    threshold: float (optional, default 0.4)
+        masks with flow error greater than threshold are discarded 
+        (if flows is not None)
+    flows: float, 3D or 4D array (optional, default None)
+        flows [axis x Ly x Lx] or [axis x Lz x Ly x Lx]. If flows
+        is not None, then masks with inconsistent flows are removed using 
+        `remove_bad_flow_masks`.
+    Returns
+    ---------------
+    M0: int, 2D or 3D array
+        masks with inconsistent flow masks removed, 
+        0=NO masks; 1,2,...=mask labels,
+        size [Ly x Lx] or [Lz x Ly x Lx]
+    
+    """
+    
+    pflows = []
+    edges = []
+    shape0 = p.shape[1:]
+    dims = len(p)
+    if iscell is not None:
+        if dims==3:
+            inds = np.meshgrid(np.arange(shape0[0]), np.arange(shape0[1]),
+                np.arange(shape0[2]), indexing='ij')
+        elif dims==2:
+            inds = np.meshgrid(np.arange(shape0[0]), np.arange(shape0[1]),
+                     indexing='ij')
+        for i in range(dims):
+            print(type(p))
+            p.loc[i, ~iscell] = inds[i][~iscell]
+
+    for i in range(dims):
+        pflows.append(p[i].flatten().astype('int32'))
+        edges.append(np.arange(-.5-rpad, shape0[i]+.5+rpad, 1))
+
+    h,_ = np.histogramdd(tuple(pflows), bins=edges)
+    hmax = h.copy()
+    for i in range(dims):
+        hmax = maximum_filter1d(hmax, 5, axis=i)
+
+    seeds = np.nonzero(np.logical_and(h-hmax>-1e-6, h>10))
+    Nmax = h[seeds]
+    isort = np.argsort(Nmax)[::-1]
+    for s in seeds:
+        s = s[isort]
+
+    pix = list(np.array(seeds).T)
+
+    shape = h.shape
+    if dims==3:
+        expand = np.nonzero(np.ones((3,3,3)))
+    else:
+        expand = np.nonzero(np.ones((3,3)))
+    for e in expand:
+        e = np.expand_dims(e,1)
+
+    for iter in range(5):
+        for k in range(len(pix)):
+            if iter==0:
+                pix[k] = list(pix[k])
+            newpix = []
+            iin = []
+            for i,e in enumerate(expand):
+                epix = e[:,np.newaxis] + np.expand_dims(pix[k][i], 0) - 1
+                epix = epix.flatten()
+                iin.append(np.logical_and(epix>=0, epix<shape[i]))
+                newpix.append(epix)
+            iin = np.all(tuple(iin), axis=0)
+            for p in newpix:
+                p = p[iin]
+            newpix = tuple(newpix)
+            igood = h[newpix]>2
+            for i in range(dims):
+                pix[k][i] = newpix[i][igood]
+            if iter==4:
+                pix[k] = tuple(pix[k])
+    
+    M = np.zeros(h.shape, np.uint32)
+    for k in range(len(pix)):
+        M[pix[k]] = 1+k
+        
+    for i in range(dims):
+        pflows[i] = pflows[i] + rpad
+    M0 = M[tuple(pflows)]
+
+    # remove big masks
+    uniq, counts = fastremap.unique(M0, return_counts=True)
+    big = np.prod(shape0) * 0.4
+    bigc = uniq[counts > big]
+    if len(bigc) > 0 and (len(bigc)>1 or bigc[0]!=0):
+        M0 = fastremap.mask(M0, bigc)
+    fastremap.renumber(M0, in_place=True) #convenient to guarantee non-skipped labels
+    M0 = np.reshape(M0, shape0)
+    return M0
+
+def follow_flows(dP, mask=None, niter=200, use_gpu=True, device=None):
+    """ define pixels and run dynamics to recover masks in 2D
+    
+    Pixels are meshgrid. Only pixels with non-zero cell-probability
+    are used (as defined by inds)
+
+    Parameters
+    ----------------
+
+    dP: float32, 3D or 4D array
+        flows [axis x Ly x Lx] or [axis x Lz x Ly x Lx]
+    
+    mask: (optional, default None)
+        pixel mask to seed masks. Useful when flows have low magnitudes.
+
+    niter: int (optional, default 200)
+        number of iterations of dynamics to run
+
+    interp: bool (optional, default True)
+        interpolate during 2D dynamics (not available in 3D) 
+        (in previous versions + paper it was False)
+
+    use_gpu: bool (optional, default False)
+        use GPU to run interpolated dynamics (faster than CPU)
+
+
+    Returns
+    ---------------
+
+    p: float32, 3D or 4D array
+        final locations of each pixel after dynamics; [axis x Ly x Lx] or [axis x Lz x Ly x Lx]
+
+    inds: int32, 3D or 4D array
+        indices of pixels used for dynamics; [axis x Ly x Lx] or [axis x Lz x Ly x Lx]
+
+    """
+    shape = np.array(dP.shape[1:]).astype(np.int32)
+    niter = np.uint32(niter)
+    p = np.meshgrid(np.arange(shape[0]), np.arange(shape[1]), indexing='ij')
+    p = np.array(p).astype(np.float32)
+
+    inds = np.array(np.nonzero(np.abs(dP[0])>1e-3)).astype(np.int32).T
+    
+    if inds.ndim < 2 or inds.shape[0] < 5:
+        print('WARNING: no mask pixels found')
+        return p
+    
+    p_interp = steps2D_interp(p[:,inds[:,0], inds[:,1]], dP, niter, use_gpu=use_gpu, device=device)            
+    p[:,inds[:,0],inds[:,1]] = p_interp
+    return p
 
 def compute_masks(flows, p=None, niter=200, 
                    cellprob_threshold=0.0,
@@ -73,7 +239,7 @@ def compute_masks(flows, p=None, niter=200,
         if p is None:
             dP_da = da.from_array(dP * cp_mask / 5., chunks=[2, 256, 256])
             p = da.map_overlap(follow_flows, dP_da, depth={0: 0, 1: 60, 2: 60}, 
-                                     niter=niter, interp=interp, use_gpu=use_gpu, device=device).to_zarr(".tmp_p.zarr", object_codec=numcodecs.JSON(), compute=True, return_stored=True)
+                                     niter=niter, use_gpu=use_gpu, device=device).to_zarr(".tmp_p.zarr", object_codec=numcodecs.JSON(), compute=True, return_stored=True)
             # p, inds = follow_flows(dP * cp_mask / 5., niter=niter, interp=interp, 
             #                                 use_gpu=use_gpu, device=device)
             print(f"p : {sys.getsizeof(p)}, {type(p)}")
