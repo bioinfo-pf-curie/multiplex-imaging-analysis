@@ -1,7 +1,7 @@
 process displayOutline {
   label 'img_utils'
-  label 'minCpu'
-  label 'lowMem'
+  label 'medCpu'
+  label 'extraMem'
   
   input:
     tuple val(meta), path(mask)

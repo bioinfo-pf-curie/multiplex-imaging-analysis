@@ -1,7 +1,7 @@
 process mergeSegmentation {
   label 'cellpose'
   label 'minCpu'
-  label 'maxMem'
+  label 'maxMem' // on pourrait remplacer ça par 2.5 * taille de l'image original
   label 'higherTime'
   // maxMem is used untill I figure out if I can lower the memory from this step
   //container "${params.contPfx}${module.container}:${module.version}"
