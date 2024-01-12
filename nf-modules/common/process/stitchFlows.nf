@@ -1,4 +1,4 @@
-process mergeSegmentation {
+process stitchFlows {
   label 'cellpose'
   label 'minCpu'
   label 'maxMem'
@@ -11,7 +11,7 @@ process mergeSegmentation {
       tuple val(meta), path(images)
 
   output:
-    tuple val(meta), path('*_masks.tiff')
+    tuple val(meta), path('*.npy')
 
   when:
   task.ext.when == null || task.ext.when
@@ -19,6 +19,6 @@ process mergeSegmentation {
   script:
     def args = task.ext.args ?: ''
     """
-    merge_segmentation.py --in $images --out ${meta.splittedName}_masks.tiff --original $meta.imagePath $args
+    stitch_flows.py --in $images --out ${meta.splittedName}.npy --original $meta.imagePath $args
     """
 }
