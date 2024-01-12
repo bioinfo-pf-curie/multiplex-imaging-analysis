@@ -1,11 +1,13 @@
 process segmentation {
   label 'cellpose'
+  label 'lowCpu'
+  label 'medMem'
 
   input:
-      tuple val(original_filename), val(splitted_filename), val(startHeight), path(image), path(original_path)
+    tuple val(meta), path(image)
 
   output:
-    tuple val(original_filename), val(splitted_filename), val(startHeight), path('*.npy')
+    tuple val(meta), path('*.npy')
 
   when:
   task.ext.when == null || task.ext.when

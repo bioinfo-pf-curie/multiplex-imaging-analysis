@@ -27,6 +27,32 @@
       "group": "Mandatory arguments"
     },
     {
+      "name": "overlap",
+      "label": "Overlap",
+      "usage": "percentage of overlap between splitted images",
+      "type": "float",
+      "choices": [],
+      "nargs": "1",
+      "default_value": 0.1,
+      "pattern": ".*",
+      "render": "number",
+      "arity": 0,
+      "group": "Optionnal arguments"
+    },
+    {
+      "name": "mode",
+      "label": "Normalization mode",
+      "usage": "Configure how image will be normalize before merge for segmentation",
+      "type": "string",
+      "choices": ["custom", "hist", "no-norm", ""],
+      "nargs": "1",
+      "default_value": "",
+      "pattern": ".*",
+      "render": "textfield",
+      "arity": 0,
+      "group": "Optionnal arguments"
+    },
+    {
       "name": "profile",
       "label": "Configuration profile(s)",
       "usage": "Configuration profile to use. Can use multiple (comma separated).",

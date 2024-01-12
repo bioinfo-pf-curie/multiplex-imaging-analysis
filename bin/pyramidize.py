@@ -31,9 +31,6 @@ def _file(path):
 def write_pyramid(
     mosaics,
     output_path,
-    pixel_size=1,
-    channel_names=None,
-    verbose=True,
     downscale_factor=4,
     compression=None,
     is_mask=False,
@@ -41,6 +38,36 @@ def write_pyramid(
     save_RAM=False,
     kwargs_tifffile=None
 ):
+    """
+    Write a multi resolution image from a tiff
+
+    Parameters
+    ----------
+
+    mosaics: list of dask arrays
+        input data (from palom.reader.OmePyramidReader(in_path).pyramid[0])
+
+    output_path: Path or str
+        output filename
+
+    downscale_factor: int
+        factor to diminish resolution of
+
+    compression: str
+        compression name 
+
+    is_mask: bool
+        flag if image is a mask file or not
+
+    tile_size: tuple of int
+        size of tile to work on
+
+    save_RAM: bool
+        if true, a other way will be use to save some RAM
+
+    kwargs_tifffile: dict
+        kwargs to be pass at tifffile.write
+    """
     mosaics = normalize_mosaics(mosaics)
     ref_m = mosaics[0]
     num_channels = count_num_channels(mosaics)
@@ -63,13 +90,9 @@ def write_pyramid(
 
     dtype = ref_m.dtype
 
-    pixel_size = pixel_size
-
     with tifffile.TiffWriter(output_path, bigtiff=True, shaped=False) as tif:
         if kwargs_tifffile is None:
             kwargs_tifffile = {}
-
-        print(kwargs_tifffile)
 
         tif.write(
             data=tile_from_combined_mosaics(
@@ -138,4 +161,14 @@ if __name__ == "__main__":
     # Use palom to pyramidize the input image
     readers = [palom.reader.OmePyramidReader(in_path) for in_path in in_paths]
     mosaics = [reader.pyramid[0] for reader in readers]
-    write_pyramid(mosaics, out_path, downscale_factor=2, pixel_size=pixel_size, kwargs_tifffile=metadata.to_dict(dtype=False))
+
+    if max(mosaics[0].shape[1:3]) < 1024:
+        # image is too small to compute sub resolution level
+        with tifffile.TiffWriter(out_path, bigtiff=True, shaped=False) as tif:
+            tif.write(
+                data=mosaics[0],
+                shape=mosaics[0].shape,
+                **metadata.to_dict()
+            )
+    else:
+        write_pyramid(mosaics, out_path, downscale_factor=2, kwargs_tifffile=metadata.to_dict(dtype=False))

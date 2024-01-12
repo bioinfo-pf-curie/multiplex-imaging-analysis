@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# from labsyspharm/quantification
+# from https://github.com/labsyspharm/quantification/blob/master/SingleCellDataExtraction.py
 
 #Functions for reading in single cell imaging data
 #Joshua Hess

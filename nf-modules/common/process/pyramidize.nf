@@ -1,8 +1,10 @@
 process pyramidize {
   label 'pyramidize'
+  label 'minCpu'
+  label "medMem"
 
   input:
-     tuple val(tag), val(filename), path(image)
+     tuple val(tag), val(meta), path(image)
 
   output:
     path("*.ome.tif")

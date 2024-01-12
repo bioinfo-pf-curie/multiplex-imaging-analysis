@@ -15,6 +15,31 @@ from utils import OmeTifffile, _tile_generator
 Image.MAX_IMAGE_PIXELS = None # raise DOSbombing error when too many pixels
 
 def to_8int(arr, method="median_unbiased", percentile=[0.1,99.9], channel_axis=0):
+    """
+    little helper to transform a 16bits image into a 8bit one.
+    It will normalize data beforehand between percentile.
+    
+    Parameters
+    ----------
+    
+    arr: np.array
+        image data
+
+    method: str
+        method to compute percentile value
+
+    percentile: list of float
+        bottom and top percentile value. Outside this range value are set at 0 and 254
+
+    channel_axis: int
+        index of the dimension use by channels. By default in our case its always 0.
+    
+    Return
+    ------
+        
+        new_arr: np.array
+           image data with dtype = uint8
+    """
     min_, max_ = np.percentile(arr, percentile, axis=[a for a in range(len(arr.shape)) if a != channel_axis], 
                                keepdims=True, method=method)
     new_arr = ((arr - min_) * 255 / max_)
@@ -23,7 +48,23 @@ def to_8int(arr, method="median_unbiased", percentile=[0.1,99.9], channel_axis=0
     return new_arr.astype('uint8')
 
 def create_outline_mask(masks):
-    # see cellpose code source to know how to do it
+    """
+    From an array of masks create a new array with the outline of each mask.
+    Copied from cellpose code source (https://github.com/MouseLand/cellpose/blob/main/cellpose/utils.py#L191)
+    
+    Parameters
+    ----------
+    
+    masks: np.array
+        array of masks
+        
+    Return
+    ------
+    
+    outlines: np.array
+        array the size of underline image with only outlines in it.
+        
+    """
     outlines = np.zeros(masks.shape, np.uint8)
     slices = find_objects(masks.astype(int))
     for i, slice in enumerate(slices):
@@ -36,7 +77,44 @@ def create_outline_mask(masks):
             outlines[vr, vc] = 255
     return outlines
 
-def make_outline(merged_file, png_file, mask_path, out_path, nuclei_channel=0, cyto_channel=1, all_channels=False, ):
+def make_outline(merged_file, png_file, mask_path, out_path, nuclei_channel=0, cyto_channel=1, all_channels=False):
+    """
+    This function accept two sort of input to get outlines.
+    First case a png file with red channel = outlines, green channel = cyto and blue = nucleus (can be an options in cellpose parameters)
+    Second is a mask tiff file which will be converted to outlines.
+    
+    It will output a png file (exactly like the one in first case) with red = outline, blue = nuclei_channel from merged_file and green = cyto_channel
+    If all_channels is True, cyto_channel will be created by merging all other channel from merged_file.
+
+    Parameters
+    ----------
+
+    merged_file: np.array
+        original image
+    
+    png_file: np.array or None
+        image to get outline from. can be set to None if mask_path is set.
+
+    mask_path: str or Path
+        path to mask image (PIL is used to open image)
+    
+    out_path: str or Path
+        path to output file
+    
+    nuclei_channel: int
+        index for the nuclei channel
+    
+    cyto_channel: int
+        index for the cyto channel (its ignored if all_channels = True)
+
+    all_channels: bool
+        Flag to merge all other channel into a new one for the cyto channel.
+
+    Return
+    ------
+
+    None
+    """
     if png_file is not None:
         png = np.array(Image.open(png_file))
         outline = np.zeros_like(png[..., 0])

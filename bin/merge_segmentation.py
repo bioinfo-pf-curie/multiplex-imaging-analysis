@@ -19,7 +19,46 @@ def compute_masks(dP, cellprob, p=None, niter=200,
                    flow_threshold=0.4, interp=True, 
                    min_size=15, resize=None, 
                    use_gpu=False,device=None):
-    """ compute masks using dynamics from dP, cellprob, and boundary """
+    """ compute masks using dynamics from dP, cellprob, and boundary 
+    (from https://github.com/MouseLand/cellpose/blob/main/cellpose/dynamics.py#L740)
+    
+    Parameters
+    ----------
+
+    dP: float32, 3D or 4D array
+        flows [axis x Ly x Lx] or [axis x Lz x Ly x Lx]
+
+    cellprob: 
+        cell probability
+
+    p: float32, 3D or 4D array
+        final locations of each pixel after dynamics; [axis x Ly x Lx] or [axis x Lz x Ly x Lx]
+
+    niter: int
+        number of iteration in follow_flows
+    
+    cellprob_threshold: float
+        threshold for cell probability 
+
+    flow_threshold: float
+        threshold for flow probability
+
+    interp: bool (optional, default True)
+        interpolate during 2D dynamics (not available in 3D) 
+        (in previous versions + paper it was False)
+
+    min_size: int
+        minimal size for a mask to be kept
+
+    resize: list of int or None
+        if set, mask will be resized to this size
+
+    use_gpu: bool
+        flag to use gpu or not (default False)
+
+    device: str
+        name of the device where the calculation happen
+    """
     print(f"dP : {sys.getsizeof(dP)}, cellprob : {sys.getsizeof(cellprob)}")
     
     cp_mask = cellprob > cellprob_threshold 
@@ -77,6 +116,23 @@ def compute_masks(dP, cellprob, p=None, niter=200,
 
 
 def get_weight(tile, edge=False):
+    """
+    Compute weight of tile along height (on the edge of a tile the weight will be less 
+    except if it is also the edge of final image)
+    
+    Parameters
+    ----------
+    
+    tile: np.array
+        tile considered
+    edge: bool or str
+        if false the weight of the tile is less on the edges of the height
+
+    Return
+    ------
+
+    a vector of weight along the height of the tile.
+    """
     if edge == "both":
         return np.ones(tile)
     xm = np.arange(tile)
@@ -90,6 +146,26 @@ def get_weight(tile, edge=False):
         
 
 def sum_of_weight_on_axis(tile_height, overlap, img_height):
+    """
+    Compute the total weight along the height of final image
+    
+    Parameters
+    ----------
+    
+    tile_height: int
+        height of individual tile
+        
+    overlap: float
+        percentage of overlap between tiles
+        
+    img_height: int
+        total height of the image
+        
+    Return
+    ------
+    
+    A vector of weight along total height
+    """
     per_title = get_weight(tile_height)
     result = np.zeros(img_height)
     for cur_height in range(0, img_height, int(tile_height * (1-overlap))):
@@ -97,7 +173,7 @@ def sum_of_weight_on_axis(tile_height, overlap, img_height):
         # zarr doesnt support incorrect length in indexing
         if not cur_height:
             added_weight = get_weight(tile_height, edge="f")
-        elif cur_height + int(tile_height * (1-overlap)) >= img_height:
+        elif cur_height + tile_height >= img_height:
             added_weight = get_weight(tile_height, edge='l')[:cur_length]
         else:
             added_weight = per_title
@@ -106,9 +182,11 @@ def sum_of_weight_on_axis(tile_height, overlap, img_height):
 
 
 def load_npy(npy_path):
+    """Helper to load npy files"""
     return np.load(npy_path, allow_pickle=True).item()['flows']
 
 def get_current_height(npy_path):
+    """Helper to parse filename to get position in height for the corresponding tile"""
     npy_name = os.path.basename(npy_path)
     while True:
         npy_name, height = npy_name.rsplit('_', 1)
@@ -120,6 +198,27 @@ def get_current_height(npy_path):
             raise ValueError(f'Height of image {npy_name} not found')
 
 def stich_flow(list_npy, input_img_path, overlap):
+    """
+    Merge a list of flows (in npy format) into a flows for the complete image
+    
+    Parameters
+    ----------
+    
+    list_npy: list of path or str
+        list of npy file to get flow from
+        
+    input_img_path: path or str
+        path of the original image (get metadata from)
+        
+    overlap: float
+        the overlap used between tiles
+        
+    Return
+    ------
+    
+    total_flow: np.array
+        the flow for complete image
+    """
     original_tiff = TiffFile(input_img_path)
     total_flow = np.memmap('.tmp_flow.arr', dtype='float32', mode="write", shape=(3, *original_tiff.series[0].shape[1:]))
     tile_height = None
