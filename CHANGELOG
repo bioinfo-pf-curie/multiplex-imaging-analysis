@@ -1,4 +1,4 @@
-v-0.3dev
+v-0.3
 SIGNIFICANT USER-VISIBLE CHANGES
   - output filename are now more consistent between modules
 
@@ -6,6 +6,7 @@ BUG FIXES
   - correct some bugs with metadata transfer
   - force planar configuration to separate (most of our data were not configured correctly)
   - better code documentation
+  - refactor code for better naming convention
 
 
 
