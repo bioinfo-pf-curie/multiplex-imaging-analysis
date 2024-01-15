@@ -4,7 +4,7 @@ import os
 import argparse
 
 import numpy as np
-from tifffile import TiffFile, imwrite
+from tifffile import TiffFile
 
 def get_weight(tile, edge=False):
     """

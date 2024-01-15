@@ -3,16 +3,14 @@
 import argparse
 
 import numpy as np
+import pandas as pd
 from tifffile import TiffFile, imwrite
-from cellpose.dynamics import steps2D_interp, get_masks, remove_bad_flow_masks, map_coordinates
-from cellpose.utils import fill_holes_and_remove_small_masks
+from cellpose.dynamics import steps2D_interp, get_masks, remove_bad_flow_masks
 from cellpose.transforms import resize_image
 from cv2 import INTER_NEAREST
 
 from utils import OmeTifffile
-import sys
 
-import plotly.graph_objects as go
 import fastremap
 from scipy.ndimage import maximum_filter1d
 import dask.array as da
@@ -173,13 +171,8 @@ def follow_flows(dP, mask=None, niter=200, use_gpu=True, device=None, block_info
     if block_info is None:
         p = np.meshgrid(np.arange(shape[0]), np.arange(shape[1]), indexing='ij')
     else:
-        # print(block_info[0]['shape'])
         xs, xf = block_info[0]['array-location'][1]
-        # xs -= 60
-        # xf += 60
         ys, yf = block_info[0]['array-location'][2]
-        # ys -= 60
-        # yf += 60
         p = np.meshgrid(np.arange(xs, xf), np.arange(ys, yf), indexing='ij')
     niter = np.uint32(niter)
     p = np.array(p).astype(np.float32)
@@ -190,28 +183,7 @@ def follow_flows(dP, mask=None, niter=200, use_gpu=True, device=None, block_info
         print('WARNING: no mask pixels found')
         return p
     
-    # p_interp = steps2D_interp(p[:,inds[:,0], inds[:,1]], dP, niter, use_gpu=use_gpu, device=device)    
-    p_interp = p[:,inds[:,0], inds[:,1]]
-    dPt = np.zeros(p_interp.shape, np.float32)
-            
-    for t in range(niter):
-        # if not t:
-        #     print(dP.astype(np.float32).shape)
-        #     print(p_interp[0].shape)
-        #     print(p_interp[1])
-
-            # (2, 1024, 1024)
-            # (304495,)
-            # [176. 177. 178. ... 778. 779. 780.]
-
-            # (2, 256, 256)
-            # (22372,)
-            # [787. 788. 789. ... 942. 943. 944.]
-
-        map_coordinates(dP.astype(np.float32), p_interp[0], p_interp[1], dPt)
-        for k in range(len(p_interp)):
-            p_interp[k] = np.minimum(shape[k]-1, np.maximum(0, p_interp[k] + dPt[k]))
-
+    p_interp = steps2D_interp(p[:,inds[:,0], inds[:,1]], dP, niter, use_gpu=use_gpu, device=device)    
     p[:,inds[:,0],inds[:,1]] = p_interp
     return p
 
@@ -260,39 +232,22 @@ def compute_masks(flows, p=None, niter=200,
     """
     dP = flows[:-1]
     cellprob = flows[-1]
-    # dP = da.from_array(flows[:-1], chunks=[2, 256, 256])
-    # cellprob = da.from_array(flows[-1], chunks=[256, 256])
-    # print(f"dP : {sys.getsizeof(dP)}, cellprob : {sys.getsizeof(cellprob)}")
     
     cp_mask = cellprob > cellprob_threshold 
 
     if np.any(cp_mask): #mask at this point is a cell cluster binary map, not labels     
         # follow flows
         if p is None:
-            # dP_da = da.from_array(dP * cp_mask / 5., chunks=[2, 256, 256])
-            # test = dP * cp_mask / 5.
-            # p = da.map_overlap(follow_flows, test,# depth={0: 0, 1: 60, 2: 60}, 
-            #                          niter=niter, use_gpu=use_gpu, device=device)
-            # # to_zarr(".tmp_p.zarr", object_codec=numcodecs.JSON(), compute=True, return_stored=True)
             p = follow_flows(dP * cp_mask / 5., niter=niter, 
                                             use_gpu=use_gpu, device=device)
-            # print(f"p : {sys.getsizeof(p)}, {type(p)}")
-            # if inds is None:
-            #     shape = resize if resize is not None else cellprob.shape
-            #     mask = np.zeros(shape, np.uint16)
-            #     p = np.zeros((len(shape), *shape), np.uint16)
-            #     return mask, p
-        #calculate masks
+
         current_chunk = block_info[0]['chunk-location']
         total_chunk = block_info[0]['num-chunks']
-        current_cell_id = int((current_chunk[1] +  current_chunk[2] * total_chunk[1]) * np.multiply(*dP.shape[1:]) / 900)
-        # mean cell area (determine by cellpose parameters)
+        # 600 is mean cell area (determine by cellpose parameters)
+        current_cell_id = int((current_chunk[1] +  current_chunk[2] * total_chunk[1]) * np.multiply(*dP.shape[1:]) / 600)
+        
+        #calculate masks
         mask = get_masks(p, iscell=cp_mask, cell_id=current_cell_id)
-        # p = None
-        # mask = p#.compute()
-
-        # go.Figure(go.Heatmap(z=mask[0]), layout={'title_text': "mask"}).show('browser')
-        # print(f"mask : {sys.getsizeof(mask)}, {type(mask)}")
             
         # flow thresholding factored out of get_masks
         if mask.max()>0 and flow_threshold is not None and flow_threshold > 0:
@@ -300,8 +255,6 @@ def compute_masks(flows, p=None, niter=200,
             mask = remove_bad_flow_masks(mask, dP, threshold=flow_threshold, use_gpu=use_gpu, device=device)
         
         if resize is not None:
-            #if verbose:
-            #    dynamics_logger.info(f'resizing output with resize = {resize}')
             if mask.max() > 2**16-1:
                 recast = True
                 mask = mask.astype(np.float32)
@@ -326,8 +279,30 @@ def compute_masks(flows, p=None, niter=200,
     # maybe better would be to rescale the min_size and hole_size parameters to do the
     # cleanup at the prediction scale, or switch depending on which one is bigger... 
     # mask = fill_holes_and_remove_small_masks(mask, min_size=min_size)
-    # print(f"{mask=}")
     return mask
+
+def adjacent_mask_filter(grp):
+    if grp.name:
+        try:
+            v = int(grp.mode().values)
+        except TypeError:
+            return
+        if v:
+            return v
+        
+
+def correct_edges_inplace(masks, chunks_size):
+    for dim in [0,1]:
+        for limit in range(chunks_size[dim], masks.shape[dim], chunks_size[dim]):
+            replace = pd.DataFrame({0: masks.take(limit-1, axis=dim), 1: masks.take(limit, axis=dim)}, dtype=int)\
+                .groupby(0, sort=False)[1]\
+                .apply(adjacent_mask_filter)\
+                .dropna().astype(int)
+            sub_masks = masks[:, limit-256:limit+1] if dim else masks[limit-256:limit+1]
+            # take make a copy
+            for k, v in replace.items():
+                sub_masks[sub_masks == k] = v
+            sub_masks = None
 
 
 if __name__ == '__main__':
@@ -335,41 +310,20 @@ if __name__ == '__main__':
     parser.add_argument('--in', type=str, required=True, help="filename of flows in npy format")
     parser.add_argument('--out', type=str, required=True, help="Output path for resulting image")
     parser.add_argument('--original', type=str, required=True, help="File path of original image (to get metadata from)")
-    parser.add_argument('--overlap', type=float, required=False, default=0.1, help="value of overlap used for splitting images")
+    parser.add_argument('--chunks', type=int, nargs=2, required=False, default=(1024, 1024), help="Size of chunk for dask")
     args = parser.parse_args()
+
     flows = np.lib.format.open_memmap(vars(args)['in'])
-    # masks = compute_masks(flows)[0] # todo : modifier ça pour ne pas tout mettre en mémoire
-    # replacer 60 par 2 * la taille d'une cellule (pour etre sur de tout avoir)
-
-    flows_da = da.from_array(flows, chunks=[3, 256, 256])
+    flows_da = da.from_array(flows, chunks=[3, *args.chunks])
     masks = da.map_overlap(compute_masks, flows_da, dtype=np.uint16, depth={0: 0, 1: 60, 2: 60}, drop_axis=0).compute()
-    remap_chunked = {}
-    for limit_x in range(256, masks.shape[0], 256):
-        chunk1 = masks[limit_x-1]
-        chunk2 = masks[limit_x]
-        # limit_arr = masks[limit_x-1:limit_x+1]
-        replace = {}
-        for k, v in zip(chunk1[chunk1.astype(bool)], chunk2[chunk1.astype(bool)]):
-            if k not in replace:
-                replace[k] = [(v, 1)]
-            else:
-                if not v:
-                    continue
-                elif v == replace[k][0]:
-                    replace[k][1] += 1
-                else:
-        print(replace)
-        # faire la somme des deux lignes 
-        # créer un dict ancienne valeur: somme (modifié pour etre unique dans le mask final)
-        # si l'ancienne valeur existe deja comparé le nombre de pixel et prendre le majoritaire
-        break
-    # masks_da, _ = ndmeasure.label(masks_da)
-    # masks_comparison([masks, masks_da], names=['normal', 'dask'])
-    # fastremap.renumber(masks, in_place=True) #convenient to guarantee non-skipped labels
-    go.Figure(go.Heatmap(z=masks), layout={'title_text': "masks_da"}).show('browser')
-    # metadata = OmeTifffile(TiffFile(args.original).pages[0])
-    # metadata.remove_all_channels()
-    # metadata.add_channel_metadata(channel_name="masks")
-    # metadata.dtype = masks.dtype
 
-    # imwrite(args.out, masks, bigtiff=True, shaped=False, **metadata.to_dict())
+    correct_edges_inplace(masks, chunks_size=args.chunks)
+
+    fastremap.renumber(masks, in_place=True) #convenient to guarantee non-skipped labels
+
+    metadata = OmeTifffile(TiffFile(args.original).pages[0])
+    metadata.remove_all_channels()
+    metadata.add_channel_metadata(channel_name="masks")
+    metadata.dtype = masks.dtype
+
+    imwrite(args.out, masks, bigtiff=True, shaped=False, **metadata.to_dict())
