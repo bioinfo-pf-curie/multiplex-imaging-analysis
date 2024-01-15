@@ -114,7 +114,8 @@ include { displayOutline } from './nf-modules/common/process/displayOutline'
 include { segmentation } from './nf-modules/common/process/segmentation'
 include { quantification } from './nf-modules/common/process/quantification'
 include { splitImage } from './nf-modules/common/process/splitImage'
-include { mergeSegmentation } from './nf-modules/common/process/mergeSegmentation'
+include { stitchFlows } from './nf-modules/common/process/stitchFlows'
+include { computeMasks } from './nf-modules/common/process/computeMasks'
 include { pyramidize } from './nf-modules/common/process/pyramidize'
 
 /*
@@ -179,9 +180,11 @@ workflow {
       tuple(groupedkey, segmentedImg)
     }
 
-    plainSegm = mergeSegmentation(segmented)
+    flow = stitchFlows(segmented)
+
+    masks = computeMasks(flow)
     
-    outline = displayOutline(plainSegm)
+    outline = displayOutline(masks)
 
     pyramidizeCh = Channel.empty()
     .mix(NFTools.setTag(merged, "merge_channels"))
@@ -189,7 +192,7 @@ workflow {
     
     pyramidize(pyramidizeCh)
   
-    quant = quantification(plainSegm)
+    quant = quantification(masks)
 
     //*******************************************
     // Warnings that will be printed in the mqc report
