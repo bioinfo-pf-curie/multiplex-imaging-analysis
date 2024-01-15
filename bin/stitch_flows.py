@@ -15,7 +15,7 @@ def get_weight(tile, edge=False):
     ----------
     
     tile: np.array
-        tile considered
+        tile considered 
     edge: bool or str
         if false the weight of the tile is less on the edges of the height
 

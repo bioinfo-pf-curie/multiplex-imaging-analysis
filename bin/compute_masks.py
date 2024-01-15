@@ -23,8 +23,10 @@ def get_masks(p, iscell=None, rpad=20, cell_id=0):
     at peaks of histogram and extends the masks from the peaks so that
     they include all pixels with more than 2 final pixels p. Discards 
     masks with flow errors greater than the threshold. 
+    
     Parameters
-    ----------------
+    ----------
+
     p: float32, 3D or 4D array
         final locations of each pixel after dynamics,
         size [axis x Ly x Lx] or [axis x Lz x Ly x Lx].
