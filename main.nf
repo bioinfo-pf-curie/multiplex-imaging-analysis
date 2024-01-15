@@ -165,7 +165,7 @@ workflow {
         imagePath: meta.imagePath, 
         markersPath: meta.markersPath, 
         nbSplittedFile: nb, 
-        splittedName: splitted.getSimpleName(), 
+        splittedName: splitted.name - ~/\.\w+$/, 
         startHeight: NFTools.getStartHeight(splitted)
       ] 
       tuple(newMeta, splitted)

@@ -1,3 +1,11 @@
+v-0.4dev
+SIGNIFICANT USER-VISIBLE CHANGES
+  - mergeSegmentation is replaced with two steps. First is stitch flows (merge output from cellpose processes) and second is compute mask (transform merged flows into masks). All that with reduced memory footprint.
+
+BUG FIXES
+  - some output name were incorrectly set (mask name among other)
+
+
 v-0.3
 SIGNIFICANT USER-VISIBLE CHANGES
   - output filename are now more consistent between modules
