@@ -214,17 +214,17 @@ def parse_markers(img_path, markers_path):
     segmentation_col_name = "segmentation"
     normalization_col_name = "normalization"
     marker_name = "marker_name"
-
     mrk = read_csv(markers_path)
     result = {}
     norm = {}
-
     if segmentation_col_name in mrk.columns:
-        mrk[segmentation_col_name] = mrk[segmentation_col_name].fillna(False).astype(bool)
+        mrk[segmentation_col_name] = mrk[segmentation_col_name].fillna(False).map(
+            {'False': False, "false": False, "Faux": False, 
+             "faux": False, 'non': False, "no": False}
+        ).astype(bool)
     else:
         print(f"no column {segmentation_col_name} found in markers.csv... guessing channels")
         return guess_channels_to_merge(img_path)[1], None
-
     for idx, row in mrk.iterrows():
         if row[segmentation_col_name]:
             result[idx] = row[marker_name]
@@ -233,9 +233,7 @@ def parse_markers(img_path, markers_path):
                     norm[idx] = [int(k) for k in row[normalization_col_name].split(';')]
                 except AttributeError:
                     norm[idx] = [0, 65535]
-    
     # need to compare channel name with metadata to get order 
-
     # (or its the same in both and we dont care)
     return list(result.keys()), norm or None
 
