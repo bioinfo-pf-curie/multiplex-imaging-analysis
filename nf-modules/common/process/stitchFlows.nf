@@ -19,6 +19,6 @@ process stitchFlows {
   script:
     def args = task.ext.args ?: ''
     """
-    stitch_flows.py --in $images --out ${meta.splittedName}.npy --original $meta.imagePath $args
+    stitch_flows.py --in $images --out ${meta.originalName}.npy --original $meta.imagePath $args
     """
 }

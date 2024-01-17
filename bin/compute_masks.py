@@ -191,7 +191,7 @@ def follow_flows(dP, mask=None, niter=200, use_gpu=True, device=None, block_info
 
 def compute_masks(flows, p=None, niter=200, 
                    cellprob_threshold=0.0,
-                   flow_threshold=0.4, interp=True, 
+                   flow_threshold=0.4, 
                    min_size=15, resize=None, 
                    use_gpu=False,device=None, block_info=None):
     """ compute masks using dynamics from dP, cellprob, and boundary 
@@ -245,6 +245,7 @@ def compute_masks(flows, p=None, niter=200,
 
         current_chunk = block_info[0]['chunk-location']
         total_chunk = block_info[0]['num-chunks']
+
         # 600 is mean cell area (determine by cellpose parameters)
         current_cell_id = int((current_chunk[1] +  current_chunk[2] * total_chunk[1]) * np.multiply(*dP.shape[1:]) / 600)
         
@@ -313,11 +314,13 @@ if __name__ == '__main__':
     parser.add_argument('--out', type=str, required=True, help="Output path for resulting image")
     parser.add_argument('--original', type=str, required=True, help="File path of original image (to get metadata from)")
     parser.add_argument('--chunks', type=int, nargs=2, required=False, default=(1024, 1024), help="Size of chunk for dask")
+    parser.add_argument('--overlap', type=int, required=False, default=60, help="Overlap (in pixel) for dask to perform computing of masks on chunks")
     args = parser.parse_args()
 
     flows = np.lib.format.open_memmap(vars(args)['in'])
     flows_da = da.from_array(flows, chunks=[3, *args.chunks])
-    masks = da.map_overlap(compute_masks, flows_da, dtype=np.uint16, depth={0: 0, 1: 60, 2: 60}, drop_axis=0).compute()
+
+    masks = da.map_overlap(compute_masks, flows_da, dtype=np.uint16, depth={0: 0, 1: args.overlap, 2: args.overlap}, drop_axis=0).compute()
 
     correct_edges_inplace(masks, chunks_size=args.chunks)
 
@@ -327,5 +330,6 @@ if __name__ == '__main__':
     metadata.remove_all_channels()
     metadata.add_channel_metadata(channel_name="masks")
     metadata.dtype = masks.dtype
+    print(masks.dtype)
 
     imwrite(args.out, masks, bigtiff=True, shaped=False, **metadata.to_dict())

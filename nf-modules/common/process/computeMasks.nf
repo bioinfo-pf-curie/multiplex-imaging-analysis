@@ -19,6 +19,6 @@ process computeMasks {
   script:
     def args = task.ext.args ?: ''
     """
-    compute_masks.py --in $flow --out ${meta.splittedName}_masks.tiff --original $meta.imagePath $args
+    compute_masks.py --in $flow --out ${meta.originalName}_masks.tiff --original $meta.imagePath $args
     """
 }
