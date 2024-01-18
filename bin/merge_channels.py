@@ -219,9 +219,9 @@ def parse_markers(img_path, markers_path):
     norm = {}
     if segmentation_col_name in mrk.columns:
         mrk[segmentation_col_name] = mrk[segmentation_col_name].fillna(False).replace(
-             {'False': False, "false": False, "Faux": False, 
-              "faux": False, 'non': False, "no": False}
-         ).astype(bool)
+            {'False': False, "false": False, "Faux": False, 
+             "faux": False, 'non': False, "no": False}
+        ).astype(bool)
     else:
         print(f"no column {segmentation_col_name} found in markers.csv... guessing channels")
         return guess_channels_to_merge(img_path)[1], None
