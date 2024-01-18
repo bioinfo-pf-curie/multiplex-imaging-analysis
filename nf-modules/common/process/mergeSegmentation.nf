@@ -19,6 +19,6 @@ process mergeSegmentation {
   script:
     def args = task.ext.args ?: ''
     """
-    merge_segmentation.py --in $images --out ${meta.splittedName}_masks.tiff --original $meta.imagePath $args
+    merge_segmentation.py --in $images --out ${meta.originalName}_masks.tiff --original $meta.imagePath $args
     """
 }
