@@ -3,9 +3,6 @@ process quantification {
   label "minCpu"
   label 'highMem'
 
-  publishDir saveAs: "${filename}_data.csv"
-  // can't use filename in config (or more likely idk how)
-  
   input:
       tuple val(meta), path(mask)
 
