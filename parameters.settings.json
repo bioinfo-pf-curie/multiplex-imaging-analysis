@@ -40,8 +40,8 @@
       "group": "Optionnal arguments"
     },
     {
-      "name": "masks_overlap",
-      "label": "masks_overlap",
+      "name": "masksOverlap",
+      "label": "Masks overlap",
       "usage": "Overlap (in pixel) for dask to perform computing of masks on chunks",
       "type": "int",
       "choices": [],
