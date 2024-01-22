@@ -227,7 +227,6 @@ def compute_masks(flows, p=None, niter=200,
 
     resize: list of int or None
         if set, mask will be resized to this size
-*block_info[0]['array-location'][1]
 
     device: str
         name of the device where the calculation happen
@@ -284,6 +283,8 @@ def compute_masks(flows, p=None, niter=200,
     # mask = fill_holes_and_remove_small_masks(mask, min_size=min_size)
     return mask
 
+# for each grp (!= 0) return value most frequent (unless its 0)
+# This function will try to stitch masks together when there is contact between two of them 
 def adjacent_mask_filter(grp):
     if grp.name:
         try:
@@ -295,8 +296,26 @@ def adjacent_mask_filter(grp):
         
 
 def correct_edges_inplace(masks, chunks_size):
+    """
+    Take the limit of each chunk and stitch together corresponding mask
+
+    parameters
+    ----------
+
+    masks: int32, 2D array
+        masks to modify
+
+    chunks_size: tuple of int
+        size of the chunk
+
+    return
+    ------
+
+    nothing, modifying masks inplace
+    """
     for dim in [0,1]:
         for limit in range(chunks_size[dim], masks.shape[dim], chunks_size[dim]):
+            # np.take allow to generalize between dimension (otherwise I should have written masks[limit-1] and masks[:, limit-1])
             replace = pd.DataFrame({0: masks.take(limit-1, axis=dim), 1: masks.take(limit, axis=dim)}, dtype=int)\
                 .groupby(0, sort=False)[1]\
                 .apply(adjacent_mask_filter)\
@@ -330,6 +349,5 @@ if __name__ == '__main__':
     metadata.remove_all_channels()
     metadata.add_channel_metadata(channel_name="masks")
     metadata.dtype = masks.dtype
-    print(masks.dtype)
 
     imwrite(args.out, masks, bigtiff=True, shaped=False, **metadata.to_dict())
