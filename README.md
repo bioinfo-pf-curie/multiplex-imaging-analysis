@@ -41,7 +41,7 @@ Optionnal arguments:
 --overlap [float]                Percentage of overlap between tile (default is 0.1)
 --tileHeight [int]               Size in pixel of the height of each tile (default will compute the best height for available memory)
 --maskOverlap [int]              Size in pixel of the overlap for computing masks (default is 60 ~ 2 x mean cell size)
---mode [str]                     Normalization used before merging channels. Can be either 'custom', 'hist' or 'no-norm' (default is custom if normalization value are present in markers.csv else it\'s hist)
+--mode [str]                     Normalization used before merging channels. Can be either 'custom', 'hist' or 'no-norm' (default is custom if normalization value are present in markers.csv else it's hist)
 
 Skip options: All are false by default
 --skipSoftVersion [bool]         Do not report software version
