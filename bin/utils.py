@@ -145,11 +145,11 @@ class OmeTifffile(object):
             the_c = 0 if self.pix.size_c == 1 and len(self.pix.planes) == 0 else int(self.pix.size_c)
             # particular case due to validation error on size_c if = 0
             self.pix.planes.append(model.Plane(the_z=0, the_t=0, the_c=the_c))
-        try:
-            self.pix.tiff_data_blocks.append(model.TiffData(plane_count=1, ifd=self.pix.size_c, first_c=self.pix.size_c))
-        except BaseException as e: 
-            print("add channel error")
-            print(e)
+        # try:
+        #     self.pix.tiff_data_blocks.append(model.TiffData(plane_count=1, ifd=self.pix.size_c, first_c=self.pix.size_c))
+        # except BaseException as e: 
+        #     print("add channel error")
+        #     print(e)
         self.pix.channels.append(channel_data)
         self.pix.size_c = len(self.pix.channels)
     
@@ -197,9 +197,7 @@ class OmeTifffile(object):
         self.pix.channels = []
         self.pix.size_c = 1 # can't put 0 validation error
         try:
-            self.pix.tiff_data_blocks[0].plane_count = 0
-        except IndexError:
-            self.pix.tiff_data_blocks.append(model.TiffData(plane_count=0))
+            self.pix.tiff_data_blocks = []
         except BaseException as e: 
             print(e)
 
