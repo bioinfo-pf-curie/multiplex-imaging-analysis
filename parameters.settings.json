@@ -40,6 +40,19 @@
       "group": "Optionnal arguments"
     },
     {
+      "name": "tileHeight",
+      "label": "Tile height",
+      "usage": "height of each tile. If not set, will be optimized for available memory",
+      "type": "int",
+      "choices": [],
+      "nargs": "1",
+      "default_value": null,
+      "pattern": ".*",
+      "render": "number",
+      "arity": 0,
+      "group": "Optionnal arguments"
+    },
+    {
       "name": "mode",
       "label": "Normalization mode",
       "usage": "Configure how image will be normalize before merge for segmentation",
