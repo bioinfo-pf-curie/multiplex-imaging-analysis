@@ -69,7 +69,7 @@ def sum_of_weight_on_axis(tile_height, overlap, img_height):
         else:
             added_weight = per_title
         result[cur_height:cur_height+cur_length] += added_weight
-    return result[:, np.newaxis]
+    return np.ascontiguousarray(result[:, np.newaxis])
 
 
 def load_npy(npy_path):
@@ -112,22 +112,24 @@ def stich_flow(list_npy, input_img_path, overlap):
     """
     original_tiff = TiffFile(input_img_path)
     total_flow = np.memmap('.tmp_flow.arr', dtype='float32', mode="write", shape=(3, *original_tiff.series[0].shape[1:]))
-    tile_height = None
 
+    tiles_height = []
     for i, npy in enumerate(list_npy):
         cur_height = get_current_height(npy)
         flow = load_npy(npy)
         weight = get_weight(flow[4].shape[1], edge=("f" if not i else "l" if i == len(list_npy) - 1 else None))
-
-        weighted_flow = np.array(flow[4]) * weight[np.newaxis, :, np.newaxis]
-        if tile_height is None:
-            tile_height = weighted_flow.shape[1]
+        weighted_flow = np.ascontiguousarray(np.array(flow[4]) * weight[np.newaxis, :, np.newaxis])
+        tiles_height.append(weighted_flow.shape[1])
         total_flow[:, cur_height:cur_height+weighted_flow.shape[1], :] += weighted_flow
         total_flow.flush()
+
+    tile_height = int(np.median(tiles_height))
+
     flow = None # can be collected
     y_weight = sum_of_weight_on_axis(tile_height, overlap, original_tiff.series[0].shape[1])
+
     for chunk in range(0, total_flow.shape[2], tile_height):
-        total_flow[..., chunk:chunk+tile_height] = total_flow[..., chunk:chunk+tile_height] / y_weight
+        total_flow[..., chunk:chunk+tile_height] /= y_weight
         total_flow.flush()
     return total_flow
 
