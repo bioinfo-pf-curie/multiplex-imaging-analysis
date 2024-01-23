@@ -88,7 +88,7 @@ def get_current_height(npy_path):
         if not npy_name:
             raise ValueError(f'Height of image {npy_name} not found')
 
-def stich_flow(list_npy, input_img_path, overlap):
+def stich_flow(list_npy, input_img_path, overlap, out_path):
     """
     Merge a list of flows (in npy format) into a flows for the complete image
     
@@ -111,7 +111,7 @@ def stich_flow(list_npy, input_img_path, overlap):
         the flow for complete image
     """
     original_tiff = TiffFile(input_img_path)
-    total_flow = np.memmap('.tmp_flow.arr', dtype='float32', mode="write", shape=(3, *original_tiff.series[0].shape[1:]))
+    total_flow = np.lib.format.open_memmap(out_path, dtype='float32', mode="w+", shape=(3, *original_tiff.series[0].shape[1:]))
 
     tiles_height = []
     for i, npy in enumerate(list_npy):
@@ -144,7 +144,7 @@ if __name__ == '__main__':
     list_npy = vars(args)['in']
     if len(list_npy) == 1:
         flows = load_npy(list_npy[0])[4]
+        np.save(args.out, flows)
     else:
-        flows = stich_flow(list_npy, args.original, overlap=args.overlap)
+        flows = stich_flow(list_npy, args.original, overlap=args.overlap, out_path=args.out)
 
-    np.save(args.out, flows)
