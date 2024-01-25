@@ -47,7 +47,8 @@ def MaskChannel(mask_loaded, image_loaded_z, intensity_props=["intensity_mean"])
     dat = measure.regionprops_table(
         mask_loaded, image_loaded_z,
         properties = tuple(builtin_props),
-        extra_properties = [globals()[n] for n in extra_props]
+        extra_properties = [globals()[n] for n in extra_props],
+        cache=False
     )
     return dat
 
@@ -327,6 +328,7 @@ def ParseInputDataExtract():
 
 if __name__ == "__main__":
     #Parse the command line arguments
+    print('start single_cell_data')
     args = ParseInputDataExtract()
 
     #Run the MultiExtractSingleCells function
