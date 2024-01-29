@@ -10,6 +10,58 @@ def _tile_generator(arr, channel, x, y, chunk_x, chunk_y):
         for y_cur in range(0, y, chunk_y):
             yield arr[channel, x_cur: x_cur + chunk_x, y_cur: y_cur + chunk_y]
 
+def make_annotations():
+    # not used in my pipeline for now...
+    min_max_template = '<M K="{channel_name}:{min_ou_max}">{value}</M>'
+
+    annotation_templates = """
+    <StructuredAnnotations>
+        <MapAnnotation ID="Annotation:Stitcher:0" Namespace="com.glencoesoftware.stitcher.minmax">
+            <Value>
+                {min_max}
+            </Value>
+        </MapAnnotation>
+    </StructuredAnnotations>
+    """
+
+    return ""
+
+def make_images(qptiff):
+    image_template = """
+    <Image ID="Image:0">
+        <InstrumentRef ID="Instrument:0"/>
+        <ObjectiveSettings ID="Objective:0"/>
+        <Pixels BigEndian="false" DimensionOrder="XYZCT" ID="Pixels:0" PhysicalSizeX="0.325" PhysicalSizeXUnit="µm" PhysicalSizeY="0.325" PhysicalSizeYUnit="µm" PhysicalSizeZ="1.0" PhysicalSizeZUnit="µm" SizeC="19" SizeT="1" SizeX="49439" SizeY="27563" SizeZ="1" Type="uint16">
+            <Channel ID="Channel:0" Name="01_Hoechst" SamplesPerPixel="1">
+                <LightPath/>
+            </Channel>
+            <Plane TheC="0" TheT="0" TheZ="0"/>
+        </Pixels>
+    </Image>
+    """
+    # when make_annotations is finished one should add "<AnnotationRef ID="Annotation:Stitcher:0"/>" before </Image>
+    return image_template.format()
+
+
+def qptiff_to_ome(qptiff, **kwargs):
+    """
+    make a ome tiff description from qptiff one and read it with ome_type func
+    """
+
+    ome_template = """
+    <?xml version="1.0" encoding="UTF-8"?>
+    <OME xmlns="http://www.openmicroscopy.org/Schemas/OME/2016-06" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.openmicroscopy.org/Schemas/OME/2016-06 http://www.openmicroscopy.org/Schemas/OME/2016-06/ome.xsd">
+        <Instrument ID="Instrument:0">
+            <Objective ID="Objective:0" NominalMagnification="20.0"/>
+        </Instrument>
+        {images}
+        {annotations}
+    </OME>
+    """
+
+    return OME.from_xml(ome_template.format(annotations=make_annotations(), images=make_images(qptiff)), **kwargs)
+
+
 
 def read_tiff_orion(img_path, idx_serie=0, idx_level=0, *args, **kwargs):
     """
@@ -60,7 +112,14 @@ class OmeTifffile(object):
 
         for tag in tifffile_metadata.tags:
             if tag.name == "ImageDescription":
-                self.ome = OME.from_xml(tag.value, **kwargs)
+                try:
+                    self.ome = OME.from_xml(tag.value, **kwargs)
+                except ValueError:
+                    # qptiff format (from CODEX, WIP)
+                    try:
+                        self.ome = qptiff_to_ome(tag.value, **kwargs)
+                    except BaseException:
+                        pass
 
             elif tag.name in self.direct_props.keys():
                 try:
