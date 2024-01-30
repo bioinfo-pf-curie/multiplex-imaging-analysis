@@ -3,6 +3,7 @@ import zarr
 from ome_types import OME, model
 import copy
 import warnings
+import xml.etree.ElementTree as ET
 
 def _tile_generator(arr, channel, x, y, chunk_x, chunk_y):
     """Generate chunk of arr"""
@@ -25,25 +26,62 @@ def make_annotations():
     """
 
     return ""
+# from orion.MIA.bin.utils import make_images
+# xml = open('/data/users/mcorbe/example_qptiff.xml', 'r').read()
+# make_images(xml, 24960, 37456)
 
-def make_images(qptiff):
+def make_images(qptiff, size_x, size_y):
+    # PX = 0.325, PXU = µm, PY = 0.325, PYU = µm, PZ = 1, PZU=µm, size_c, size_t=1, size_z=1, size_x, size_y, dtype=uint16
+
+    default = dict(
+        PXU = "µm", PYU = "µm", PZU = "µm",
+        PZ = 1, size_t=1, size_z=1,
+        dtype="uint16"
+    )
+
+    root = ET.fromstring(qptiff).find("ScanProfile").find('root')
+
+    default["size_x"] = size_x
+    default["size_y"] = size_y
+    default['PX'] = root.find("ScanResolution").find('PixelSizeMicrons').text
+    default['PY'] = default['PX']
+
+    channels = {}
+    for laser_bands in root.find("ScanBands").findall("ScanBands-i"):
+        for scan_bands in laser_bands.find("ScanBands").findall('ScanBands-i'):
+            fixed_filter = scan_bands.find("FilterPair").find('ExcitationFilter').find('FixedFilter')
+            channels[int(fixed_filter.get('ref')[3:])] = fixed_filter.find('Name').text
+
+    default["size_c"] = len(channels)
+
+    channel_template = """
+    <Channel ID="Channel:{channel_idx}" Name="{channel_name}" SamplesPerPixel="1">
+        <LightPath/>
+    </Channel>
+    """
+
+    plane_template = '<Plane TheC="{channel_idx}" TheT="0" TheZ="0"/>'
+
+    channel_xml = ''
+    planes_xml = ''
+    for chan_idx, chan_key in enumerate(sorted(channels.keys())):
+        channel_xml += channel_template.format(channel_idx=chan_idx, channel_name=channels[chan_key])
+        planes_xml += plane_template.format(channel_idx=chan_idx)
+
     image_template = """
     <Image ID="Image:0">
         <InstrumentRef ID="Instrument:0"/>
         <ObjectiveSettings ID="Objective:0"/>
-        <Pixels BigEndian="false" DimensionOrder="XYZCT" ID="Pixels:0" PhysicalSizeX="0.325" PhysicalSizeXUnit="µm" PhysicalSizeY="0.325" PhysicalSizeYUnit="µm" PhysicalSizeZ="1.0" PhysicalSizeZUnit="µm" SizeC="19" SizeT="1" SizeX="49439" SizeY="27563" SizeZ="1" Type="uint16">
-            <Channel ID="Channel:0" Name="01_Hoechst" SamplesPerPixel="1">
-                <LightPath/>
-            </Channel>
-            <Plane TheC="0" TheT="0" TheZ="0"/>
+        <Pixels BigEndian="false" DimensionOrder="XYZCT" ID="Pixels:0" PhysicalSizeX="{PX}" PhysicalSizeXUnit="{PXU}" PhysicalSizeY="{PY}" PhysicalSizeYUnit="{PYU}" PhysicalSizeZ="{PZ}" PhysicalSizeZUnit="{PZU}" SizeC="{size_c}" SizeT="{size_t}" SizeX="{size_x}" SizeY="{size_y}" SizeZ="{size_z}" Type="{dtype}">
+            {channels}
         </Pixels>
     </Image>
     """
     # when make_annotations is finished one should add "<AnnotationRef ID="Annotation:Stitcher:0"/>" before </Image>
-    return image_template.format()
+    return image_template.format(channels=channel_xml + planes_xml, **default)
 
 
-def qptiff_to_ome(qptiff, **kwargs):
+def qptiff_to_ome(qptiff, size_x, size_y, **kwargs):
     """
     make a ome tiff description from qptiff one and read it with ome_type func
     """
@@ -59,7 +97,7 @@ def qptiff_to_ome(qptiff, **kwargs):
     </OME>
     """
 
-    return OME.from_xml(ome_template.format(annotations=make_annotations(), images=make_images(qptiff)), **kwargs)
+    return OME.from_xml(ome_template.format(annotations=make_annotations(), images=make_images(qptiff, size_x, size_y)), **kwargs)
 
 
 
@@ -109,6 +147,8 @@ class OmeTifffile(object):
     def __init__(self, tifffile_metadata, **kwargs):
         self.tags = {"resolution": [None, None, None], "extratags": []}
         self.ome = None
+        self.size = [None, None]
+        qptiff_xml = None
 
         for tag in tifffile_metadata.tags:
             if tag.name == "ImageDescription":
@@ -116,10 +156,7 @@ class OmeTifffile(object):
                     self.ome = OME.from_xml(tag.value, **kwargs)
                 except ValueError:
                     # qptiff format (from CODEX, WIP)
-                    try:
-                        self.ome = qptiff_to_ome(tag.value, **kwargs)
-                    except BaseException:
-                        pass
+                    qptiff_xml = tag.value
 
             elif tag.name in self.direct_props.keys():
                 try:
@@ -132,8 +169,19 @@ class OmeTifffile(object):
 
             else:
                 self.tags['extratags'].append((tag.code, tag.dtype, tag.count, tag.value, True)) # true for tag.writeonce (orion is one image per tiff)
+                if tag.code == 256:
+                    self.size[0] = tag.value
+                if tag.code == 257:
+                    self.size[1] = tag.value
+
+        if qptiff_xml is not None:
+            # try:
+            self.ome = qptiff_to_ome(qptiff_xml, self.size[0], self.size[1], **kwargs)
+            # except BaseException:
+            #     pass
 
         if self.ome is None:
+            # maybe i should let it go without it
             raise ValueError("No image description tag was found")
             
         self.dtype = tifffile_metadata.dtype
