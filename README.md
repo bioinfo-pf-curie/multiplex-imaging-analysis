@@ -2,7 +2,7 @@
 <!-- TODO update with the name of the pipeline -->
 
 [![Nextflow](https://img.shields.io/badge/nextflow-%E2%89%A519.10.0-brightgreen.svg)](https://www.nextflow.io/)
-[![Install with](https://anaconda.org/anaconda/conda-build/badges/installer/conda.svg)](https://conda.anaconda.org/anaconda)
+[![Install with](https://anaconda.org/conda-forge/vsc-install/badges/version.svg)](https://conda.anaconda.org/anaconda)
 [![Singularity Container available](https://img.shields.io/badge/singularity-available-7E4C74.svg)](https://singularity.lbl.gov/)
 [![Docker Container available](https://img.shields.io/badge/docker-available-003399.svg)](https://www.docker.com/)
 
@@ -36,6 +36,12 @@ Usage:
 Mandatory arguments:
 --images [file]                   Path to input images directory 
 --markers [file]                  Path to markers file (one file per image, must be a csv file listing markers name and metadata about it, see docs for more information)
+
+Optionnal arguments:
+--overlap [float]                Percentage of overlap between tile (default is 0.1)
+--tileHeight [int]               Size in pixel of the height of each tile (default will compute the best height for available memory)
+--maskOverlap [int]              Size in pixel of the overlap for computing masks (default is 60 ~ 2 x mean cell size)
+--mode [str]                     Normalization used before merging channels. Can be either 'custom', 'hist' or 'no-norm' (default is custom if normalization value are present in markers.csv else it's hist)
 
 Skip options: All are false by default
 --skipSoftVersion [bool]         Do not report software version
