@@ -257,18 +257,9 @@ def compute_masks(flows, p=None, niter=200,
             mask = remove_bad_flow_masks(mask, dP, threshold=flow_threshold, use_gpu=use_gpu, device=device)
         
         if resize is not None:
-            if mask.max() > 2**16-1:
-                recast = True
-                mask = mask.astype(np.float32)
-            else:
-                recast = False
-                mask = mask.astype(np.uint16)
+            mask = mask.astype(np.float32)
             mask = resize_image(mask, resize[0], resize[1], interpolation=INTER_NEAREST)
-            if recast:
-                mask = mask.astype(np.uint32)
-
-        elif mask.max() < 2**16:
-            mask = mask.astype(np.uint16)
+            mask = mask.astype(np.uint32)
 
     else: # nothing to compute, just make it compatible
         shape = resize if resize is not None else cellprob.shape
