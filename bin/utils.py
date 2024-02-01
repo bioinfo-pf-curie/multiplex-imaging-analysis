@@ -39,18 +39,26 @@ def make_images(qptiff, size_x, size_y):
         dtype="uint16"
     )
 
-    root = ET.fromstring(qptiff).find("ScanProfile").find('root')
+    root = ET.fromstring(qptiff).find("ScanProfile")[0] # "ExperimentV4"
 
     default["size_x"] = size_x
     default["size_y"] = size_y
-    default['PX'] = root.find("ScanResolution").find('PixelSizeMicrons').text
-    default['PY'] = default['PX']
+
+    for child in root:
+        if "Resolution" in child.tag:
+            default['PX'] = float(child.text)
+            default['PY'] = default['PX']
+            default["PXU"] = default['PYU'] = child.tag.rsplit('_', 1)[1]
 
     channels = {}
-    for laser_bands in root.find("ScanBands").findall("ScanBands-i"):
-        for scan_bands in laser_bands.find("ScanBands").findall('ScanBands-i'):
-            fixed_filter = scan_bands.find("FilterPair").find('ExcitationFilter').find('FixedFilter')
-            channels[int(fixed_filter.get('ref')[3:])] = fixed_filter.find('Name').text
+    current_idx = 0
+    for cycle in root.find('Cycles').findall('Cycle'):
+        for channel in cycle.find('Channels').findall("Channel"):
+            if channel.find('MarkerName').text.lower() not in ('empty', 'blank', ''):
+                if "dapi" in channel.find('MarkerName').text.lower() and cycle.find('Index') != "1":
+                    continue # do not add more than one dapi channel (other are used for alignment)
+                channels[current_idx] = channel.find('MarkerName').text
+                current_idx += 1
 
     default["size_c"] = len(channels)
 
@@ -86,8 +94,7 @@ def qptiff_to_ome(qptiff, size_x, size_y, **kwargs):
     make a ome tiff description from qptiff one and read it with ome_type func
     """
 
-    ome_template = """
-    <?xml version="1.0" encoding="UTF-8"?>
+    ome_template = """<?xml version="1.0" encoding="UTF-8"?>
     <OME xmlns="http://www.openmicroscopy.org/Schemas/OME/2016-06" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.openmicroscopy.org/Schemas/OME/2016-06 http://www.openmicroscopy.org/Schemas/OME/2016-06/ome.xsd">
         <Instrument ID="Instrument:0">
             <Objective ID="Objective:0" NominalMagnification="20.0"/>
