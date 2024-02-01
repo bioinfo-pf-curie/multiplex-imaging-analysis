@@ -331,9 +331,9 @@ if __name__ == '__main__':
     flows_da = da.from_array(flows, chunks=[3, *args.chunks])
 
     masks = da.map_overlap(compute_masks, flows_da, dtype=np.uint32, depth={0: 0, 1: args.overlap, 2: args.overlap}, drop_axis=0).compute()
-
+    print(masks.dtype)
     correct_edges_inplace(masks, chunks_size=args.chunks)
-
+    print(masks.dtype)
     fastremap.renumber(masks, in_place=True) #convenient to guarantee non-skipped labels
 
     metadata = OmeTifffile(TiffFile(args.original).pages[0])
