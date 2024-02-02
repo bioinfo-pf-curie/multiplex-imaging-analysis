@@ -114,7 +114,7 @@ def PrepareData(image,z):
     image_path = Path(image)
 
     #Check to see if image tif(f)
-    if image_path.suffix in ['.tiff', '.tif', '.btf']:
+    if image_path.suffix in ['.tiff', '.tif', '.btf', '.qptiff', '.qptif']:
         image_loaded_z = tifffile.imread(image, key=z)
 
     #Check to see if image is hdf5
@@ -127,7 +127,7 @@ def PrepareData(image,z):
         image_loaded_z = f[dat_name][0,:,:,z]
 
     else:
-        raise Exception('mcquant currently supports [OME]TIFF and HDF5 formats only')
+        raise Exception('mcquant currently supports [OME-QP]TIFF and HDF5 formats only')
 
     #Return the objects
     return image_loaded_z
