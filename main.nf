@@ -180,9 +180,12 @@ workflow {
       tuple(groupedkey, segmentedImg)
     }
 
-    flow = stitchFlows(segmented)
+    flow = stitchFlows(segmented).branch({
+      npy: it[1].endsWith(".npy") // this is not working !
+      tiff: true
+    })
 
-    masks = computeMasks(flow)
+    masks = computeMasks(flow.npy).mix(flow.tiff)
     
     outline = displayOutline(masks)
 

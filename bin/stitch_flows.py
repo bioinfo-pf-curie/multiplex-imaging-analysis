@@ -1,8 +1,7 @@
 #!/usr/bin/env python
+from utils import get_current_height
 
-import os
 import argparse
-
 import numpy as np
 from tifffile import TiffFile
 
@@ -75,18 +74,6 @@ def sum_of_weight_on_axis(tile_height, overlap, img_height):
 def load_npy(npy_path):
     """Helper to load npy files"""
     return np.load(npy_path, allow_pickle=True).item()['flows']
-
-def get_current_height(npy_path):
-    """Helper to parse filename to get position in height for the corresponding tile"""
-    npy_name = os.path.basename(npy_path)
-    while True:
-        npy_name, height = npy_name.rsplit('_', 1)
-        try:
-            return int(height)
-        except ValueError:
-            pass
-        if not npy_name:
-            raise ValueError(f'Height of image {npy_name} not found')
 
 def stich_flow(list_npy, input_img_path, overlap, out_path):
     """
