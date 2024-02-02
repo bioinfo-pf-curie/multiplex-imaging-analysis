@@ -92,7 +92,7 @@ def n_channels(image):
 
     image_path = Path(image)
 
-    if image_path.suffix in ['.tiff', '.tif', '.btf', 'qptiff', 'qptif']:
+    if image_path.suffix in ['.tiff', '.tif', '.btf', '.qptiff', '.qptif']:
         s = tifffile.TiffFile(image).series[0]
         ndim = len(s.shape)
         if ndim == 2: return 1
