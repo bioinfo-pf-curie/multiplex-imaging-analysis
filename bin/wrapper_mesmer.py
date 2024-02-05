@@ -220,7 +220,6 @@ def initialize_logger(log_level):
 def get_arg_parser():
     """argument parser to consume command line arguments"""
     root_dir = os.path.dirname(os.path.abspath(__file__))
-    parser = argparse.ArgumentParser()
 
     # Create a parent parser for common arguments
     # https://stackoverflow.com/a/63283912
@@ -263,55 +262,47 @@ def get_arg_parser():
     parent.add_argument('--squeeze', action='store_true',
                         help='Squeeze the output tensor before saving.')
 
-    # use subparsers to group options for different applications
-    # https://stackoverflow.com/a/30217387
-    subparsers = parser.add_subparsers(dest='app', help='application name')
-
     # Next, each application is configured as its own subparser
     # Each subparser should inherit from ``parent`` to inherit options
     # Configurable inputs for ``prepare_input`` and ``app.predict`` must
     # match (via name or dest) the function input names exactly.
 
-    # Mesmer Application Configuration
-    mesmer = subparsers.add_parser('mesmer', parents=[parent], add_help=False,
-                                   help='Run Mesmer on nuclear + membrane data')
-
     # Mesmer Image file inputs
-    mesmer.add_argument('--nuclear-image', '-n', required=True,
+    parent.add_argument('--nuclear-image', '-n', required=True,
                         type=existing_file, dest='nuclear_path',
                         help=('REQUIRED: Path to 2D single channel TIF file.'))
 
-    mesmer.add_argument('--nuclear-channel', '-nc',
+    parent.add_argument('--nuclear-channel', '-nc',
                         default=0, nargs='+', type=int,
                         help='Channel(s) to use of the nuclear image. '
                              'If more than one channel is passed, '
                              'all channels will be summed.')
 
-    mesmer.add_argument('--membrane-image', '-m',
+    parent.add_argument('--membrane-image', '-m',
                         type=existing_file, dest='membrane_path',
                         help=('Path to 2D single channel TIF file. '
                               'Optional. If not provided, membrane '
                               'channel input to network is blank.'))
 
-    mesmer.add_argument('--membrane-channel', '-mc',
+    parent.add_argument('--membrane-channel', '-mc',
                         default=0, nargs='+', type=int,
                         help='Channel(s) to use of the membrane image. '
                              'If more than one channel is passed, '
                              'all channels will be summed.')
 
     # Mesmer Inference parameters
-    mesmer.add_argument('--image-mpp', type=float, default=0.5,
+    parent.add_argument('--image-mpp', type=float, default=0.5,
                         help='Input image resolution in microns-per-pixel. '
                              'Default value of 0.5 corresponds to a 20x zoom.')
 
-    mesmer.add_argument('--batch-size', '-b', default=4, type=int,
+    parent.add_argument('--batch-size', '-b', default=4, type=int,
                         help='Batch size for `model.predict`.')
 
-    mesmer.add_argument('--compartment', '-c', default='whole-cell',
+    parent.add_argument('--compartment', '-c', default='whole-cell',
                         choices=('nuclear', 'whole-cell', 'both'),
                         help='The cellular compartment to segment.')
 
-    return parser
+    return parent
 
 
 if __name__ == '__main__':
