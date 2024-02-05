@@ -179,9 +179,9 @@ workflow {
     }.groupTuple().map{groupedkey, old_meta, segmentedImg -> 
       tuple(groupedkey, segmentedImg)
     }
-
+    segmented.view()
     flow = stitchFlows(segmented).branch({
-      npy: it[1].endsWith(".npy") // this is not working !
+      npy: it[1].name.endsWith(".npy") 
       tiff: true
     })
 
