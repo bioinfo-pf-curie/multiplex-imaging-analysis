@@ -2,6 +2,7 @@ process segmentation {
   label "${params.segmentation.name}"
   label 'lowCpu'
   label 'medMem'
+  label 'onlyLinux'
 
   input:
     tuple val(meta), path(image)
