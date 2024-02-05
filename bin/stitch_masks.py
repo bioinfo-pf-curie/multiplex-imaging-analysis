@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 from utils import get_current_height
 import argparse
 

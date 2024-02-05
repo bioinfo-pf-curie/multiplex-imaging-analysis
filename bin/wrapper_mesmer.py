@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 # Copyright 2016-2021 The Van Valen Lab at the California Institute of
 # Technology (Caltech), with support from the Paul Allen Family Foundation,
 # Google, & National Institutes of Health (NIH) under Grant U24CA224309-01.
@@ -23,7 +25,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Helper functions to run Applications"""
+
 import os
 import logging
 import sys
