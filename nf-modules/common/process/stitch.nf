@@ -1,4 +1,4 @@
-process stitchFlows {
+process stitch {
   label 'cellpose'
   label 'minCpu'
   label 'maxMem'
@@ -11,14 +11,15 @@ process stitchFlows {
       tuple val(meta), path(images)
 
   output:
-    tuple val(meta), path('*.npy')
+    tuple val(meta), path(params.segmentation.name == 'cellpose'? '*.npy': '*.tiff')
 
   when:
   task.ext.when == null || task.ext.when
 
   script:
     def args = task.ext.args ?: ''
+    def script = params.segmentation.name == 'cellpose' ? "stitch_flows.py" : "stitch_masks.py"
     """
-    stitch_flows.py --in $images --out ${meta.originalName}.npy --original $meta.imagePath $args
+    $script --in $images --out ${meta.originalName}.npy --original $meta.imagePath $args
     """
 }

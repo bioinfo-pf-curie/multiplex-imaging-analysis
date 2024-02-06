@@ -94,7 +94,6 @@ def stich_masks(list_mask_chunks, input_img_path, overlap, out_path):
     original_shape = original_tiff.series[0].shape[1:]
     result = tifffile.memmap(out_path, dtype='uint32', shape=original_shape)
 
-    tiles_height = []
     # previous_cells = None
     for chunk in list_mask_chunks:
         cur_height = get_current_height(chunk)
@@ -105,28 +104,8 @@ def stich_masks(list_mask_chunks, input_img_path, overlap, out_path):
         else:
             result[:, cur_height:cur_height+img.shape[1], :] = img
         result.flush()
-        # cur_cells = shapes.geometrize(img.pages[0]) # masks to polygon
-        # # todo = I need to add absolute positionning to that
-
-        # if previous_cells is None: # no conflict to solve
-        #     sum_cells = cur_cells
-        # else:
-        #     sum_cells = shapes.solve_conflicts(cur_cells + previous_cells)
-
-        # weight = get_weight(flow[4].shape[1], edge=("f" if not i else "l" if i == len(list_npy) - 1 else None))
-        # weighted_flow = np.ascontiguousarray(np.array(flow[4]) * weight[np.newaxis, :, np.newaxis])
-        # tiles_height.append(weighted_flow.shape[1])
-        # total_flow[:, cur_height:cur_height+weighted_flow.shape[1], :] += weighted_flow
-        # total_flow.flush()
-
-    # tile_height = int(np.median(tiles_height))
 
     img = None # can be collected
-    # y_weight = sum_of_weight_on_axis(tile_height, overlap, original_tiff.series[0].shape[1])
-
-    # for chunk in range(0, total_flow.shape[2], tile_height):
-    #     total_flow[..., chunk:chunk+tile_height] /= y_weight
-    #     total_flow.flush()
     return out_path
 
 
