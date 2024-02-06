@@ -179,8 +179,8 @@ workflow {
     }.groupTuple().map{groupedkey, old_meta, segmentedImg -> 
       tuple(groupedkey, segmentedImg)
     }.branch({
-      npy: it[1].name.endsWith(".npy") 
-      tiff: true
+      npy: it[1][0].name.endsWith(".npy")
+      tiff: true // only one mask in this case so we can check only the first
     })
     segmented.npy.view()
     segmented.tiff.view()
