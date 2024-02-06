@@ -5,5 +5,5 @@ dependencies:
   - numpy=1.25.2=py39h5f9d8c6_0
   - pip=23.3=py39h06a4308_0
   - pip:
-    - deepcell==0.12.9
+    - deepcell==0.12.6
 
