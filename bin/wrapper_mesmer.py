@@ -252,7 +252,7 @@ def get_arg_parser():
                         help='Directory where application outputs are saved.')
 
     parent.add_argument('--output-name', '-f',
-                        default='mask.tif',
+                        default='mask.tiff',
                         help='Name of output file.')
 
     parent.add_argument('-L', '--log-level', default='INFO',
