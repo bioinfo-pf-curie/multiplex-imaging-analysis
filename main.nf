@@ -178,14 +178,15 @@ workflow {
       tuple(groupKey(meta.subMap("originalName", "imagePath", "markersPath"), meta.nbSplittedFile.toInteger()), meta, segmentedImg)
     }.groupTuple().map{groupedkey, old_meta, segmentedImg -> 
       tuple(groupedkey, segmentedImg)
-    }
-    segmented.view()
-    flow = stitchFlows(segmented).branch({
+    }.branch({
       npy: it[1].name.endsWith(".npy") 
       tiff: true
     })
+    segmented.npy.view()
+    segmented.tiff.view()
+    flow = stitchFlows(segmented.npy)
 
-    masks = computeMasks(flow.npy).mix(flow.tiff)
+    masks = computeMasks(flow).mix(segmented.tiff)
     
     outline = displayOutline(masks)
 
