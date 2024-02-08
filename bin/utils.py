@@ -3,12 +3,109 @@ import zarr
 from ome_types import OME, model
 import copy
 import warnings
+import xml.etree.ElementTree as ET
 
 def _tile_generator(arr, channel, x, y, chunk_x, chunk_y):
     """Generate chunk of arr"""
     for x_cur in range(0, x, chunk_x):
         for y_cur in range(0, y, chunk_y):
             yield arr[channel, x_cur: x_cur + chunk_x, y_cur: y_cur + chunk_y]
+
+def make_annotations():
+    # not used in my pipeline for now...
+    min_max_template = '<M K="{channel_name}:{min_ou_max}">{value}</M>'
+
+    annotation_templates = """
+    <StructuredAnnotations>
+        <MapAnnotation ID="Annotation:Stitcher:0" Namespace="com.glencoesoftware.stitcher.minmax">
+            <Value>
+                {min_max}
+            </Value>
+        </MapAnnotation>
+    </StructuredAnnotations>
+    """
+
+    return ""
+# from orion.MIA.bin.utils import make_images
+# xml = open('/data/users/mcorbe/example_qptiff.xml', 'r').read()
+# make_images(xml, 24960, 37456)
+
+def make_images(qptiff, size_x, size_y):
+    # PX = 0.325, PXU = µm, PY = 0.325, PYU = µm, PZ = 1, PZU=µm, size_c, size_t=1, size_z=1, size_x, size_y, dtype=uint16
+
+    default = dict(
+        PXU = "µm", PYU = "µm", PZU = "µm",
+        PZ = 1, size_t=1, size_z=1,
+        dtype="uint16"
+    )
+
+    root = ET.fromstring(qptiff).find("ScanProfile")[0] # "ExperimentV4"
+
+    default["size_x"] = size_x
+    default["size_y"] = size_y
+
+    for child in root:
+        if "Resolution" in child.tag:
+            default['PX'] = float(child.text)
+            default['PY'] = default['PX']
+            default["PXU"] = default['PYU'] = child.tag.rsplit('_', 1)[1]
+
+    channels = {}
+    current_idx = 0
+    for cycle in root.find('Cycles').findall('Cycle'):
+        for channel in cycle.find('Channels').findall("Channel"):
+            if channel.find('MarkerName').text.lower() not in ('empty', 'blank', ''):
+                if "dapi" in channel.find('MarkerName').text.lower() and cycle.find('Index') != "1":
+                    continue # do not add more than one dapi channel (other are used for alignment)
+                channels[current_idx] = channel.find('MarkerName').text
+                current_idx += 1
+
+    default["size_c"] = len(channels)
+
+    channel_template = """
+    <Channel ID="Channel:{channel_idx}" Name="{channel_name}" SamplesPerPixel="1">
+        <LightPath/>
+    </Channel>
+    """
+
+    plane_template = '<Plane TheC="{channel_idx}" TheT="0" TheZ="0"/>'
+
+    channel_xml = ''
+    planes_xml = ''
+    for chan_idx, chan_key in enumerate(sorted(channels.keys())):
+        channel_xml += channel_template.format(channel_idx=chan_idx, channel_name=channels[chan_key])
+        planes_xml += plane_template.format(channel_idx=chan_idx)
+
+    image_template = """
+    <Image ID="Image:0">
+        <InstrumentRef ID="Instrument:0"/>
+        <ObjectiveSettings ID="Objective:0"/>
+        <Pixels BigEndian="false" DimensionOrder="XYZCT" ID="Pixels:0" PhysicalSizeX="{PX}" PhysicalSizeXUnit="{PXU}" PhysicalSizeY="{PY}" PhysicalSizeYUnit="{PYU}" PhysicalSizeZ="{PZ}" PhysicalSizeZUnit="{PZU}" SizeC="{size_c}" SizeT="{size_t}" SizeX="{size_x}" SizeY="{size_y}" SizeZ="{size_z}" Type="{dtype}">
+            {channels}
+        </Pixels>
+    </Image>
+    """
+    # when make_annotations is finished one should add "<AnnotationRef ID="Annotation:Stitcher:0"/>" before </Image>
+    return image_template.format(channels=channel_xml + planes_xml, **default)
+
+
+def qptiff_to_ome(qptiff, size_x, size_y, **kwargs):
+    """
+    make a ome tiff description from qptiff one and read it with ome_type func
+    """
+
+    ome_template = """<?xml version="1.0" encoding="UTF-8"?>
+    <OME xmlns="http://www.openmicroscopy.org/Schemas/OME/2016-06" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.openmicroscopy.org/Schemas/OME/2016-06 http://www.openmicroscopy.org/Schemas/OME/2016-06/ome.xsd">
+        <Instrument ID="Instrument:0">
+            <Objective ID="Objective:0" NominalMagnification="20.0"/>
+        </Instrument>
+        {images}
+        {annotations}
+    </OME>
+    """
+
+    return OME.from_xml(ome_template.format(annotations=make_annotations(), images=make_images(qptiff, size_x, size_y)), **kwargs)
+
 
 
 def read_tiff_orion(img_path, idx_serie=0, idx_level=0, *args, **kwargs):
@@ -57,10 +154,16 @@ class OmeTifffile(object):
     def __init__(self, tifffile_metadata, **kwargs):
         self.tags = {"resolution": [None, None, None], "extratags": []}
         self.ome = None
+        self.size = [None, None]
+        qptiff_xml = None
 
         for tag in tifffile_metadata.tags:
             if tag.name == "ImageDescription":
-                self.ome = OME.from_xml(tag.value, **kwargs)
+                try:
+                    self.ome = OME.from_xml(tag.value, **kwargs)
+                except ValueError:
+                    # qptiff format (from CODEX, WIP)
+                    qptiff_xml = tag.value
 
             elif tag.name in self.direct_props.keys():
                 try:
@@ -73,8 +176,19 @@ class OmeTifffile(object):
 
             else:
                 self.tags['extratags'].append((tag.code, tag.dtype, tag.count, tag.value, True)) # true for tag.writeonce (orion is one image per tiff)
+                if tag.code == 256:
+                    self.size[0] = tag.value
+                if tag.code == 257:
+                    self.size[1] = tag.value
+
+        if qptiff_xml is not None:
+            # try:
+            self.ome = qptiff_to_ome(qptiff_xml, self.size[0], self.size[1], **kwargs)
+            # except BaseException:
+            #     pass
 
         if self.ome is None:
+            # maybe i should let it go without it
             raise ValueError("No image description tag was found")
             
         self.dtype = tifffile_metadata.dtype
@@ -145,11 +259,11 @@ class OmeTifffile(object):
             the_c = 0 if self.pix.size_c == 1 and len(self.pix.planes) == 0 else int(self.pix.size_c)
             # particular case due to validation error on size_c if = 0
             self.pix.planes.append(model.Plane(the_z=0, the_t=0, the_c=the_c))
-        # try:
-        #     self.pix.tiff_data_blocks.append(model.TiffData(plane_count=1, ifd=self.pix.size_c, first_c=self.pix.size_c))
-        # except BaseException as e: 
-        #     print("add channel error")
-        #     print(e)
+        try:
+            self.pix.tiff_data_blocks = [{'uuid': None, 'ifd': 0, 'first_z': 0, 'first_t': 0, 'first_c': 0, 'plane_count': len(self.pix.planes)}]
+        except BaseException as e: 
+            print("add channel error")
+            print(e)
         self.pix.channels.append(channel_data)
         self.pix.size_c = len(self.pix.channels)
     

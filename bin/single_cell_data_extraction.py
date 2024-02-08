@@ -92,7 +92,7 @@ def n_channels(image):
 
     image_path = Path(image)
 
-    if image_path.suffix in ['.tiff', '.tif', '.btf']:
+    if image_path.suffix in ['.tiff', '.tif', '.btf', '.qptiff', '.qptif']:
         s = tifffile.TiffFile(image).series[0]
         ndim = len(s.shape)
         if ndim == 2: return 1
@@ -105,7 +105,7 @@ def n_channels(image):
         return f[dat_name].shape[3]
 
     else:
-        raise Exception('mcquant currently supports [OME]TIFF and HDF5 formats only')
+        raise Exception('mcquant currently supports [OME-QP]TIFF and HDF5 formats only')
 
 def PrepareData(image,z):
     """Function for preparing input for maskzstack function. Connecting function
@@ -114,7 +114,7 @@ def PrepareData(image,z):
     image_path = Path(image)
 
     #Check to see if image tif(f)
-    if image_path.suffix in ['.tiff', '.tif', '.btf']:
+    if image_path.suffix in ['.tiff', '.tif', '.btf', '.qptiff', '.qptif']:
         image_loaded_z = tifffile.imread(image, key=z)
 
     #Check to see if image is hdf5
@@ -127,7 +127,7 @@ def PrepareData(image,z):
         image_loaded_z = f[dat_name][0,:,:,z]
 
     else:
-        raise Exception('mcquant currently supports [OME]TIFF and HDF5 formats only')
+        raise Exception('mcquant currently supports [OME-QP]TIFF and HDF5 formats only')
 
     #Return the objects
     return image_loaded_z
