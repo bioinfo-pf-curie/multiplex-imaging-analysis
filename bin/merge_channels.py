@@ -192,9 +192,9 @@ def merge_channels(in_path, out_path, nuclei_chan=0, channels_to_merge=None, chu
             tiff_out.write(
                 data=tile_generator(img_level, nuclei_chan, channels_to_merge, 
                                     *img_level.shape[1:], *chunk_size, agg=agg, norm=norm, norm_val=norm_val),
-                shape=(2, *img_level.shape[1:3]),
+                shape=(2, *img_level.shape[1:]),
                 tile=chunk_size,
-                **metadata.to_dict(shape=img_level.shape[1:3])
+                **metadata.to_dict(shape=img_level.shape[1:])
             )
 
 def guess_channels_to_merge(img_path):
