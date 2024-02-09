@@ -11,29 +11,11 @@ def _tile_generator(arr, channel, x, y, chunk_x, chunk_y):
         for y_cur in range(0, y, chunk_y):
             yield arr[channel, x_cur: x_cur + chunk_x, y_cur: y_cur + chunk_y]
 
-def make_annotations():
-    # not used in my pipeline for now...
-    min_max_template = '<M K="{channel_name}:{min_ou_max}">{value}</M>'
 
-    annotation_templates = """
-    <StructuredAnnotations>
-        <MapAnnotation ID="Annotation:Stitcher:0" Namespace="com.glencoesoftware.stitcher.minmax">
-            <Value>
-                {min_max}
-            </Value>
-        </MapAnnotation>
-    </StructuredAnnotations>
-    """
-
-    return ""
-# from orion.MIA.bin.utils import make_images
-# xml = open('/data/users/mcorbe/example_qptiff.xml', 'r').read()
-# make_images(xml, 24960, 37456)
-
-def make_images(qptiff, size_x, size_y):
+def get_info_qptiff(qptiff):
     # PX = 0.325, PXU = µm, PY = 0.325, PYU = µm, PZ = 1, PZU=µm, size_c, size_t=1, size_z=1, size_x, size_y, dtype=uint16
 
-    default = dict(
+    result = dict(
         PXU = "µm", PYU = "µm", PZU = "µm",
         PZ = 1, size_t=1, size_z=1,
         dtype="uint16"
@@ -41,71 +23,66 @@ def make_images(qptiff, size_x, size_y):
 
     root = ET.fromstring(qptiff).find("ScanProfile")[0] # "ExperimentV4"
 
-    default["size_x"] = size_x
-    default["size_y"] = size_y
-
     for child in root:
         if "Resolution" in child.tag:
-            default['PX'] = float(child.text)
-            default['PY'] = default['PX']
-            default["PXU"] = default['PYU'] = child.tag.rsplit('_', 1)[1]
+            result['PX'] = float(child.text)
+            result['PY'] = result['PX']
+            result["PXU"] = result['PYU'] = child.tag.rsplit('_', 1)[1]
 
-    channels = {}
+    channels = []
+    planes = []
     current_idx = 0
     for cycle in root.find('Cycles').findall('Cycle'):
         for channel in cycle.find('Channels').findall("Channel"):
             if channel.find('MarkerName').text.lower() not in ('empty', 'blank', ''):
                 if "dapi" in channel.find('MarkerName').text.lower() and cycle.find('Index') != "1":
                     continue # do not add more than one dapi channel (other are used for alignment)
-                channels[current_idx] = channel.find('MarkerName').text
+                channels.append(model.Channel(id=f"Channel:{current_idx}", name=channel.find('MarkerName').text, 
+                                              samples_per_pixel=1, light_path=model.LightPath()))
+                planes.append(model.Plane(the_c=current_idx, the_t=0, the_z=0))
                 current_idx += 1
 
-    default["size_c"] = len(channels)
-
-    channel_template = """
-    <Channel ID="Channel:{channel_idx}" Name="{channel_name}" SamplesPerPixel="1">
-        <LightPath/>
-    </Channel>
-    """
-
-    plane_template = '<Plane TheC="{channel_idx}" TheT="0" TheZ="0"/>'
-
-    channel_xml = ''
-    planes_xml = ''
-    for chan_idx, chan_key in enumerate(sorted(channels.keys())):
-        channel_xml += channel_template.format(channel_idx=chan_idx, channel_name=channels[chan_key])
-        planes_xml += plane_template.format(channel_idx=chan_idx)
-
-    image_template = """
-    <Image ID="Image:0">
-        <InstrumentRef ID="Instrument:0"/>
-        <ObjectiveSettings ID="Objective:0"/>
-        <Pixels BigEndian="false" DimensionOrder="XYZCT" ID="Pixels:0" PhysicalSizeX="{PX}" PhysicalSizeXUnit="{PXU}" PhysicalSizeY="{PY}" PhysicalSizeYUnit="{PYU}" PhysicalSizeZ="{PZ}" PhysicalSizeZUnit="{PZU}" SizeC="{size_c}" SizeT="{size_t}" SizeX="{size_x}" SizeY="{size_y}" SizeZ="{size_z}" Type="{dtype}">
-            {channels}
-        </Pixels>
-    </Image>
-    """
+    result["size_c"] = len(channels)
+    result['channels'] = channels
+    result["planes"] = planes
     # when make_annotations is finished one should add "<AnnotationRef ID="Annotation:Stitcher:0"/>" before </Image>
-    return image_template.format(channels=channel_xml + planes_xml, **default)
+    return result
 
 
-def qptiff_to_ome(qptiff, size_x, size_y, **kwargs):
-    """
-    make a ome tiff description from qptiff one and read it with ome_type func
-    """
+def make_ome_data(size_x, size_y, size_c, dtype="uint16", **kwargs):
+    nominal_magnification = kwargs.pop("nominal_magnification", 20.0)
+    dimension_order = kwargs.pop("dimension_order", "XYZCT")
+    size_t = kwargs.pop('size_t', 1)
+    size_z = kwargs.pop('size_z', 1)
 
-    ome_template = """<?xml version="1.0" encoding="UTF-8"?>
-    <OME xmlns="http://www.openmicroscopy.org/Schemas/OME/2016-06" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.openmicroscopy.org/Schemas/OME/2016-06 http://www.openmicroscopy.org/Schemas/OME/2016-06/ome.xsd">
-        <Instrument ID="Instrument:0">
-            <Objective ID="Objective:0" NominalMagnification="20.0"/>
-        </Instrument>
-        {images}
-        {annotations}
-    </OME>
-    """
+    physical_size_x = kwargs.pop("physical_size_x", 0.325)
+    physical_size_y = kwargs.pop("physical_size_y", 0.325)
+    physical_size_z = kwargs.pop("physical_size_z", 1.0)
+    physical_size_x_unit = kwargs.pop("physical_size_x_unit", 'µm')
+    physical_size_y_unit = kwargs.pop("physical_size_y_unit", 'µm')
+    physical_size_z_unit = kwargs.pop("physical_size_z_unit", 'µm')
 
-    return OME.from_xml(ome_template.format(annotations=make_annotations(), images=make_images(qptiff, size_x, size_y)), **kwargs)
-
+    return OME(
+        instruments=[model.Instrument(
+            id="Instrument:0", 
+            objectives=[model.Objective(id="Objective:0", nominal_magnification=nominal_magnification)]
+        )], # result for Orion
+        images=[model.Image(
+            id="Image:0", instrument_ref={'id': "Instrument:0"}, objective_settings={'id': "Objective:0"},
+            pixels=model.Pixels(
+                id="Pixels:0", dimension_order=dimension_order, type=dtype,
+                big_endian="false", 
+                size_x=size_x, size_y=size_y, size_z=size_z, size_c=size_c, size_t=size_t, 
+                physical_size_x=physical_size_x, physical_size_x_unit=physical_size_x_unit, 
+                physical_size_y=physical_size_y, physical_size_y_unit=physical_size_y_unit,
+                physical_size_z=physical_size_z, physical_size_z_unit=physical_size_z_unit,
+                tiff_data_blocks=kwargs.pop("tiff_data_blocks", []),
+                channels=kwargs.pop('channels', []),
+                planes=kwargs.pop("planes", [])
+            )
+        )],
+        structured_annotations=kwargs.pop('structured_annotations', [])
+    )
 
 
 def read_tiff_orion(img_path, idx_serie=0, idx_level=0, *args, **kwargs):
@@ -181,18 +158,20 @@ class OmeTifffile(object):
                 if tag.code == 257:
                     self.size[1] = tag.value
 
-        if qptiff_xml is not None:
-            # try:
-            self.ome = qptiff_to_ome(qptiff_xml, self.size[0], self.size[1], **kwargs)
-            # except BaseException:
-            #     pass
-
-        if self.ome is None:
-            # maybe i should let it go without it
-            raise ValueError("No image description tag was found")
-            
         self.dtype = tifffile_metadata.dtype
 
+        if self.ome is None:
+            default = get_info_qptiff(qptiff_xml) if qptiff_xml is not None else {}
+            default['size_x'] = self.size[0]
+            default['size_y'] = self.size[1]
+            default['dtype'] = self.dtype
+            default.update(kwargs)
+
+            try:
+                self.ome = make_ome_data(**default)
+            except BaseException:
+                self.ome = make_ome_data(1,1,1) # better default ? i don't want to fail when there is 0 metadata
+            
         if self.tags.get('planarconfig', None) == 1 and kwargs.get('force_planarconfig', True):
             warnings.warn("Planar Configuration read as 1 (contigue) will be removed from metadata."
                           "Orion used to not correctly set this to 1. To keep the same planarconfig set force_planarconfig to False")
@@ -225,10 +204,18 @@ class OmeTifffile(object):
         for idx, char in enumerate(order):
             self.pix.__setattr__(f"size_{char.lower()}", arr_shape[idx])
 
-    def to_dict(self, dtype=True):
+    def to_dict(self, dtype=True, shape=None):
         """transform this class to a dict of parameters, each of them can be passed to tifffile.write and assimilated"""
         this_dict = self.tags.copy()
         this_dict['compression'] = this_dict.pop('compress')
+
+        if shape is not None:
+            self.pix.size_x=shape[0]
+            self.pix.size_y=shape[1]
+
+        elif self.pix.size_x == 1 or self.pix.size_y == 1:
+            raise ValueError(f"About to write an image with shape (x={self.pix.size_x}, y={self.pix.size_y})." 
+                             "Probably because of wrong instanciation. To remove error, please add shape in to_dict params.")
 
         if any(resolution is None for resolution in self.tags["resolution"]):
             # was not set

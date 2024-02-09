@@ -342,4 +342,4 @@ if __name__ == '__main__':
 
     metadata.dtype = masks.dtype
 
-    imwrite(args.out, masks, bigtiff=True, shaped=False, **metadata.to_dict())
+    imwrite(args.out, masks, bigtiff=True, shaped=False, **metadata.to_dict(shape=masks.shape))

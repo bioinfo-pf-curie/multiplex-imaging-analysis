@@ -154,7 +154,7 @@ def make_outline(merged_file, png_file, mask_path, out_path, nuclei_channel=0, c
                 data=tile_gen(result[0] if tiff.series[0].is_pyramidal else result, outline, c=c, x=x, y=y), 
                 shape=[c+1, x, y], 
                 tile=(256, 256), 
-                **metadata.to_dict()
+                **metadata.to_dict(shape=[x, y])
             )
 
 
