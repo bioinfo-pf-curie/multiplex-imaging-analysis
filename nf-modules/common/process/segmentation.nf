@@ -4,8 +4,6 @@ process segmentation {
   label 'medMem'
   label 'onlyLinux'
 
-  maxForks 1
-
   input:
     tuple val(meta), path(image)
 
