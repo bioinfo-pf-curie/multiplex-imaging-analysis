@@ -1,0 +1,9 @@
+Bootstrap: docker
+From: python:3.7
+
+%post
+  apt-get -y update
+  rm -rf /var/lib/apt/lists/* 
+  python -m pip install --no-cache-dir \
+    pymdown-extensions==7.1 \
+    markdown==3.4.1
