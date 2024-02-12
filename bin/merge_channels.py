@@ -169,10 +169,17 @@ def merge_channels(in_path, out_path, nuclei_chan=0, channels_to_merge=None, chu
     if nuclei_chan in channels_to_merge:
         raise ValueError("There is conflict between channels to merge and nuclei channels")
     img_level, metadata = read_tiff_orion(in_path)
+    try:
+        nuclei_chan_metadata = metadata.get_channel(nuclei_chan)
+    except IndexError:
+        nuclei_chan_metadata = None
 
-    nuclei_chan_metadata = metadata.get_channel(nuclei_chan)
     metadata.remove_all_channels()
-    metadata.add_channel(nuclei_chan_metadata)
+
+    if nuclei_chan_metadata is not None:
+        metadata.add_channel(nuclei_chan_metadata)
+    else:
+        metadata.add_channel_metadata(channel_name="nuclear_channel")
     metadata.add_channel_metadata(channel_name="merged_channels")
     metadata.dtype='uint16'
 
@@ -185,9 +192,9 @@ def merge_channels(in_path, out_path, nuclei_chan=0, channels_to_merge=None, chu
             tiff_out.write(
                 data=tile_generator(img_level, nuclei_chan, channels_to_merge, 
                                     *img_level.shape[1:], *chunk_size, agg=agg, norm=norm, norm_val=norm_val),
-                shape=(2, *img_level.shape[1:3]),
+                shape=(2, *img_level.shape[1:]),
                 tile=chunk_size,
-                **metadata.to_dict()
+                **metadata.to_dict(shape=img_level.shape[1:])
             )
 
 def guess_channels_to_merge(img_path):

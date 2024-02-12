@@ -130,7 +130,7 @@ workflow {
 
   main:
     // Init Channels
-    imgCh = Channel.fromPath((params.images =~ /\.tiff?$/) ? params.images : "${params.images}/*.ti{f,ff}")
+    imgCh = Channel.fromPath((params.images =~ /tiff?$/) ? params.images : "${params.images}/*.ti{f,ff}")
     imgId = imgCh.map{img -> tuple(NFTools.getImageID(img), img)}
     markersCh = Channel.fromPath(params.markers.endsWith(".csv") ? params.markers : "${params.markers}/*.csv")
     mrkId = markersCh.map{img -> tuple(NFTools.getImageID(img), img)}

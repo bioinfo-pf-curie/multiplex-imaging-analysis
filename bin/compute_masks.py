@@ -339,7 +339,7 @@ if __name__ == '__main__':
     metadata = OmeTifffile(TiffFile(args.original).pages[0])
     metadata.remove_all_channels()
     metadata.add_channel_metadata(channel_name="masks")
-    print(masks.dtype)
+
     metadata.dtype = masks.dtype
 
-    imwrite(args.out, masks, bigtiff=True, shaped=False, **metadata.to_dict())
+    imwrite(args.out, masks, bigtiff=True, shaped=False, **metadata.to_dict(shape=masks.shape))
