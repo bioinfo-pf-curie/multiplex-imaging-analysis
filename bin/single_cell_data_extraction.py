@@ -14,6 +14,8 @@ import numpy as np
 import os
 import skimage.measure as measure
 import tifffile
+import psutil
+import sys
 
 from pathlib import Path
 
@@ -44,12 +46,17 @@ def MaskChannel(mask_loaded, image_loaded_z, intensity_props=["intensity_mean"])
     builtin_props = set(intensity_props).intersection(measure._regionprops.PROP_VALS)
     # Otherwise look for them in this module
     extra_props = set(intensity_props).difference(measure._regionprops.PROP_VALS)
+    process = psutil.Process()
+    with open("debug.txt", "a") as db:
+        db.write(f"total_mem={process.memory_info().rss}")
     dat = measure.regionprops_table(
         mask_loaded, image_loaded_z,
         properties = tuple(builtin_props),
         extra_properties = [globals()[n] for n in extra_props],
         cache=False
     )
+    with open("debug.txt", "a") as debug:
+        debug.write(f"dat={sys.getsizeof(dat)}")
     return dat
 
 
@@ -146,16 +153,20 @@ def MaskZstack(masks_loaded,image,channel_names_loaded, mask_props=None, intensi
 
     #Create empty dictionary to store channel results per mask
     dict_of_chan = {m_name: [] for m_name in mask_names}
+    with open("debug.txt", "a") as db:
+        db.write(f"{len(mask_names)=}")
     #Get the z channel and the associated channel name from list of channel names
     for z in range(len(channel_names_loaded)):
         #Run the data Prep function
+        with open("debug.txt", "a") as db:
+            db.write(f"{z=}")
         image_loaded_z = PrepareData(image,z)
 
         #Iterate through number of masks to extract single cell data
-        for nm in range(len(mask_names)):
+        for nm in mask_names:
             #Use the above information to mask z stack
-            dict_of_chan[mask_names[nm]].append(
-                MaskChannel(masks_loaded[mask_names[nm]],image_loaded_z, intensity_props=intensity_props)
+            dict_of_chan[nm].append(
+                MaskChannel(masks_loaded[nm],image_loaded_z, intensity_props=intensity_props)
             )
         #Print progress
         print("Finished "+str(z))
