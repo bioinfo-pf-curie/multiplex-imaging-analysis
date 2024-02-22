@@ -1,8 +1,10 @@
 process stitchFlows {
   label 'cellpose'
   label 'minCpu'
-  label 'maxMem'
   label 'higherTime'
+
+  memory { MemoryUnit.of(Math.max(Math.min((int)(meta.imgSize * 0.3), 190000000000), 2000000000)) }
+  // take 30% of the size of image input with a minimum of 2GB and a max of 190GB 
   // maxMem is used untill I figure out if I can lower the memory from this step
   //container "${params.contPfx}${module.container}:${module.version}"
 
