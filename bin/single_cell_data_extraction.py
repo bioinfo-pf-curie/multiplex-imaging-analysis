@@ -55,8 +55,6 @@ def MaskChannel(mask_loaded, image_loaded_z, intensity_props=["intensity_mean"])
         extra_properties = [globals()[n] for n in extra_props],
         cache=False
     )
-    with open("debug.txt", "a") as debug:
-        debug.write(f"dat={sys.getsizeof(dat)}")
     return dat
 
 
@@ -153,8 +151,6 @@ def MaskZstack(masks_loaded,image,channel_names_loaded, mask_props=None, intensi
 
     #Create empty dictionary to store channel results per mask
     dict_of_chan = {m_name: [] for m_name in mask_names}
-    with open("debug.txt", "a") as db:
-        db.write(f"{len(mask_names)=}")
     #Get the z channel and the associated channel name from list of channel names
     for z in range(len(channel_names_loaded)):
         #Run the data Prep function
