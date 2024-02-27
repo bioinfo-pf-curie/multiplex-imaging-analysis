@@ -111,38 +111,47 @@ def stich_flow(list_npy, input_img_path, overlap, out_path):
     total_flow: np.array
         the flow for complete image
     """
-    t0 = time.process_time()
+    with open("start_time.txt", "w+") as o:
+        o.write('start')
     original_tiff = TiffFile(input_img_path)
     total_flow = np.lib.format.open_memmap(out_path, dtype='float32', mode="w+", shape=(3, *original_tiff.series[0].shape[1:]))
 
     tiles_height = []
-    t1 = time.process_time()
-    print(f"init time = {t1-t0} ({len(list_npy)} files)\n")
+    
     for i, npy in enumerate(list_npy):
-        t2 = time.process_time()
         cur_height = get_current_height(npy)
         flow = load_npy(npy)
         weight = get_weight(flow[4].shape[1], edge=("f" if not i else "l" if i == len(list_npy) - 1 else None))
         weighted_flow = np.ascontiguousarray(np.array(flow[4]) * weight[np.newaxis, :, np.newaxis])
         tiles_height.append(weighted_flow.shape[1])
         total_flow[:, cur_height:cur_height+weighted_flow.shape[1], :] += weighted_flow
-        total_flow.flush()
-        t3 = time.process_time()
-        print(f"{i} time = {t3-t2}\n")
-    t4 = time.process_time()
+        if not i % 10:
+            if not i:
+                with open("first_flush_start.txt", "w+") as o:
+                    o.write("start")
+            total_flow.flush()
+            if not i:
+                with open("first_flush_end.txt", "w+") as o:
+                    o.write("end")
+
     tile_height = int(np.median(tiles_height))
 
     flow = None # can be collected
     y_weight = sum_of_weight_on_axis(tile_height, overlap, original_tiff.series[0].shape[1])
-    t5 = time.process_time()
-    print(f'between = {t5-t4}\n')
+    chunk_count = 0
+
     for chunk in range(0, total_flow.shape[2], tile_height):
-        t6 = time.process_time()
         total_flow[..., chunk:chunk+tile_height] /= y_weight
-        total_flow.flush()
-        t7 = time.process_time()
-        print(f"{chunk} (2) time = {t7-t6}\n")
-    print(f'total = {t7-t0}')
+        chunk_count += 1 
+        if chunk_count == 10:
+            chunk_count = 0
+            if not chunk:
+                with open("second_flush_start.txt", "w+") as o:
+                    o.write("start")
+            total_flow.flush()
+            if not chunk:
+                with open("second_flush_end.txt", "w+") as o:
+                    o.write("end")
     return total_flow
 
 if __name__ == '__main__':
@@ -159,4 +168,3 @@ if __name__ == '__main__':
         np.save(args.out, flows)
     else:
         flows = stich_flow(list_npy, args.original, overlap=args.overlap, out_path=args.out)
-
