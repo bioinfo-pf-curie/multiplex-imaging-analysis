@@ -15,7 +15,7 @@ process splitImage {
     task.ext.when == null || task.ext.when
 
   script:
-    def maxHeight = task.memory.getBytes() / task.cpus
+    def maxHeight = params.titleHeight ? 0 : task.memory.getBytes() / task.cpus
     def args = task.ext.args ?: ''
     """
     split_image.py --file_in $image --memory $maxHeight $args

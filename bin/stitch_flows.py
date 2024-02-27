@@ -133,6 +133,7 @@ def stich_flow(list_npy, input_img_path, overlap, out_path):
             if not i:
                 with open("first_flush_end.txt", "w+") as o:
                     o.write("end")
+    total_flow.flush()
 
     tile_height = int(np.median(tiles_height))
 
@@ -152,6 +153,7 @@ def stich_flow(list_npy, input_img_path, overlap, out_path):
             if not chunk:
                 with open("second_flush_end.txt", "w+") as o:
                     o.write("end")
+    total_flow.flush()
     return total_flow
 
 if __name__ == '__main__':
