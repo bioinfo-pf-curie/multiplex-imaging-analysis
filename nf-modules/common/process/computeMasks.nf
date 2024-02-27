@@ -1,8 +1,10 @@
 process computeMasks {
   label 'cellpose'
   label 'minCpu'
-  label 'highMem'
   label 'higherTime'
+
+  memory { MemoryUnit.of(Math.max(Math.min((int)(meta.imgSize * 0.6), params.memoryMax), params.memoryMin)) }
+
   // maxMem is used untill I figure out if I can lower the memory from this step
   //container "${params.contPfx}${module.container}:${module.version}"
 
