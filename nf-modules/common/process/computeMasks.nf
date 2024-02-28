@@ -3,7 +3,7 @@ process computeMasks {
   label 'minCpu'
   label 'higherTime'
 
-  memory { MemoryUnit.of(Math.max(Math.min((int)(meta.imgSize * 0.6), params.memoryMax), params.memoryMin)) }
+  memory { MemoryUnit.of(Math.max(Math.min((meta.imgSize * 0.6).toFloat(), params.memoryMax), params.memoryMin).toLong()) }
 
   // maxMem is used untill I figure out if I can lower the memory from this step
   //container "${params.contPfx}${module.container}:${module.version}"
