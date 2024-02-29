@@ -114,11 +114,15 @@ def stich_flow(list_npy, input_img_path, overlap, out_path):
     with open("start_time.txt", "w+") as o:
         o.write('start')
     original_tiff = TiffFile(input_img_path)
-    total_flow = np.lib.format.open_memmap(out_path, dtype='float32', mode="w+", shape=(3, *original_tiff.series[0].shape[1:]))
+    flow_shape = (3, *original_tiff.series[0].shape[1:])
+    # init memmap
+    total_flow = np.lib.format.open_memmap(out_path, dtype='float32', mode="w+", shape=flow_shape)
 
     tiles_height = []
     
     for i, npy in enumerate(list_npy):
+        # init memmap each time else it will accumulate in memory
+        total_flow = np.lib.format.open_memmap(out_path, dtype='float32', shape=flow_shape)
         cur_height = get_current_height(npy)
         flow = load_npy(npy)
         weight = get_weight(flow[4].shape[1], edge=("f" if not i else "l" if i == len(list_npy) - 1 else None))
@@ -134,14 +138,15 @@ def stich_flow(list_npy, input_img_path, overlap, out_path):
                 with open("first_flush_end.txt", "w+") as o:
                     o.write("end")
     total_flow.flush()
-
+    del total_flow
+    del flow # can be collected
     tile_height = int(np.median(tiles_height))
 
-    flow = None # can be collected
     y_weight = sum_of_weight_on_axis(tile_height, overlap, original_tiff.series[0].shape[1])
     chunk_count = 0
 
-    for chunk in range(0, total_flow.shape[2], tile_height):
+    for chunk in range(0, flow_shape[2], tile_height):
+        total_flow = np.lib.format.open_memmap(out_path, dtype='float32', shape=flow_shape)
         total_flow[..., chunk:chunk+tile_height] /= y_weight
         chunk_count += 1 
         if chunk_count == 10:
