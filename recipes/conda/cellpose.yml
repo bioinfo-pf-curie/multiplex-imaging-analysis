@@ -19,4 +19,5 @@ dependencies:
     - zarr==2.16.1
     - opencv-python-headless==4.8.1.78
     - cellpose==2.2.2
+    - psutil==5.9.6
 

@@ -326,20 +326,28 @@ if __name__ == '__main__':
     parser.add_argument('--chunks', type=int, nargs=2, required=False, default=(1024, 1024), help="Size of chunk for dask")
     parser.add_argument('--overlap', type=int, required=False, default=60, help="Overlap (in pixel) for dask to perform computing of masks on chunks")
     args = parser.parse_args()
-
+    import psutil
+    process = psutil.Process()
     flows = np.lib.format.open_memmap(vars(args)['in'])
+    print(f"flow before = {process.memory_info().rss}")
     flows_da = da.from_array(flows, chunks=[3, *args.chunks])
+    print(f"flow aftr = {process.memory_info().rss}")
+    masks_graph = da.map_overlap(compute_masks, flows_da, dtype=np.uint32, depth={0: 0, 1: args.overlap, 2: args.overlap}, drop_axis=0)
+    mask_memmap = np.lib.format.open_memmap(".tmp_masks.npy", mode='w+', dtype=np.uint32, shape=flows.shape[1:])
+    print(f"masks_grpah = {process.memory_info().rss}")
+    da.store(masks_graph, mask_memmap, compute=True)
+    print(f"mask memmap aft= {process.memory_info().rss}")
 
-    masks = da.map_overlap(compute_masks, flows_da, dtype=np.uint32, depth={0: 0, 1: args.overlap, 2: args.overlap}, drop_axis=0).compute()
+    correct_edges_inplace(mask_memmap, chunks_size=args.chunks)
+    print(f"mask memmap aft inplace= {process.memory_info().rss}")
 
-    correct_edges_inplace(masks, chunks_size=args.chunks)
-
-    fastremap.renumber(masks, in_place=True) #convenient to guarantee non-skipped labels
+    fastremap.renumber(mask_memmap, in_place=True) #convenient to guarantee non-skipped labels
+    print(f"mask memmap aft renumber= {process.memory_info().rss}")
 
     metadata = OmeTifffile(TiffFile(args.original).pages[0])
     metadata.remove_all_channels()
     metadata.add_channel_metadata(channel_name="masks")
 
-    metadata.dtype = masks.dtype
+    metadata.dtype = mask_memmap.dtype
 
-    imwrite(args.out, masks, bigtiff=True, shaped=False, **metadata.to_dict(shape=masks.shape))
+    imwrite(args.out, mask_memmap, bigtiff=True, shaped=False, **metadata.to_dict(shape=mask_memmap.shape))
