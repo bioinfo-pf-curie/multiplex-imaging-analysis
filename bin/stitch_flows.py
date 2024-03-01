@@ -5,7 +5,6 @@ import argparse
 
 import numpy as np
 from tifffile import TiffFile
-import time
 
 def get_weight(tile, edge=False):
     """
@@ -122,7 +121,6 @@ def stich_flow(list_npy, input_img_path, overlap, out_path):
     
     for i, npy in enumerate(list_npy):
         # init memmap each time else it will accumulate in memory
-        total_flow = np.lib.format.open_memmap(out_path, dtype='float32', shape=flow_shape)
         cur_height = get_current_height(npy)
         flow = load_npy(npy)
         weight = get_weight(flow[4].shape[1], edge=("f" if not i else "l" if i == len(list_npy) - 1 else None))
@@ -134,11 +132,12 @@ def stich_flow(list_npy, input_img_path, overlap, out_path):
                 with open("first_flush_start.txt", "w+") as o:
                     o.write("start")
             total_flow.flush()
+            total_flow = np.lib.format.open_memmap(out_path, dtype='float32', shape=flow_shape) # make sure memory is freed after flush
             if not i:
                 with open("first_flush_end.txt", "w+") as o:
                     o.write("end")
     total_flow.flush()
-    del total_flow
+    total_flow = np.lib.format.open_memmap(out_path, dtype='float32', shape=flow_shape)
     del flow # can be collected
     tile_height = int(np.median(tiles_height))
 
@@ -146,20 +145,20 @@ def stich_flow(list_npy, input_img_path, overlap, out_path):
     chunk_count = 0
 
     for chunk in range(0, flow_shape[2], tile_height):
-        total_flow = np.lib.format.open_memmap(out_path, dtype='float32', shape=flow_shape)
         total_flow[..., chunk:chunk+tile_height] /= y_weight
         chunk_count += 1 
-        if chunk_count == 10:
-            chunk_count = 0
+        if not chunk_count % 10:
             if not chunk:
                 with open("second_flush_start.txt", "w+") as o:
                     o.write("start")
             total_flow.flush()
+            total_flow = np.lib.format.open_memmap(out_path, dtype='float32', shape=flow_shape)
             if not chunk:
                 with open("second_flush_end.txt", "w+") as o:
                     o.write("end")
     total_flow.flush()
-    return total_flow
+    del total_flow
+    return
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -174,4 +173,4 @@ if __name__ == '__main__':
         flows = load_npy(list_npy[0])[4]
         np.save(args.out, flows)
     else:
-        flows = stich_flow(list_npy, args.original, overlap=args.overlap, out_path=args.out)
+        stich_flow(list_npy, args.original, overlap=args.overlap, out_path=args.out)
