@@ -70,7 +70,8 @@ def MaskIDs(mask, mask_props=None):
 
     dat = measure.regionprops_table(
         mask,
-        properties=all_mask_props
+        properties=all_mask_props,
+        cache=False
     )
 
     name_map = {

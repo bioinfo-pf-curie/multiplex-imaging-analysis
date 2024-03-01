@@ -120,7 +120,6 @@ def stich_flow(list_npy, input_img_path, overlap, out_path):
     tiles_height = []
     
     for i, npy in enumerate(list_npy):
-        # init memmap each time else it will accumulate in memory
         cur_height = get_current_height(npy)
         flow = load_npy(npy)
         weight = get_weight(flow[4].shape[1], edge=("f" if not i else "l" if i == len(list_npy) - 1 else None))
@@ -132,7 +131,8 @@ def stich_flow(list_npy, input_img_path, overlap, out_path):
                 with open("first_flush_start.txt", "w+") as o:
                     o.write("start")
             total_flow.flush()
-            total_flow = np.lib.format.open_memmap(out_path, dtype='float32', shape=flow_shape) # make sure memory is freed after flush
+            # reload memmap each time else it will accumulate in memory
+            total_flow = np.lib.format.open_memmap(out_path, dtype='float32', shape=flow_shape)
             if not i:
                 with open("first_flush_end.txt", "w+") as o:
                     o.write("end")
