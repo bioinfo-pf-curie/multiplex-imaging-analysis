@@ -21,4 +21,5 @@ dependencies:
     - cellpose==2.2.2
     - psutil==5.9.6
     - pydantic==2.5.3
+    - xsdata==23.8
 
