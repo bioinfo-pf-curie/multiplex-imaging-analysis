@@ -1,9 +1,10 @@
 process stitch {
   label 'cellpose'
   label 'minCpu'
-  label 'maxMem'
   label 'higherTime'
-  // maxMem is used untill I figure out if I can lower the memory from this step
+
+  memory { MemoryUnit.of(Math.max(Math.min((meta.imgSize * 0.3).toFloat(), params.memoryMax), params.memoryMin).toLong()) }
+  // take 30% of the size of image input with a minimum of 2GB and a max of 190GB 
   //container "${params.contPfx}${module.container}:${module.version}"
 
 

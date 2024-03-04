@@ -12,8 +12,11 @@ import h5py
 import pandas as pd
 import numpy as np
 import os
-import skimage.measure as measure
+from regionprops import regionprops_table
+from skimage.measure._regionprops import PROP_VALS
 import tifffile
+import psutil
+import sys
 
 from pathlib import Path
 
@@ -41,10 +44,13 @@ def MaskChannel(mask_loaded, image_loaded_z, intensity_props=["intensity_mean"])
     Returns a table with CellID according to the mask and the mean pixel intensity
     for the given channel for each cell"""
     # Look for regionprops in skimage
-    builtin_props = set(intensity_props).intersection(measure._regionprops.PROP_VALS)
+    builtin_props = set(intensity_props).intersection(PROP_VALS)
     # Otherwise look for them in this module
-    extra_props = set(intensity_props).difference(measure._regionprops.PROP_VALS)
-    dat = measure.regionprops_table(
+    extra_props = set(intensity_props).difference(PROP_VALS)
+    process = psutil.Process()
+    with open("debug.txt", "a") as db:
+        db.write(f"total_mem={process.memory_info().rss}")
+    dat = regionprops_table(
         mask_loaded, image_loaded_z,
         properties = tuple(builtin_props),
         extra_properties = [globals()[n] for n in extra_props],
@@ -63,9 +69,10 @@ def MaskIDs(mask, mask_props=None):
     if mask_props is not None:
         all_mask_props = all_mask_props.union(mask_props)
 
-    dat = measure.regionprops_table(
+    dat = regionprops_table(
         mask,
-        properties=all_mask_props
+        properties=all_mask_props,
+        cache=False
     )
 
     name_map = {
@@ -149,13 +156,15 @@ def MaskZstack(masks_loaded,image,channel_names_loaded, mask_props=None, intensi
     #Get the z channel and the associated channel name from list of channel names
     for z in range(len(channel_names_loaded)):
         #Run the data Prep function
+        with open("debug.txt", "a") as db:
+            db.write(f"{z=}")
         image_loaded_z = PrepareData(image,z)
 
         #Iterate through number of masks to extract single cell data
-        for nm in range(len(mask_names)):
+        for nm in mask_names:
             #Use the above information to mask z stack
-            dict_of_chan[mask_names[nm]].append(
-                MaskChannel(masks_loaded[mask_names[nm]],image_loaded_z, intensity_props=intensity_props)
+            dict_of_chan[nm].append(
+                MaskChannel(masks_loaded[nm],image_loaded_z, intensity_props=intensity_props)
             )
         #Print progress
         print("Finished "+str(z))

@@ -36,8 +36,6 @@ params.putAll(NFTools.lint(params, paramsWithUsage))
 customRunName = NFTools.checkRunName(workflow.runName, params.name)
 
 // Custom functions/variables
-// mqcReport = []
-// include {checkAlignmentPercent} from './lib/functions'
 
 /*
 ===================================
@@ -45,11 +43,7 @@ customRunName = NFTools.checkRunName(workflow.runName, params.name)
 ===================================
 */
 
-// Initialize variable from the genome.conf file
-//params.bowtie2Index = NFTools.getGenomeAttribute(params, 'bowtie2')
-
 // Stage config files
-//multiqcConfigCh = Channel.fromPath(params.multiqcConfig)
 outputDocsCh = Channel.fromPath("$projectDir/docs/output.md")
 outputDocsImagesCh = file("$projectDir/docs/images/", checkIfExists: true)
 
@@ -65,22 +59,6 @@ if (!params.images){
 if (!params.markers){
   exit 1, "Missing markers file (use --markers to list markers file path)"
 }
-
-/*
-==========================
- BUILD CHANNELS
-==========================
-*/
-
-// if ( params.metadata ){
-//   Channel
-//     .fromPath( params.metadata )
-//     .ifEmpty { exit 1, "Metadata file not found: ${params.metadata}" }
-//     .set { metadataCh }
-// }
-
-
-
 
 /*
 ===========================
@@ -147,7 +125,8 @@ workflow {
       tuple([
         originalName: name, 
         imagePath: ipath, 
-        markersPath: mpath
+        markersPath: mpath,
+        imgSize: ipath.size()
       ], ipath, mpath)}
     
     // subroutines
@@ -167,7 +146,8 @@ workflow {
         markersPath: meta.markersPath, 
         nbSplittedFile: nb, 
         splittedName: splitted.name - ~/\.\w+$/, 
-        startHeight: NFTools.getStartHeight(splitted)
+        startHeight: NFTools.getStartHeight(splitted),
+        imgSize: meta.imgSize
       ] 
       tuple(newMeta, splitted)
     }
@@ -175,7 +155,7 @@ workflow {
     segmented = segmentation(splittedImg)
 
     segmented = segmented.map{meta, segmentedImg ->
-      tuple(groupKey(meta.subMap("originalName", "imagePath", "markersPath"), meta.nbSplittedFile.toInteger()), meta, segmentedImg)
+      tuple(groupKey(meta.subMap("originalName", "imagePath", "markersPath", "imgSize"), meta.nbSplittedFile.toInteger()), meta, segmentedImg)
     }.groupTuple().map{groupedkey, old_meta, segmentedImg -> 
       tuple(groupedkey, segmentedImg)
     }
