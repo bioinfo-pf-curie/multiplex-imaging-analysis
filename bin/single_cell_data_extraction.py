@@ -12,7 +12,8 @@ import h5py
 import pandas as pd
 import numpy as np
 import os
-import skimage.measure as measure
+from regionprops import regionprops_table
+from skimage.measure._regionprops import PROP_VALS
 import tifffile
 import psutil
 import sys
@@ -43,13 +44,13 @@ def MaskChannel(mask_loaded, image_loaded_z, intensity_props=["intensity_mean"])
     Returns a table with CellID according to the mask and the mean pixel intensity
     for the given channel for each cell"""
     # Look for regionprops in skimage
-    builtin_props = set(intensity_props).intersection(measure._regionprops.PROP_VALS)
+    builtin_props = set(intensity_props).intersection(PROP_VALS)
     # Otherwise look for them in this module
-    extra_props = set(intensity_props).difference(measure._regionprops.PROP_VALS)
+    extra_props = set(intensity_props).difference(PROP_VALS)
     process = psutil.Process()
     with open("debug.txt", "a") as db:
         db.write(f"total_mem={process.memory_info().rss}")
-    dat = measure.regionprops_table(
+    dat = regionprops_table(
         mask_loaded, image_loaded_z,
         properties = tuple(builtin_props),
         extra_properties = [globals()[n] for n in extra_props],
@@ -68,7 +69,7 @@ def MaskIDs(mask, mask_props=None):
     if mask_props is not None:
         all_mask_props = all_mask_props.union(mask_props)
 
-    dat = measure.regionprops_table(
+    dat = regionprops_table(
         mask,
         properties=all_mask_props,
         cache=False

@@ -153,7 +153,7 @@ def stich_flow(list_npy, input_img_path, overlap, out_path):
                     o.write("start")
             total_flow.flush()
             total_flow = np.lib.format.open_memmap(out_path, dtype='float32', shape=flow_shape)
-            if not chunk:
+            if not chunk_count:
                 with open("second_flush_end.txt", "w+") as o:
                     o.write("end")
     total_flow.flush()
