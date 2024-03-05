@@ -7,3 +7,6 @@ dependencies:
   - pathlib=1.0.1=pyhd3eb1b0_1
   - scikit-image=0.20.0=py311h6a678d5_0
   - imagecodecs=2023.1.23=py311h8105a5c_0
+  - pip=23.3=py311h06a4308_0
+  - pip:
+    - psutil==5.9.6
