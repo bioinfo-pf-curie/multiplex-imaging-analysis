@@ -1,7 +1,7 @@
 process computeMasks {
   label 'cellpose'
-  label 'minCpu'
-  label 'higherTime'
+  label 'lowCpu'
+  label 'infiniteTime'
 
   memory { MemoryUnit.of(Math.max(Math.min((meta.imgSize * 0.6).toFloat(), params.memoryMax), params.memoryMin).toLong()) }
 
