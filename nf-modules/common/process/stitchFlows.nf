@@ -1,7 +1,6 @@
 process stitchFlows {
   label 'cellpose'
   label 'minCpu'
-  label 'higherTime'
 
   memory { MemoryUnit.of(Math.max(Math.min((meta.imgSize * 0.3).toFloat(), params.memoryMax), params.memoryMin).toLong()) }
   // take 30% of the size of image input with a minimum of 2GB and a max of 190GB 
