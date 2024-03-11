@@ -14,6 +14,6 @@ process segmentation {
 
   script:
     """
-    cellpose --channel_axis 0 --savedir . --verbose --chan 2 --chan2 1 --pretrained_model tissuenet --image_path $image
+    cellpose --channel_axis 0 --savedir . --verbose --chan 2 --chan2 1 --pretrained_model tissuenet --image_path $image $task.ext.args
     """
 }
