@@ -1,5 +1,5 @@
 process stitch {
-  label 'cellpose'
+  label 'img_utils'
   label 'minCpu'
   label 'higherTime'
 
