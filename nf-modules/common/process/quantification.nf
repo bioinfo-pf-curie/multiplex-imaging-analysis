@@ -1,7 +1,8 @@
 process quantification {
   label 'quantification'
   label "minCpu"
-  label 'maxMem'
+  label 'extraMem'
+  label "highTime"
 
   input:
       tuple val(meta), path(mask)

@@ -15,8 +15,6 @@ import os
 from regionprops import regionprops_table
 from skimage.measure._regionprops import PROP_VALS
 import tifffile
-import psutil
-import sys
 
 from pathlib import Path
 
@@ -47,9 +45,7 @@ def MaskChannel(mask_loaded, image_loaded_z, intensity_props=["intensity_mean"])
     builtin_props = set(intensity_props).intersection(PROP_VALS)
     # Otherwise look for them in this module
     extra_props = set(intensity_props).difference(PROP_VALS)
-    process = psutil.Process()
-    with open("debug.txt", "a") as db:
-        db.write(f"total_mem={process.memory_info().rss}")
+
     dat = regionprops_table(
         mask_loaded, image_loaded_z,
         properties = tuple(builtin_props),

@@ -97,8 +97,6 @@ def stich_flow(list_npy, input_img_path, overlap, out_path):
     total_flow: np.array
         the flow for complete image
     """
-    with open("start_time.txt", "w+") as o:
-        o.write('start')
     original_tiff = TiffFile(input_img_path)
     flow_shape = (3, *original_tiff.series[0].shape[1:])
     # init memmap
@@ -110,24 +108,17 @@ def stich_flow(list_npy, input_img_path, overlap, out_path):
         cur_height = get_current_height(npy)
         flow = load_npy(npy)
         weight = get_weight(flow[4].shape[1], edge=("f" if not i else "l" if i == len(list_npy) - 1 else None))
-        weighted_flow = np.ascontiguousarray(np.array(flow[4]) * weight[np.newaxis, :, np.newaxis])
+        weighted_flow = np.ascontiguousarray(np.array(flow[4]) * weight[np.newaxis, :, np.newaxis]) # accelerate writing operation
         tiles_height.append(weighted_flow.shape[1])
         total_flow[:, cur_height:cur_height+weighted_flow.shape[1], :] += weighted_flow
-        if not i % 10:
-            if not i:
-                with open("first_flush_start.txt", "w+") as o:
-                    o.write("start")
+        if not i % 10: # flush every ten file (~10GB)
             total_flow.flush()
             # reload memmap each time else it will accumulate in memory
             total_flow = np.lib.format.open_memmap(out_path, dtype='float32', shape=flow_shape)
-            if not i:
-                with open("first_flush_end.txt", "w+") as o:
-                    o.write("end")
     total_flow.flush()
     total_flow = np.lib.format.open_memmap(out_path, dtype='float32', shape=flow_shape)
     del flow # can be collected
-    tile_height = int(np.median(tiles_height))
-
+    tile_height = int(np.median(tiles_height)) # last one may be cut
     y_weight = sum_of_weight_on_axis(tile_height, overlap, original_tiff.series[0].shape[1])
     chunk_count = 0
 
@@ -135,16 +126,10 @@ def stich_flow(list_npy, input_img_path, overlap, out_path):
         total_flow[..., chunk:chunk+tile_height] /= y_weight
         chunk_count += 1 
         if not chunk_count % 10:
-            if not chunk:
-                with open("second_flush_start.txt", "w+") as o:
-                    o.write("start")
             total_flow.flush()
             total_flow = np.lib.format.open_memmap(out_path, dtype='float32', shape=flow_shape)
-            if not chunk_count:
-                with open("second_flush_end.txt", "w+") as o:
-                    o.write("end")
-    total_flow.flush()
-    del total_flow
+    total_flow.flush() # update last chunk
+    del total_flow # no close method on memmap
     return
 
 if __name__ == '__main__':

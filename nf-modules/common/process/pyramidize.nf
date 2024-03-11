@@ -1,7 +1,8 @@
 process pyramidize {
   label 'pyramidize'
-  label 'minCpu'
+  label 'lowCpu'
   label "extraMem"
+  label "highTime"
 
   input:
      tuple val(tag), val(meta), path(image)

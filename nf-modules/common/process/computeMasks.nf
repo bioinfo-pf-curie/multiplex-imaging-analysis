@@ -1,13 +1,10 @@
 process computeMasks {
   label 'cellpose'
-  label 'minCpu'
-  label 'higherTime'
+  label 'lowCpu'
+  label 'infiniteTime'
 
-  memory { MemoryUnit.of(Math.max(Math.min((meta.imgSize * 0.6).toFloat(), params.memoryMax), params.memoryMin).toLong()) }
-
-  // maxMem is used untill I figure out if I can lower the memory from this step
-  //container "${params.contPfx}${module.container}:${module.version}"
-
+  memory { MemoryUnit.of(Math.max(Math.min((meta.imgSize * 0.4).toFloat(), params.memoryMax), params.memoryMin).toLong()) }
+  // take 40% of the size of image input with a minimum of 2GB and a max of 190GB 
 
   input:
       tuple val(meta), path(flow)
