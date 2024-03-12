@@ -12,60 +12,7 @@ import argparse
 import os
 from scipy.ndimage import gaussian_filter
 
-from utils import read_tiff_orion, _tile_generator
-
-def compute_hist(img, channel, x, y, chunk_x, chunk_y, img_min=None, img_max=None, num_bin=100, max_bin=0.9):
-    """
-    Compute the histogram of a channel from an image and get automatically min and max index for normalizing image afterward.
-    The method used to get those are more or less the one used to get it manually. 
-    'a little' after the pic (background) and remove 10% extremum for max
-    
-    Parameters
-    ----------
-
-    img: np.array
-        image to analyze
-    channel: int
-        index of the channel of interest
-    x: int
-        height of img
-    y: int
-        witdh of img
-    chunk_x: int
-        the size in x of the tile to compute hist from
-    chunk_y: int
-        the size in y of the tile to compute hist from
-    img_min: int
-        minimal intensity value from img (can not be computed easily without img in full memory)
-    img_max: int
-        maximal intensity value from img
-    num_bin: int
-        number of bin for histogram (more = more precise, less = efficient)    
-    max_bin: float
-        max percentage to keep
-
-    Return
-    ------
-
-    tuple of int
-        value of the bin to normalize img.
-    """
-    if img_min is None or img_max is None:
-        img_min, img_max = 0, 65535
-    bins = np.linspace(img_min, img_max, num_bin)
-    hist = np.zeros(num_bin-1)
-    for tile in _tile_generator(img, channel, x, y, chunk_x, chunk_y):
-        hist += np.histogram(tile, bins)[0]
-
-    idx_min = hist.argmax()+1
-    idx_max = int(num_bin * max_bin)
-    idx_max = idx_max if len(hist) > idx_max > idx_min else idx_min + 1
-
-    if idx_min >= len(hist)-2:
-        return bins[-2], bins[-1]
-    else:
-        return bins[idx_min], bins[idx_max]
-
+from utils import read_tiff_orion, _tile_generator, parse_normalization_values, compute_hist, min_max_norm
 
 def tile_generator(arr, nuclei_chan, to_merge_chan, x, y, chunk_x, chunk_y, agg=np.max, norm='hist', norm_val=None):
     """
@@ -101,31 +48,20 @@ def tile_generator(arr, nuclei_chan, to_merge_chan, x, y, chunk_x, chunk_y, agg=
     tile of the nuclei channel untouched and tile merged and normalized for others
 
     """
-    norm_min = np.zeros(shape=max(nuclei_chan, max(to_merge_chan))+1)
-    norm_max = np.zeros(shape=max(nuclei_chan, max(to_merge_chan))+1)
     for ci in [nuclei_chan, to_merge_chan]:
         if norm == 'hist':
             # first pass for normalisation
             for c in (ci if not isinstance(ci, int) else [ci]):
-                norm_min[c], norm_max[c] = compute_hist(arr, c, x, y, chunk_x, chunk_y, img_min=None, img_max=None)
+                norm_val[c] = compute_hist(arr, c, x, y, chunk_x, chunk_y)
 
         for tmp_arr in _tile_generator(arr, ci, x, y, chunk_x, chunk_y):
-            if norm == 'hist':
-                tmp_arr = gaussian_filter(tmp_arr, 0.2)
-                # normalize tmp_arr based on fitted curve or hist props
-                tmp_arr = (tmp_arr - norm_min[ci, None, None]) / (norm_max[ci, None, None] - norm_min[ci, None, None])
-                tmp_arr[tmp_arr < 0] = 0
-                tmp_arr[tmp_arr > 1] = 1
-                tmp_arr = (tmp_arr * 65535)
-            elif norm == "gaussian":
+            if norm == "gaussian":
                 tmp_arr = gaussian_filter(tmp_arr, 1)
-            elif norm == "custom" and norm_val is not None and ci == to_merge_chan:
+            elif norm and norm_val is not None and ci == to_merge_chan:
                 tmp_arr = tmp_arr.astype('float')
+                tmp_arr = gaussian_filter(tmp_arr, 0.2)
                 for i, c in enumerate(ci):
-                    tmp_arr[i] = (tmp_arr[i] - norm_val[c][0]) / (norm_val[c][1] - norm_val[c][0])
-                tmp_arr[tmp_arr < 0] = 0
-                tmp_arr[tmp_arr > 1] = 1
-                tmp_arr = (tmp_arr * 65535)                
+                    tmp_arr[i] = min_max_norm(tmp_arr[i], *norm_val[c])
 
             if ci != to_merge_chan:
                 yield tmp_arr.astype('uint16')
@@ -219,11 +155,9 @@ def guess_channels_to_merge(img_path):
 def parse_markers(img_path, markers_path):
     """Use of markers.csv mandatory file for mcmicro to point channel to be merge for helping segmentation"""
     segmentation_col_name = "segmentation"
-    normalization_col_name = "normalization"
     marker_name = "marker_name"
     mrk = read_csv(markers_path)
-    result = {}
-    norm = {}
+
     if segmentation_col_name in mrk.columns:
         mrk[segmentation_col_name] = mrk[segmentation_col_name].fillna(False).replace(
             {'False': False, "false": False, "Faux": False, 
@@ -232,18 +166,10 @@ def parse_markers(img_path, markers_path):
     else:
         print(f"no column {segmentation_col_name} found in markers.csv... guessing channels")
         return guess_channels_to_merge(img_path)[1], None
-    for idx, row in mrk.iterrows():
-        if row[segmentation_col_name]:
-            result[idx] = row[marker_name]
-            if normalization_col_name in row:
-                try:
-                    norm[idx] = [int(k) for k in row[normalization_col_name].split(';')]
-                except AttributeError:
-                    norm[idx] = [0, 65535]
+    
     # need to compare channel name with metadata to get order 
     # (or its the same in both and we dont care)
-    return list(result.keys()), norm or None
-
+    return list(mrk.loc[mrk[segmentation_col_name]].index), parse_normalization_values(mrk).reset_index(drop=True).T.to_dict('list')
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -277,5 +203,6 @@ if __name__ == "__main__":
                 raise ValueError('Wrong format for channels')
     else:
         _, channels = guess_channels_to_merge(in_path)
+
     merge_channels(in_path, out_path, channels_to_merge=channels, nuclei_chan=args.nuclei_channels, norm=args.norm, norm_val=norm_val)
  

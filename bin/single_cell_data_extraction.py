@@ -18,7 +18,7 @@ import tifffile
 
 from pathlib import Path
 
-from utils import normalize
+from utils import min_max_norm, parse_normalization_values, compute_hist
 
 #### Additional functions that can be specified by the user via intensity_props
 
@@ -136,8 +136,10 @@ def PrepareData(image,z, normalization=None, norm_val=None):
     
     if normalization is not None:
         if normalization == 'hist': 
-            norm_val = compute_hist(image_loaded_z)
-        image_loaded_z = normalize(image_loaded_z, norm_val)
+            nv = compute_hist(image_loaded_z[None, ...], 0, *image_loaded_z.shape, 256, 256)
+        else:
+            nv = norm_val[z]
+        image_loaded_z = min_max_norm(image_loaded_z, *nv)
 
     #Return the objects
     return image_loaded_z
@@ -236,7 +238,7 @@ def ExtractSingleCells(masks,image,channel_names,output, mask_props=None, intens
         raise Exception('%s must contain the marker_name column'%channel_names)
     
     
-    norm_val = channel_names_loaded['normalization'] if 'normalization' in channel_names_loaded else None
+    norm_val = parse_normalization_values(channel_names_loaded)
 
     #Contrast against the number of markers in the image
     if len(channel_names_loaded_list) != n_channels(image):

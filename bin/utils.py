@@ -13,11 +13,69 @@ def _tile_generator(arr, channel, x, y, chunk_x, chunk_y):
             yield arr[channel, x_cur: x_cur + chunk_x, y_cur: y_cur + chunk_y]
 
 
-def normalize(a, norm_val=None):
-    a = (a - norm_min[ci, None, None]) / (norm_max[ci, None, None] - norm_min[ci, None, None])
+def min_max_norm(a, min_, max_):
+    a = (a - min_) / (max_ - min_)
     a = np.clip(a, 0, 1)
-    return a * 65535
+    return a * 2**16
 
+def parse_normalization_values(df):
+    normalization_col_name = "normalization"
+    if normalization_col_name in df.columns:
+        return df[normalization_col_name].str.split(";", expand=True).fillna({0:0, 1:2**16})
+    
+def compute_hist(img, channel, x, y, chunk_x, chunk_y, img_min=None, img_max=None, num_bin=100, max_bin=0.9):
+    """
+    Compute the histogram of a channel from an image and get automatically min and max index for normalizing image afterward.
+    The method used to get those are more or less the one used to get it manually. 
+    'a little' after the pic (background) and remove 10% extremum for max
+    
+    Parameters
+    ----------
+
+    img: np.array
+        image to analyze
+    channel: int
+        index of the channel of interest
+    x: int
+        height of img
+    y: int
+        witdh of img
+    chunk_x: int
+        the size in x of the tile to compute hist from
+    chunk_y: int
+        the size in y of the tile to compute hist from
+    img_min: int
+        minimal intensity value from img (can not be computed easily without img in full memory)
+    img_max: int
+        maximal intensity value from img
+    num_bin: int
+        number of bin for histogram (more = more precise, less = efficient)    
+    max_bin: float
+        max percentage to keep
+
+    Return
+    ------
+
+    tuple of int
+        value of the bin to normalize img.
+    """
+    if img_min is None or img_max is None:
+        img_min, img_max = 0, 65535
+    bins = np.linspace(img_min, img_max, num_bin)
+    hist = np.zeros(num_bin-1)
+    for tile in _tile_generator(img, channel, x, y, chunk_x, chunk_y):
+        hist += np.histogram(tile, bins)[0]
+
+    idx_min = hist.argmax()+1
+    idx_max = int(num_bin * max_bin)
+    idx_max = idx_max if len(hist) > idx_max > idx_min else idx_min + 1
+
+    if idx_min >= len(hist)-2:
+        res = bins[-2], bins[-1]
+    else:
+        res = bins[idx_min], bins[idx_max]
+    print(res)
+    return res
 
 def get_info_qptiff(qptiff):
     # PX = 0.325, PXU = µm, PY = 0.325, PYU = µm, PZ = 1, PZU=µm, size_c, size_t=1, size_z=1, size_x, size_y, dtype=uint16
