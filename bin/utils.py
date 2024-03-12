@@ -4,12 +4,19 @@ from ome_types import OME, model
 import copy
 import warnings
 import xml.etree.ElementTree as ET
+import numpy as np
 
 def _tile_generator(arr, channel, x, y, chunk_x, chunk_y):
     """Generate chunk of arr"""
     for x_cur in range(0, x, chunk_x):
         for y_cur in range(0, y, chunk_y):
             yield arr[channel, x_cur: x_cur + chunk_x, y_cur: y_cur + chunk_y]
+
+
+def normalize(a, norm_val=None):
+    a = (a - norm_min[ci, None, None]) / (norm_max[ci, None, None] - norm_min[ci, None, None])
+    a = np.clip(a, 0, 1)
+    return a * 65535
 
 
 def get_info_qptiff(qptiff):
