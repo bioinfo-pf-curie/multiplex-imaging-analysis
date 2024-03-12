@@ -114,8 +114,7 @@ def tile_generator(arr, nuclei_chan, to_merge_chan, x, y, chunk_x, chunk_y, agg=
                 tmp_arr = gaussian_filter(tmp_arr, 0.2)
                 # normalize tmp_arr based on fitted curve or hist props
                 tmp_arr = (tmp_arr - norm_min[ci, None, None]) / (norm_max[ci, None, None] - norm_min[ci, None, None])
-                tmp_arr[tmp_arr < 0] = 0
-                tmp_arr[tmp_arr > 1] = 1
+                tmp_arr = np.clip(tmp_arr, 0, 1)
                 tmp_arr = (tmp_arr * 65535)
             elif norm == "gaussian":
                 tmp_arr = gaussian_filter(tmp_arr, 1)
@@ -123,8 +122,7 @@ def tile_generator(arr, nuclei_chan, to_merge_chan, x, y, chunk_x, chunk_y, agg=
                 tmp_arr = tmp_arr.astype('float')
                 for i, c in enumerate(ci):
                     tmp_arr[i] = (tmp_arr[i] - norm_val[c][0]) / (norm_val[c][1] - norm_val[c][0])
-                tmp_arr[tmp_arr < 0] = 0
-                tmp_arr[tmp_arr > 1] = 1
+                tmp_arr = np.clip(tmp_arr, 0, 1)
                 tmp_arr = (tmp_arr * 65535)                
 
             if ci != to_merge_chan:
