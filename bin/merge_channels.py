@@ -51,6 +51,7 @@ def tile_generator(arr, nuclei_chan, to_merge_chan, x, y, chunk_x, chunk_y, agg=
     for ci in [nuclei_chan, to_merge_chan]:
         if norm == 'hist':
             # first pass for normalisation
+            norm_val = {}
             for c in (ci if not isinstance(ci, int) else [ci]):
                 norm_val[c] = compute_hist(arr, c, x, y, chunk_x, chunk_y)
 
