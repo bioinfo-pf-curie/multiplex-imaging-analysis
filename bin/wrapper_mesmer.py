@@ -35,9 +35,12 @@ import argparse
 import numpy as np
 import tifffile
 
-
+import tensorflow as tf
 from deepcell.utils.io_utils import get_image
 from deepcell import applications as apps
+
+ARCHIVE_PATH = "MultiplexSegmentation-9.tar.gz"
+MODEL_PATH = "MultiplexSegmentation"
 
 def load_image(path, channel=0, ndim=3):
     """Load an image file as a single-channel numpy array.
@@ -175,8 +178,14 @@ def run_application(arg_dict):
     # Check that the output path does not exist already
     if os.path.exists(outfile):
         raise IOError(f'{outfile} already exists!')
+    
+    tar = tarfile.open(ARCHIVE_PATH, "r:gz")
+    tar.extractall()
+    tar.close()
+    
+    model = tf.keras.models.load_model(MODEL_PATH)
 
-    app = apps.Mesmer()
+    app = apps.Mesmer(model=model)
 
     # load the input image
     image = prepare_mesmer_input(**arg_dict)
