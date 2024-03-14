@@ -1,0 +1,9 @@
+name: mesmer
+dependencies:
+  - python=3.9.18=h955ad1f_0
+  - tifffile=2023.4.12=py39h06a4308_0
+  - numpy=1.25.2=py39h5f9d8c6_0
+  - pip=23.3=py39h06a4308_0
+  - pip:
+    - deepcell==0.12.6
+

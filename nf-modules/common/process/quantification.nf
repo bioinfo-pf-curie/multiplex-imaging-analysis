@@ -1,5 +1,5 @@
 process quantification {
-  label 'quantification'
+  label 'img_utils'
   label "minCpu"
   label 'extraMem'
   label "highTime"

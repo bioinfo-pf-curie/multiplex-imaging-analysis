@@ -92,7 +92,7 @@ include { displayOutline } from './nf-modules/common/process/displayOutline'
 include { segmentation } from './nf-modules/common/process/segmentation'
 include { quantification } from './nf-modules/common/process/quantification'
 include { splitImage } from './nf-modules/common/process/splitImage'
-include { stitchFlows } from './nf-modules/common/process/stitchFlows'
+include { stitch } from './nf-modules/common/process/stitch'
 include { computeMasks } from './nf-modules/common/process/computeMasks'
 include { pyramidize } from './nf-modules/common/process/pyramidize'
 
@@ -159,10 +159,12 @@ workflow {
     }.groupTuple().map{groupedkey, old_meta, segmentedImg -> 
       tuple(groupedkey, segmentedImg)
     }
+    flow = stitch(segmented).branch({
+      npy: it[1].name.endsWith(".npy")
+      tiff: true 
+    })
 
-    flow = stitchFlows(segmented)
-
-    masks = computeMasks(flow)
+    masks = computeMasks(flow.npy).mix(flow.tiff)
     
     outline = displayOutline(masks)
 

@@ -1,10 +1,23 @@
 import tifffile
 import zarr
+import os
 from ome_types import OME, model
 import copy
 import warnings
 import xml.etree.ElementTree as ET
 import numpy as np
+
+def get_current_height(npy_path):
+    """Helper to parse filename to get position in height for the corresponding tile"""
+    npy_name = os.path.basename(npy_path)
+    while True:
+        npy_name, height = npy_name.rsplit('_', 1)
+        try:
+            return int(height)
+        except ValueError:
+            pass
+        if not npy_name:
+            raise ValueError(f'Height of image {npy_name} not found')
 
 def _tile_generator(arr, channel, x, y, chunk_x, chunk_y):
     """Generate chunk of arr"""

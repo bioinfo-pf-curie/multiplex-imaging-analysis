@@ -1,9 +1,16 @@
 v-0.4dev
+NEW FEATURES
+  - added a new segmenter (Mesmer), only compatible with singularity profile
+  - added compatibility with qptiff format.
+
 SIGNIFICANT USER-VISIBLE CHANGES
   - mergeSegmentation is replaced with two steps. First is stitch flows (merge output from cellpose processes) and second is compute mask (transform merged flows into masks). All that with reduced memory footprint.
+  - optimized stitching (less memory and time)
 
 BUG FIXES
   - some output name were incorrectly set (mask name among other)
+  - masks were generated in 16bits, it caused some issues with bigger images.
+  - resolve memory overflow in quantification (removed unused cache)
 
 
 v-0.3

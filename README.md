@@ -16,16 +16,20 @@ It supports [conda](https://docs.conda.io) package manager and  [singularity](ht
 <!-- TODO 
 
 Describe here the main steps of the pipeline.
-
-1. Step 1 does...
-2. Step 2 does...
-3. etc
-
 -->
+
+1. Merge : Make a Maximum Intensity Projection of all selected markers for a approximated cytoplasm.
+2. Split : split this projection and nuclear marker into tiles for better managed memory
+3. Segmentation : segment this two markers to get a mask of all cells.
+4. Stitch : Glue together generated tiles
+5. Compute mask (optionnal) : if cellpose is selected, will transform generated flows into real cells masks.
+6. Display outlines : Add a new markers in the tiff file to display outlines generated from masks.
+7. Pyramidize : Make new images pyramidizable (multiple resolution to be able to display it by chunk)
+8. Quantification : From masks and intensity values, compute feature for each cells in the image.
 
 ### Quick help
 
-```bash
+```
 nextflow run main.nf --help
 N E X T F L O W  ~  version 19.10.0
 Launching `main.nf` [stupefied_darwin] - revision: aa905ab621
@@ -38,10 +42,18 @@ Mandatory arguments:
 --markers [file]                  Path to markers file (one file per image, must be a csv file listing markers name and metadata about it, see docs for more information)
 
 Optionnal arguments:
---overlap [float]                Percentage of overlap between tile (default is 0.1)
---tileHeight [int]               Size in pixel of the height of each tile (default will compute the best height for available memory)
---maskOverlap [int]              Size in pixel of the overlap for computing masks (default is 60 ~ 2 x mean cell size)
---mode [str]                     Normalization used before merging channels. Can be either 'custom', 'hist' or 'no-norm' (default is custom if normalization value are present in markers.csv else it's hist)
+--segmentation.name [str]                     Name of the segmenter used (can be "cellpose" or "mesmer") (default = "cellpose")
+--segmentation.overlap [float]                Percentage of overlap between tile (default is 0.1)
+--segmentation.tileHeight [int]               Size in pixel of the height of each tile (default will compute the best height for available memory)
+--segmentation.additionnalParms [str]         Additionnal parms to be passed to segmenter command line
+--mask.overlap [int]                          Size in pixel of the overlap for computing masks (default is 60 ~ 2 x mean cell size)
+--normalization.mode [str]                    Normalization used before merging channels. Can be either 'custom', 'hist' or 'no-norm' (default is custom if normalization value are present in markers.csv else it's hist)
+--quantification.normalization [bool]         Use normalization on markers before quantification (default = false)       
+--outDir [str]                                Path where to record output (default = ./results/)
+--summaryDir [str]                            Path where to record reporting files (default = ${outDir}/summary)
+--queue [str]                                 Specifie the queue in cluster. Only used with cluster or abacus profile (default = "dev")
+--clusterOptions                              Options to add for cluster. Only used with cluster or abacus profile (default = "--account dev")
+
 
 Skip options: All are false by default
 --skipSoftVersion [bool]         Do not report software version
@@ -74,7 +86,7 @@ The pipeline can be run on any infrastructure from a list of input files as foll
 See the file `conf/test.config` to set your test image.
 
 ```bash
-nextflow run main.nf -profile test,conda
+nextflow run main.nf -profile test,multiconda
 
 ```
 
@@ -103,7 +115,7 @@ Here are a few examples to set the profile options:
 
 #### Run the pipeline on the cluster, building a new conda environment
 ```bash
--profile cluster,conda --condaCacheDir /my/path/to/condaCacheDir
+-profile cluster,multiconda --condaCacheDir /my/path/to/condaCacheDir
 
 ```
 
@@ -115,22 +127,21 @@ A marker file is a csv file that provides additional details on the marker of th
 Here is a simple example:
 
 ```
-cycle,marker_name,segmentation
-0,01_Hoechst,False
-1,AF1,
-2,04_CD31_Argo515,true
-3,05_CD45_Argo555L,True
-4,06_CD68_Argo535,True
-5,07_Vimentin_Argo550,true
-6,08_CD4_Argo572,True
-7,09_FOXP3_Argo584,True
-8,10_CD8a_Argo602,True
+cycle,marker_name,segmentation,normalization
+0,01_Hoechst,False,
+1,AF1,,
+2,04_CD31_Argo515,true,45;6500
+3,05_CD45_Argo555L,True,789;45047
+4,06_CD68_Argo535,True,72;9376
+5,07_Vimentin_Argo550,true,3312;39313
+6,08_CD4_Argo572,True,3;2882
+7,09_FOXP3_Argo584,True,365;10121
+8,10_CD8a_Argo602,True,5749;52408
 
 ...
 ```
 
-Cycle indicate the laser number used by orion technology, and segmentation is used to create a merge channels with cyto or membrane channels that can help segmentation.
-Other columns can be added but will not be used. 
+Cycle indicate the laser number used by orion technology (not used), marker name is self explanatory, segmentation is used to create a merge channels with cyto or membrane channels that can help segmentation. Finally normalization is optionnal and will be used to normalize each marker before segmentation and quantification. Other columns can be added but will not be used. 
 
 ## Full Documentation
 
