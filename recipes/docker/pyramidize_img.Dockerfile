@@ -9,4 +9,6 @@ RUN python -m pip install --no-cache-dir \
   tifffile==2023.4.12 \
   zarr \
   ome_types>=0.4.2 \
-  palom==2023.9.2
+  palom==2023.9.2 \
+  pydantic==2.5.3 \
+  xsdata==23.8 

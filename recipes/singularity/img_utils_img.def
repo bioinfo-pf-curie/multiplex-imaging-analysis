@@ -13,3 +13,5 @@ From: python:3.11
     ome_types==0.4.2 \
     zarr==2.16.1 \
     opencv-python-headless==4.8.1.78 \
+    pydantic==2.5.3 \
+    xsdata==23.8 \
