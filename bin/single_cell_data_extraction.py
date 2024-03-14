@@ -18,7 +18,7 @@ import tifffile
 
 from pathlib import Path
 
-from utils import min_max_norm, parse_normalization_values, compute_hist
+from utils import parse_normalization_values, compute_hist
 
 #### Additional functions that can be specified by the user via intensity_props
 
@@ -139,7 +139,8 @@ def PrepareData(image,z, normalization=None, norm_val=None):
             nv = compute_hist(image_loaded_z[None, ...], 0, *image_loaded_z.shape, 256, 256)
         else:
             nv = norm_val[z]
-        image_loaded_z = min_max_norm(image_loaded_z, *nv)
+
+        image_loaded_z[image_loaded_z < nv[0]] = nv[0] # for me it should be min_max_norm(image_loaded_z, *nv) but hey idc
 
     #Return the objects
     return image_loaded_z
