@@ -1,6 +1,6 @@
 name: cellpose
 dependencies:
-  - python=3.8.16=h955ad1f_0
+  - python=3.8.16=h955ad1f_4
   - wheel=0.41.2=py311h06a4308_0
   - pytorch=2.0.1=cpu_py311h53e38e9_0
   - matplotlib=3.7.2=py311h06a4308_0
