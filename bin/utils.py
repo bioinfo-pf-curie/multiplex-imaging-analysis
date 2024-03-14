@@ -87,7 +87,7 @@ def compute_hist(img, channel, x, y, chunk_x, chunk_y, img_min=None, img_max=Non
         res = bins[-2], bins[-1]
     else:
         res = bins[idx_min], bins[idx_max]
-    print(res)
+
     return res
 
 def get_info_qptiff(qptiff):

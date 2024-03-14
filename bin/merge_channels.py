@@ -169,7 +169,10 @@ def parse_markers(img_path, markers_path):
     
     # need to compare channel name with metadata to get order 
     # (or its the same in both and we dont care)
-    return list(mrk.loc[mrk[segmentation_col_name]].index), parse_normalization_values(mrk).reset_index(drop=True).T.to_dict('list')
+    norm_val = parse_normalization_values(mrk)
+    if norm_val is not None:
+        norm_val = norm_val.reset_index(drop=True).T.to_dict('list')
+    return list(mrk.loc[mrk[segmentation_col_name]].index), norm_val
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
