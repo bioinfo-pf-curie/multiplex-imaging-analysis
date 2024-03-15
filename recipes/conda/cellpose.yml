@@ -1,24 +1,25 @@
 name: cellpose
 dependencies:
   - python=3.8.16=h955ad1f_4
-  - wheel=0.41.2=py311h06a4308_0
-  - pytorch=2.0.1=cpu_py311h53e38e9_0
-  - matplotlib=3.7.2=py311h06a4308_0
-  - numba=0.58.0=py311ha02d727_0
-  - scipy=1.11.3=py311h24aa872_0
-  - natsort=7.1.1=pyhd3eb1b0_0
-  - scikit-image=0.20.0=py311h6a678d5_0
-  - scikit-learn=1.3.0=py311ha02d727_0
-  - pandas=2.0.3=py311ha02d727_0
-  - tqdm=4.65.0=py311h92b7b1e_0
-  - tifffile=2023.4.12=py311h06a4308_0
-  - pip=23.3=py311h06a4308_0
+  - wheel=0.41.2
+  - pytorch=2.0.1
+  - numpy=1.23.5
+  - matplotlib=3.7.1
+  - numba=0.56.4
+  - scipy=1.9.1
+  - scikit-image=0.20.0
+  - scikit-learn=1.2.2
+  - pandas=2.0.3
+  - tqdm=4.65.0
+  - tifffile=2023.4.12
+  - pip=23.3
   - pip:
-    - fastremap==1.14.0
+    - natsort==8.3.1
+    - fastremap==1.13.4
     - ome_types==0.4.2
     - zarr==2.16.1
-    - opencv-python-headless==4.8.1.78
-    - cellpose==2.2.2
+    - opencv-python-headless==4.7.0.72
+    - cellpose==2.1.1
     - psutil==5.9.6
     - pydantic==2.5.3
     - xsdata==23.8
