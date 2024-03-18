@@ -171,8 +171,6 @@ def parse_markers(img_path, markers_path):
     # need to compare channel name with metadata to get order 
     # (or its the same in both and we dont care)
     norm_val = parse_normalization_values(mrk)
-    if norm_val is not None:
-        norm_val = norm_val.reset_index(drop=True).T.to_dict('list')
     return list(mrk.loc[mrk[segmentation_col_name]].index), norm_val
 
 if __name__ == "__main__":
@@ -202,11 +200,18 @@ if __name__ == "__main__":
         except ValueError:
             if os.path.exists(channels):
                 channels, norm_val = parse_markers(in_path, channels)
-                norm = "custom" if norm_val is not None else args.norm if args.norm is not None else "hist"
             else:
                 raise ValueError('Wrong format for channels')
     else:
         _, channels = guess_channels_to_merge(in_path)
+    
+    if args.norm == 'auto':
+        if norm_val is not None:
+            norm = 'custom'
+        else:
+            norm = 'hist'
+    else:
+        norm = args.norm
 
-    merge_channels(in_path, out_path, channels_to_merge=channels, nuclei_chan=args.nuclei_channels, norm=args.norm, norm_val=norm_val)
+    merge_channels(in_path, out_path, channels_to_merge=channels, nuclei_chan=args.nuclei_channels, norm=norm, norm_val=norm_val)
  

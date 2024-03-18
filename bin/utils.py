@@ -34,7 +34,7 @@ def min_max_norm(a, min_, max_):
 def parse_normalization_values(df):
     normalization_col_name = "normalization"
     if normalization_col_name in df.columns:
-        return df[normalization_col_name].str.split(";", expand=True).fillna({0:0, 1:2**16})
+        return df[normalization_col_name].str.split(";", expand=True).fillna({0:0, 1:2**16}).astype(int).reset_index(drop=True).T.to_dict('list')
     
 def compute_hist(img, channel, x, y, chunk_x, chunk_y, img_min=None, img_max=None, num_bin=100, max_bin=0.9):
     """

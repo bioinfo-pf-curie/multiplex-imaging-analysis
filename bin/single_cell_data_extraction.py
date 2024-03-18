@@ -135,7 +135,7 @@ def PrepareData(image,z, normalization=None, norm_val=None):
         raise Exception('mcquant currently supports [OME-QP]TIFF and HDF5 formats only')
     
     if normalization is not None:
-        if normalization == 'hist': 
+        if normalization == 'hist' or (normalization == "auto" and norm_val is not None): 
             nv = compute_hist(image_loaded_z[None, ...], 0, *image_loaded_z.shape, 256, 256)
         else:
             nv = norm_val[z]
@@ -162,8 +162,6 @@ def MaskZstack(masks_loaded,image,channel_names_loaded, mask_props=None, intensi
     #Get the z channel and the associated channel name from list of channel names
     for z in range(len(channel_names_loaded)):
         #Run the data Prep function
-        with open("debug.txt", "a") as db:
-            db.write(f"{z=}")
         image_loaded_z = PrepareData(image,z, normalization, norm_val)
 
         #Iterate through number of masks to extract single cell data
