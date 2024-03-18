@@ -18,6 +18,8 @@ import tifffile
 
 from pathlib import Path
 
+from utils import parse_normalization_values, compute_hist
+
 #### Additional functions that can be specified by the user via intensity_props
 
 ## Function to calculate median intensity values per mask 
@@ -110,7 +112,7 @@ def n_channels(image):
     else:
         raise Exception('mcquant currently supports [OME-QP]TIFF and HDF5 formats only')
 
-def PrepareData(image,z):
+def PrepareData(image,z, normalization=None, norm_val=None):
     """Function for preparing input for maskzstack function. Connecting function
     to use with mc micro ilastik pipeline"""
 
@@ -131,12 +133,20 @@ def PrepareData(image,z):
 
     else:
         raise Exception('mcquant currently supports [OME-QP]TIFF and HDF5 formats only')
+    
+    if normalization is not None:
+        if normalization == 'hist': 
+            nv = compute_hist(image_loaded_z[None, ...], 0, *image_loaded_z.shape, 256, 256)
+        else:
+            nv = norm_val[z]
+
+        image_loaded_z[image_loaded_z < nv[0]] = nv[0] # for me it should be min_max_norm(image_loaded_z, *nv) but hey idc
 
     #Return the objects
     return image_loaded_z
 
 
-def MaskZstack(masks_loaded,image,channel_names_loaded, mask_props=None, intensity_props=["intensity_mean"]):
+def MaskZstack(masks_loaded,image,channel_names_loaded, mask_props=None, intensity_props=["intensity_mean"], normalization=None, norm_val=None):
     """This function will extract the stats for each cell mask through each channel
     in the input image
 
@@ -154,7 +164,7 @@ def MaskZstack(masks_loaded,image,channel_names_loaded, mask_props=None, intensi
         #Run the data Prep function
         with open("debug.txt", "a") as db:
             db.write(f"{z=}")
-        image_loaded_z = PrepareData(image,z)
+        image_loaded_z = PrepareData(image,z, normalization, norm_val)
 
         #Iterate through number of masks to extract single cell data
         for nm in mask_names:
@@ -207,7 +217,7 @@ def MaskZstack(masks_loaded,image,channel_names_loaded, mask_props=None, intensi
     # Return the dict of dataframes for each mask
     return dict_of_chan
 
-def ExtractSingleCells(masks,image,channel_names,output, mask_props=None, intensity_props=["intensity_mean"]):
+def ExtractSingleCells(masks,image,channel_names,output, mask_props=None, intensity_props=["intensity_mean"], normalization=None):
     """Function for extracting single cell information from input
     path containing single-cell masks, z_stack path, and channel_names path."""
 
@@ -227,6 +237,9 @@ def ExtractSingleCells(masks,image,channel_names,output, mask_props=None, intens
         channel_names_loaded_list = list(channel_names_loaded.iloc[:,0])
     else:
         raise Exception('%s must contain the marker_name column'%channel_names)
+    
+    
+    norm_val = parse_normalization_values(channel_names_loaded)
 
     #Contrast against the number of markers in the image
     if len(channel_names_loaded_list) != n_channels(image):
@@ -251,7 +264,8 @@ def ExtractSingleCells(masks,image,channel_names,output, mask_props=None, intens
         m_name = m_full_name.split('.')[0]
         masks_loaded.update({str(m_name):skimage.io.imread(m,plugin='tifffile')})
 
-    scdata_z = MaskZstack(masks_loaded,image,channel_names_loaded_checked, mask_props=mask_props, intensity_props=intensity_props)
+    scdata_z = MaskZstack(masks_loaded,image,channel_names_loaded_checked, mask_props=mask_props, 
+                          intensity_props=intensity_props, normalization=normalization, norm_val=norm_val)
     #Write the singe cell data to a csv file using the image name
 
     # Determine the image name by cutting off its extension
@@ -271,14 +285,14 @@ def ExtractSingleCells(masks,image,channel_names,output, mask_props=None, intens
                             )
 
 
-def MultiExtractSingleCells(masks,image,channel_names,output, mask_props=None, intensity_props=["intensity_mean"]):
+def MultiExtractSingleCells(masks,image,channel_names,output, mask_props=None, intensity_props=["intensity_mean"], normalization=None):
     """Function for iterating over a list of z_stacks and output locations to
     export single-cell data from image masks"""
 
     print("Extracting single-cell data for "+str(image)+'...')
 
     #Run the ExtractSingleCells function for this image
-    ExtractSingleCells(masks,image,channel_names,output, mask_props=mask_props, intensity_props=intensity_props)
+    ExtractSingleCells(masks,image,channel_names,output, mask_props=mask_props, intensity_props=intensity_props, normalization=normalization)
 
     #Print update
     im_full_name = os.path.basename(image)
@@ -293,6 +307,7 @@ def ParseInputDataExtract():
 
    parser = argparse.ArgumentParser()
    parser.add_argument('--masks',nargs='+', required=True)
+   parser.add_argument('--normalize', default=None)
    parser.add_argument('--image', required=True)
    parser.add_argument('--channel_names', required=True)
    parser.add_argument('--output', required=True)
@@ -323,7 +338,7 @@ def ParseInputDataExtract():
    dict = {'masks': args.masks, 'image': args.image,\
     'channel_names': args.channel_names,'output':args.output,
     'intensity_props': set(args.intensity_props if args.intensity_props is not None else []).union(["intensity_mean"]),
-    'mask_props': args.mask_props,
+    'mask_props': args.mask_props, 'normalization': args.normalize
    }
    #Print the dictionary object
    print(dict)
