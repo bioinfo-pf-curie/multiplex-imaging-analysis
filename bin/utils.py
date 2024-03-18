@@ -175,8 +175,8 @@ class OmeTifffile(object):
 
         if self.ome is None:
             default = get_info_qptiff(qptiff_xml) if qptiff_xml is not None else {}
-            default['size_x'] = self.size[0]
-            default['size_y'] = self.size[1]
+            default['size_x'] = self.size[1]
+            default['size_y'] = self.size[0]
             default['dtype'] = self.dtype
             default.update(kwargs)
 
@@ -223,8 +223,8 @@ class OmeTifffile(object):
         this_dict['compression'] = this_dict.pop('compress')
 
         if shape is not None:
-            self.pix.size_x=shape[0]
-            self.pix.size_y=shape[1]
+            self.pix.size_y=shape[0]
+            self.pix.size_x=shape[1]
 
         elif self.pix.size_x == 1 or self.pix.size_y == 1:
             raise ValueError(f"About to write an image with shape (x={self.pix.size_x}, y={self.pix.size_y})." 

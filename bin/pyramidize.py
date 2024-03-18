@@ -15,8 +15,7 @@ def detect_pixel_size(metadata):
         pixel_size = metadata.pix.physical_size_x
     except Exception as err:
         print(err)
-        print()
-        print('Pixel size detection using ome-types failed')
+        print('\nPixel size detection using ome-types failed')
         pixel_size = None
     return pixel_size
 
@@ -93,12 +92,6 @@ def write_pyramid(
     with tifffile.TiffWriter(output_path, bigtiff=True, shaped=False) as tif:
         if kwargs_tifffile is None:
             kwargs_tifffile = {}
-        
-        print(
-            f"_nPyramidize parameters (combined) : \nshape={(num_channels, *shapes[0])}"
-            f"\nsubifds={int(num_levels - 1)}" 
-            f"\n{dtype=}\ntile={tile_shapes[0]}\n{kwargs_tifffile=}\n"
-        )
 
         tif.write(
             data=tile_from_combined_mosaics(
@@ -114,16 +107,6 @@ def write_pyramid(
         for level, (shape, tile_shape) in enumerate(
             zip(shapes[1:], tile_shapes[1:])
         ):
-            pdict = {
-                    **dict(compression=compression),
-                    **kwargs_tifffile
-                }
-            print(
-                f"_nPyramidize parameters (pyramid) : \n{output_path=}"
-                f"\n{num_channels=}\n{tile_shape=}\n{downscale_factor=}" 
-                f"\n{level=}\n{is_mask=}\n{save_RAM=}\nshape={(num_channels, *shape)}"
-                f"\nsubfiletype=1, {dtype=}, {tile_shape=}, \n{pdict=}"
-            )
             tif.write(
                 data=tile_from_pyramid(
                     output_path,
