@@ -164,6 +164,21 @@ def get_predict_kwargs(kwargs):
     return predict_kwargs
 
 
+def padding_img(img, expected_model_input_shape=(256, 256)):
+    x_diff = expected_model_input_shape[0] - img.shape[0]
+    y_diff = expected_model_input_shape[1] - img.shape[1]
+
+    x_pad = (x_diff // 2, x_diff // 2 + (x_diff % 2)) if x_diff > 0 else (0, 0)
+    y_pad = (y_diff // 2, y_diff // 2 + (y_diff % 2)) if y_diff > 0 else (0, 0)
+
+    return np.pad(img, [x_pad, y_pad, (0, 0)], 'reflect'), (x_pad, y_pad)
+    
+
+
+def unpadding_img(img, x_pad, y_pad):
+    return img[x_pad[0]: -x_pad[1] or None, y_pad[0]: -y_pad[1] or None]
+
+
 def run_application(arg_dict):
     """Takes the user-supplied command line arguments and runs the specified application
 
@@ -193,6 +208,10 @@ def run_application(arg_dict):
 
     # make sure the input image is compatible with the app
     validate_input(app, image)
+    
+    padding_needed = image.shape[0] < app.model_image_shape[0] or image.shape[1] < app.model_image_shape[1]
+    if padding_needed:
+        image, pad_info = padding_img(image, app.model_image_shape)
 
     # Applications expect a batch dimension
     image = np.expand_dims(image, axis=0)
@@ -200,6 +219,9 @@ def run_application(arg_dict):
     # run the prediction
     kwargs = get_predict_kwargs(arg_dict)
     output = app.predict(image, **kwargs)
+
+    if padding_needed:
+        output = unpadding_img(output, *pad_info)
 
     # Optionally squeeze the output
     if arg_dict['squeeze']:
