@@ -40,7 +40,7 @@ import tensorflow as tf
 from deepcell.utils.io_utils import get_image
 from deepcell import applications as apps
 
-ARCHIVE_PATH = "MultiplexSegmentation-9.tar.gz"
+ARCHIVE_PATH = "/MultiplexSegmentation-9.tar.gz"
 MODEL_PATH = "MultiplexSegmentation"
 
 def load_image(path, channel=0, ndim=3):
