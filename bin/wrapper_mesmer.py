@@ -37,7 +37,6 @@ import numpy as np
 import tifffile
 
 import tensorflow as tf
-from deepcell.utils.io_utils import get_image
 from deepcell import applications as apps
 
 ARCHIVE_PATH = "/MultiplexSegmentation-9.tar.gz"
@@ -59,7 +58,7 @@ def load_image(path, channel=0, ndim=3):
     if not path:
         raise IOError('Invalid path: %s' % path)
 
-    img = get_image(path)
+    img = tifffile.imread(path)
 
     channel = channel if isinstance(channel, (list, tuple)) else [channel]
 
@@ -176,7 +175,7 @@ def padding_img(img, expected_model_input_shape=(256, 256)):
 
 
 def unpadding_img(img, x_pad, y_pad):
-    return img[x_pad[0]: -x_pad[1] or None, y_pad[0]: -y_pad[1] or None]
+    return img[:, x_pad[0]: -x_pad[1] or None, y_pad[0]: -y_pad[1] or None, :]
 
 
 def run_application(arg_dict):
