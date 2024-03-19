@@ -31,6 +31,7 @@ import logging
 import sys
 import timeit
 import argparse
+import tarfile
 
 import numpy as np
 import tifffile
