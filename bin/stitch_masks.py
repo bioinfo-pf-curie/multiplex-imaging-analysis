@@ -57,10 +57,10 @@ def window_2D(window_size, overlap_x=(32, 32), overlap_y=(32, 32), power=2):
     window_x = spline_window(window_size[0], overlap_x[0], overlap_x[1], power=power)
     window_y = spline_window(window_size[1], overlap_y[0], overlap_y[1], power=power)
 
-    window_x = np.expand_dims(np.expand_dims(window_x, -1), -1)
-    window_y = np.expand_dims(np.expand_dims(window_y, -1), -1)
+    window_x = np.expand_dims(window_x, -1)
+    window_y = np.expand_dims(window_y, -1)
 
-    window = window_x * window_y.transpose(1, 0, 2)
+    window = window_x * window_y.transpose(1, 0)
     return window
 
 
@@ -92,17 +92,17 @@ def stich_masks(list_mask_chunks, input_img_path, overlap, out_path):
 
     original_tiff = tifffile.TiffFile(input_img_path)
     original_shape = original_tiff.series[0].shape[1:]
-    result = tifffile.memmap(out_path, dtype='uint32', shape=original_shape)
+    result = tifffile.memmap(out_path, dtype=float, shape=original_shape)
 
     # previous_cells = None
     for chunk in list_mask_chunks:
         cur_height = get_current_height(chunk)
         img = tifffile.imread(chunk)
-        w = window_2D(img.shape, overlap_x=overlap, overlap_y=0)
-        if (min_tile_size <= img.shape[1] < original_shape[1]):
-            result[:, cur_height:cur_height+img.shape[1], :] += img * w
+        w = window_2D(img.shape, overlap_x=[int(img.shape[0] * overlap)] * 2, overlap_y=(0, 0))
+        if (min_tile_size <= img.shape[0] < original_shape[0]):
+            result[cur_height:cur_height+img.shape[0], :] += img * w
         else:
-            result[:, cur_height:cur_height+img.shape[1], :] = img
+            result[cur_height:cur_height+img.shape[0], :] = img
         result.flush()
 
     img = None # can be collected
