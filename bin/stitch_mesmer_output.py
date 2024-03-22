@@ -57,10 +57,10 @@ def window_2D(window_size, overlap_x=(32, 32), overlap_y=(32, 32), power=2):
     window_x = spline_window(window_size[0], overlap_x[0], overlap_x[1], power=power)
     window_y = spline_window(window_size[1], overlap_y[0], overlap_y[1], power=power)
 
-    window_x = np.expand_dims(window_x, -1)
-    window_y = np.expand_dims(window_y, -1)
+    window_x = np.expand_dims(np.expand_dims(window_x, -1), -1)
+    window_y = np.expand_dims(np.expand_dims(window_y, -1), -1)
 
-    window = window_x * window_y.transpose(1, 0)
+    window = window_x * window_y.transpose(1, 0, 2)
     return window
 
 
