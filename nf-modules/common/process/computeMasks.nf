@@ -1,5 +1,5 @@
 process computeMasks {
-  label 'cellpose'
+  label "${params.segmentation.name}"
   label 'lowCpu'
   label 'infiniteTime'
 
@@ -17,7 +17,10 @@ process computeMasks {
 
   script:
     def args = task.ext.args ?: ''
+    def cellpose = "compute_masks.py"
+    def mesmer = "compute_mesmer.py"
+    def script = params.segmentation.name == 'cellpose' ? cellpose : mesmer
     """
-    compute_masks.py --in $flow --out ${meta.originalName}_masks.tiff --original $meta.imagePath $args
+    $script --in $flow --out ${meta.originalName}_masks.tiff --original $meta.imagePath $args
     """
 }

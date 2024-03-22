@@ -14,7 +14,7 @@ process stitch {
 
   script:
     def args = task.ext.args ?: ''
-    def script = params.segmentation.name == 'cellpose' ? "stitch_flows.py" : "stitch_masks.py"
+    def script = params.segmentation.name == 'cellpose' ? "stitch_flows.py" : "stitch_mesmer_output.py"
     """
     $script --in $images --out ${meta.originalName}.npy --original $meta.imagePath $args
     """

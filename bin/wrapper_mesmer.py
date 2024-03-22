@@ -202,6 +202,18 @@ def run_application(arg_dict):
 
     app = apps.Mesmer(model=model)
 
+    # need to change post processing else we get masks image that can be complicated to stitch
+    def get_compartment(compartment='whole-cell'):
+        def post_process(output, **kwargs):
+            output = output[compartment]
+            return np.stack([output[0].squeeze(), output[1].squeeze()])
+        return post_process
+    
+    # format output is [2, x, y] with output[0] = maxima (most intensity => centroid) and output[1] = interior 
+
+    app.postprocessing_fn=get_compartment(arg_dict['compartment'])
+
+
     # load the input image
     image = prepare_mesmer_input(**arg_dict)
 

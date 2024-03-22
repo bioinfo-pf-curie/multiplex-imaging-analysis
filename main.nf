@@ -159,12 +159,14 @@ workflow {
     }.groupTuple().map{groupedkey, old_meta, segmentedImg -> 
       tuple(groupedkey, segmentedImg)
     }
-    flow = stitch(segmented).branch({
-      npy: it[1].name.endsWith(".npy")
-      tiff: true 
-    })
+    flow = stitch(segmented)
+    // .branch({
+      // npy: it[1].name.endsWith(".npy")
+      // tiff: true 
+    // })
 
-    masks = computeMasks(flow.npy).mix(flow.tiff)
+    masks = computeMasks(flow)
+    // .npy).mix(flow.tiff)
     
     outline = displayOutline(masks)
 
