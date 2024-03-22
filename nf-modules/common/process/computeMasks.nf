@@ -1,5 +1,5 @@
 process computeMasks {
-  label "${params.segmentation.name}"
+  label "${params.segmentation.name == 'cellpose'? 'cellpose': 'img_utils'}"
   label 'lowCpu'
   label 'infiniteTime'
 

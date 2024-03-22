@@ -92,17 +92,17 @@ def stich_masks(list_mask_chunks, input_img_path, overlap, out_path):
 
     original_tiff = tifffile.TiffFile(input_img_path)
     original_shape = original_tiff.series[0].shape[1:]
-    result = tifffile.memmap(out_path, dtype=float, shape=original_shape)
-
+    result = tifffile.memmap(out_path, dtype=float, shape=(2, *original_shape))
+    print(result.shape)
     # previous_cells = None
     for chunk in list_mask_chunks:
         cur_height = get_current_height(chunk)
         img = tifffile.imread(chunk)
         w = window_2D(img.shape, overlap_x=[int(img.shape[0] * overlap)] * 2, overlap_y=(0, 0))
-        if (min_tile_size <= img.shape[0] < original_shape[0]):
-            result[cur_height:cur_height+img.shape[0], :] += img * w
+        if (min_tile_size <= img.shape[1] < original_shape[1]):
+            result[:, cur_height:cur_height+img.shape[0], :] += img * w
         else:
-            result[cur_height:cur_height+img.shape[0], :] = img
+            result[:, cur_height:cur_height+img.shape[0], :] = img
         result.flush()
 
     img = None # can be collected
