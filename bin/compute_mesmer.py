@@ -67,7 +67,7 @@ def deep_watershed(outputs,
         interiors = outputs[interior_index]
     except (TypeError, KeyError, IndexError):
         raise ValueError('`outputs` should be a list of at least two '
-                         'NumPy arryas of equal shape.')
+                         'NumPy arrays of equal shape.')
 
     valid_algos = {'h_maxima', 'peak_local_max'}
     if maxima_algorithm not in valid_algos:
@@ -167,70 +167,6 @@ def deep_watershed(outputs,
 
     return label_images
 
-
-def deep_watershed_mibi(model_output,
-                        interior_model='pixelwise-interior',
-                        maxima_model='inner-distance',
-                        **kwargs):
-    """DEPRECATED. Please use ``deep_watershed`` instead.
-
-    Postprocessing function for multiplexed deep watershed models. Thresholds the inner
-    distance prediction to find cell centroids, which are used to seed a marker
-    based watershed of the pixelwise interior prediction.
-
-    Args:
-        model_output (dict): DeepWatershed model output. A dictionary containing key: value pairs
-            with the transform name and the corresponding output. Currently supported keys:
-
-            - inner_distance: Prediction for the inner distance transform.
-            - outer_distance: Prediction for the outer distance transform.
-            - fgbg: Foreground prediction for the foregound/background transform.
-            - pixelwise_interior: Interior prediction for the interior/border/background transform.
-
-        interior_model (str): Name of semantic head used to predict interior
-            of each object.
-        maxima_model (str): Name of semantic head used to predict maxima of
-            each object.
-        kwargs (dict): Keyword arguments for ``deep_watershed``.
-
-    Returns:
-        numpy.array: Uniquely labeled mask.
-
-    Raises:
-        ValueError: if ``interior_model`` or ``maxima_model`` is invalid.
-        ValueError: if ``interior_model`` or ``maxima_model`` predictions
-            do not have length 4
-    """
-    text = ('deep_watershed_mibi is deprecated and will be removed in a '
-            'future version. Please use '
-            '`deepcell_toolbox.deep_watershed.deep_watershed` instead.')
-    warnings.warn(text, DeprecationWarning)
-
-    interior_model = str(interior_model).lower()
-    maxima_model = str(maxima_model).lower()
-
-    valid_model_names = {'inner-distance', 'outer-distance',
-                         'fgbg-fg', 'pixelwise-interior'}
-
-    zipped = zip(['interior_model', 'maxima_model'],
-                 [interior_model, maxima_model])
-
-    for name, model in zipped:
-        if model not in valid_model_names:
-            raise ValueError('{} must be one of {}, got {}'.format(
-                name, valid_model_names, model))
-
-        arr = model_output[model]
-        if len(arr.shape) != 4:
-            raise ValueError('Model output must be of length 4. The {} {} '
-                             'output provided is of shape {}.'.format(
-                                 name, model, arr.shape))
-
-    output = [model_output[maxima_model], model_output[interior_model]]
-
-    label_images = deep_watershed(output, **kwargs)
-
-    return label_images
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
