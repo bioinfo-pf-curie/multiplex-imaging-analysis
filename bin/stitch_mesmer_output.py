@@ -60,7 +60,7 @@ def window_2D(window_size, overlap_x=(32, 32), overlap_y=(32, 32), power=2):
     window_x = np.expand_dims(np.expand_dims(window_x, -1), -1)
     window_y = np.expand_dims(np.expand_dims(window_y, -1), -1)
 
-    window = window_x * window_y.transpose(1, 0, 2)
+    window = window_x.transpose(1, 0, 2) * window_y.transpose(1, 2, 0)
     return window
 
 
@@ -100,11 +100,11 @@ def stich_masks(list_mask_chunks, input_img_path, overlap, out_path):
         img = tifffile.imread(chunk) # img.shape = 2 x w x h
         window_size = img.shape[1:]
         w = window_2D(window_size, overlap_x=[int(window_size[0] * overlap)] * 2, overlap_y=(0, 0))
-        
-        if (min_tile_size <= img.shape[1] < original_shape[1]):
-            result[:, cur_height:cur_height+img.shape[0], :] += img * w
+
+        if (min_tile_size <= window_size[0] < original_shape[1]):
+            result[:, cur_height:cur_height+window_size[0], :] += img * w
         else:
-            result[:, cur_height:cur_height+img.shape[0], :] = img
+            result[:, cur_height:cur_height+window_size[0], :] = img
         result.flush()
 
     img = None # can be collected

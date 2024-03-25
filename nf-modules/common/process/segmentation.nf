@@ -2,7 +2,7 @@ process segmentation {
   label "${params.segmentation.name}"
   label 'lowCpu'
   label 'medMem'
-  label 'onlyLinux'
+  label 'onlyLinux' // only for geniac lint...
 
   input:
     tuple val(meta), path(image)
