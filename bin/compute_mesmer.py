@@ -2,7 +2,7 @@
 
 import argparse
 
-from tifffile import TiffFile, imwrite
+from tifffile import TiffFile, imread, imwrite
 
 import warnings
 
@@ -177,7 +177,8 @@ if __name__ == '__main__':
     parser.add_argument('--overlap', type=int, required=False, default=60, help="Overlap (in pixel) for dask to perform computing of masks on chunks")
     args = parser.parse_args()
 
-    mesmer_output = TiffFile(vars(args)['in'])
+    mesmer_output = imread(vars(args)['in'])
+    print(mesmer_output.shape)
     label_img = deep_watershed(mesmer_output)
 
     metadata = OmeTifffile(TiffFile(args.original).pages[0])
