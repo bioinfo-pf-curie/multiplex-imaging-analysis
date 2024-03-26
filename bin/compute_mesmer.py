@@ -177,7 +177,8 @@ if __name__ == '__main__':
     parser.add_argument('--overlap', type=int, required=False, default=60, help="Overlap (in pixel) for dask to perform computing of masks on chunks")
     args = parser.parse_args()
 
-    mesmer_output = imread(vars(args)['in'])
+    mesmer_output = imread(vars(args)['in'])[:, None, ..., None]
+    # add batch and channel axis to output. We have : 2 x batch x witdh x height x channel
     print(mesmer_output.shape)
     label_img = deep_watershed(mesmer_output)
 
