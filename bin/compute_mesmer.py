@@ -69,6 +69,8 @@ def deep_watershed(outputs,
     except (TypeError, KeyError, IndexError):
         raise ValueError('`outputs` should be a list of at least two '
                          'NumPy arrays of equal shape.')
+    
+    del outputs # doesnt do anything just now but when we change maximas and interior, it should free up some memory
 
     valid_algos = {'h_maxima', 'peak_local_max'}
     if maxima_algorithm not in valid_algos:
@@ -120,7 +122,7 @@ def deep_watershed(outputs,
     input_is_3d = maximas.ndim > 4
 
     label_images = []
-    for maxima, interior in zip(maximas, interiors):
+    for maxima, interior in zip(maximas, interiors): # batch is always one in my case...
         # squeeze out the channel dimension if passed
         maxima = nd.gaussian_filter(maxima[..., 0], maxima_smooth)
         interior = nd.gaussian_filter(interior[..., 0], interior_smooth)
@@ -147,8 +149,14 @@ def deep_watershed(outputs,
             markers = h_maxima(image=maxima,
                                h=maxima_threshold,
                                footprint=fn(radius))
+        
+        del maxima 
 
         markers = label(markers)
+
+        with open("are_we_going_here.txt", "a") as out:
+            out.write('yes !')
+
         label_image = watershed(-1 * interior, markers,
                                 mask=interior > interior_threshold,
                                 watershed_line=0)
@@ -189,5 +197,8 @@ if __name__ == '__main__':
     metadata.add_channel_metadata(channel_name="masks")
 
     metadata.dtype = label_img.dtype
+
+    with open('i_hope_its_not_here.txt', 'a') as out:
+        out.write('but yet....')
 
     imwrite(args.out, label_img, bigtiff=True, shaped=False)
