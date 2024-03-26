@@ -176,7 +176,7 @@ if __name__ == '__main__':
     parser.add_argument('--original', type=str, required=True, help="File path of original image (to get metadata from)")
     parser.add_argument('--chunks', type=int, nargs=2, required=False, default=(1024, 1024), help="Size of chunk for dask")
     parser.add_argument('--overlap', type=int, required=False, default=60, help="Overlap (in pixel) for dask to perform computing of masks on chunks")
-    parser.add_argument('--deep_watershed_args', type=json.loads, required=False, default="{'maxima_algorithm':'peak_local_max'}", help="Other args to pass to main function for computing labels")
+    parser.add_argument('--deep_watershed_args', type=json.loads, required=False, default='{"maxima_algorithm":"peak_local_max"}', help="Other args to pass to main function for computing labels")
     args = parser.parse_args()
 
     mesmer_output = imread(vars(args)['in'])[:, None, ..., None]
