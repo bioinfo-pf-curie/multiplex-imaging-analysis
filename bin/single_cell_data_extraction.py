@@ -135,14 +135,9 @@ def PrepareData(image,z, normalization=None, norm_val=None):
         raise Exception('mcquant currently supports [OME-QP]TIFF and HDF5 formats only')
     
     if normalization is not None:
-        print(f'{normalization == "auto"}')
-        print(f'{normalization == "auto" and norm_val is not None}')
-        print(f'{(normalization == "hist") or (normalization == "auto" and norm_val is not None)}')
-        if (normalization == 'hist') or (normalization == "auto" and norm_val is not None): 
-            print(f"compute hist (for {z})")
+        if (normalization == 'hist') or (normalization == "auto" and norm_val is None): 
             nv = compute_hist(image_loaded_z[None, ...], 0, *image_loaded_z.shape, 256, 256, image_loaded_z.min(), image_loaded_z.max())
         else:
-            print('marker value')
             nv = norm_val[z]
         print(f"{nv=}")
         image_loaded_z[image_loaded_z < nv[0]] = int(nv[0]) # for me it should be min_max_norm(image_loaded_z, *nv) but hey idc
