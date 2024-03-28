@@ -63,14 +63,21 @@ def deep_watershed(outputs,
     Raises:
         ValueError: ``outputs`` is not properly formatted.
     """
+
+    with open("we have to have this !", "a") as out:
+        out.write('yes !')
+
     try:
         maximas = outputs[maxima_index]
         interiors = outputs[interior_index]
     except (TypeError, KeyError, IndexError):
         raise ValueError('`outputs` should be a list of at least two '
                          'NumPy arrays of equal shape.')
-    
+
     del outputs # doesnt do anything just now but when we change maximas and interior, it should free up some memory
+
+    with open("nothing_yet", "a") as out:
+        out.write('yes !')
 
     valid_algos = {'h_maxima', 'peak_local_max'}
     if maxima_algorithm not in valid_algos:
@@ -120,6 +127,9 @@ def deep_watershed(outputs,
                          'Rank 5 is 3D data of shape (batch, frames, x, y, c).')
 
     input_is_3d = maximas.ndim > 4
+
+    with open("checking", "a") as out:
+        out.write('yes !')
 
     label_images = []
     for maxima, interior in zip(maximas, interiors): # batch is always one in my case...
@@ -186,6 +196,9 @@ if __name__ == '__main__':
     parser.add_argument('--overlap', type=int, required=False, default=60, help="Overlap (in pixel) for dask to perform computing of masks on chunks")
     parser.add_argument('--deep_watershed_args', type=json.loads, required=False, default='{"maxima_algorithm":"peak_local_max"}', help="Other args to pass to main function for computing labels")
     args = parser.parse_args()
+
+    with open("loading", "a") as out:
+        out.write('yes !')
 
     mesmer_output = imread(vars(args)['in'])[:, None, ..., None]
     # add batch and channel axis to output. We have : 2 x batch x witdh x height x channel
