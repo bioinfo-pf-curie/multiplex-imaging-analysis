@@ -14,6 +14,6 @@ process displayOutline {
 
   script:
     """
-    make_outlines.py --merge_tiff $meta.imagePath --mask $mask --all-channels --out ${meta.originalName}_clear_outline.tiff
+    make_outlines.py --merge-tiff $meta.imagePath --mask $mask --all-channels --out ${meta.originalName}_clear_outline.tiff
     """
 }

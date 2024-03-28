@@ -160,9 +160,9 @@ def make_outline(merged_file, png_file, mask_path, out_path, nuclei_channel=0, c
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--merge_tiff', type=str, required=True, help="Tiff file with at least two channels (nuclei and cyto)")
+    parser.add_argument('--merge-tiff', dest="merge_tiff", type=str, required=True, help="Tiff file with at least two channels (nuclei and cyto)")
     group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument('--png_outline', type=str, help="Png outline")
+    group.add_argument('--png-outline', type=str, dest="png_outline", help="Png outline")
     group.add_argument('--mask', type=str, help="mask (output of segmentation) in tiff format")
     parser.add_argument('--out', type=str, required=False, help="Output filepath")
     parser.add_argument('--nuclei', type=str, required=False, default=0, help="index of nuclei channel in tiff file")
