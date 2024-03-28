@@ -29,7 +29,7 @@ def _tile_generator(arr, channel, x, y, chunk_x, chunk_y):
 def min_max_norm(a, min_, max_):
     a = (a - min_) / (max_ - min_)
     a = np.clip(a, 0, 1)
-    return a * 2**16
+    return a * (2**16 - 1)
 
 def parse_normalization_values(df):
     normalization_col_name = "normalization"
