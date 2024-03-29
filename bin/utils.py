@@ -36,7 +36,7 @@ def parse_normalization_values(df):
     if normalization_col_name in df.columns:
         return df[normalization_col_name].str.split(";", expand=True).fillna({0:0, 1:2**16}).astype(int).reset_index(drop=True).T.to_dict('list')
     
-def compute_hist(img, channel, x, y, chunk_x, chunk_y, img_min=None, img_max=None, num_bin=100, max_bin=0.9):
+def compute_hist(img, channel, x, y, chunk_x, chunk_y, img_min=None, img_max=None, num_bin=100, max_bin=0.9, s_factor=2):
     """
     Compute the histogram of a channel from an image and get automatically min and max index for normalizing image afterward.
     The method used to get those are more or less the one used to get it manually. 
@@ -65,6 +65,8 @@ def compute_hist(img, channel, x, y, chunk_x, chunk_y, img_min=None, img_max=Non
         number of bin for histogram (more = more precise, less = efficient)    
     max_bin: float
         max percentage to keep
+    s_factor: int
+        represent how much of the background we want to clip. Result in a loss of information in low values
 
     Return
     ------
@@ -79,7 +81,7 @@ def compute_hist(img, channel, x, y, chunk_x, chunk_y, img_min=None, img_max=Non
     for tile in _tile_generator(img, channel, x, y, chunk_x, chunk_y):
         hist += np.histogram(tile, bins)[0]
 
-    idx_min = hist.argmax()+1
+    idx_min = hist.argmax() + s_factor
     idx_max = int(num_bin * max_bin)
     idx_max = idx_max if len(hist) > idx_max > idx_min else idx_min + 1
 
