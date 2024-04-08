@@ -64,9 +64,6 @@ def deep_watershed(outputs,
         ValueError: ``outputs`` is not properly formatted.
     """
 
-    with open("we have to have this !", "a") as out:
-        out.write('yes !')
-
     try:
         maximas = outputs[maxima_index]
         interiors = outputs[interior_index]
@@ -75,9 +72,6 @@ def deep_watershed(outputs,
                          'NumPy arrays of equal shape.')
 
     del outputs # doesnt do anything just now but when we change maximas and interior, it should free up some memory
-
-    with open("nothing_yet", "a") as out:
-        out.write('yes !')
 
     valid_algos = {'h_maxima', 'peak_local_max'}
     if maxima_algorithm not in valid_algos:
@@ -137,18 +131,30 @@ def deep_watershed(outputs,
         maxima = nd.gaussian_filter(maxima[..., 0], maxima_smooth)
         interior = nd.gaussian_filter(interior[..., 0], interior_smooth)
 
+
+        with open("01_should_be_good", "a") as out:
+            out.write('yes !')
+
         if pixel_expansion:
             fn = cube if input_is_3d else square
             interior = dilation(interior, footprint=fn(pixel_expansion * 2 + 1))
 
+
+        with open("02_should_be_good", "a") as out:
+            out.write('yes !')
+
         # peak_local_max is much faster but has poorer performance
         # when dealing with more ambiguous local maxima
         if maxima_algorithm == 'peak_local_max':
+            
             coords = peak_local_max(
                 maxima,
                 min_distance=radius,
                 threshold_abs=maxima_threshold,
                 exclude_border=kwargs.get('exclude_border', False))
+
+            with open("03a_probably_here", "a") as out:
+                out.write('yes !')
 
             markers = np.zeros_like(maxima)
             slc = tuple(coords[:, i] for i in range(coords.shape[1]))
@@ -159,8 +165,14 @@ def deep_watershed(outputs,
             markers = h_maxima(image=maxima,
                                h=maxima_threshold,
                                footprint=fn(radius))
+            
+            with open("03b_or_here", "a") as out:
+                out.write('yes !')
         
         del maxima 
+
+        with open("04_not_here", "a") as out:
+            out.write('yes !')
 
         markers = label(markers)
 
@@ -197,12 +209,9 @@ if __name__ == '__main__':
     parser.add_argument('--deep_watershed_args', type=json.loads, required=False, default='{"maxima_algorithm":"peak_local_max"}', help="Other args to pass to main function for computing labels")
     args = parser.parse_args()
 
-    with open("loading", "a") as out:
-        out.write('yes !')
-
     mesmer_output = imread(vars(args)['in'])[:, None, ..., None]
     # add batch and channel axis to output. We have : 2 x batch x witdh x height x channel
-    print(mesmer_output.shape)
+
     label_img = deep_watershed(mesmer_output, **args.deep_watershed_args)
 
     metadata = OmeTifffile(TiffFile(args.original).pages[0])
