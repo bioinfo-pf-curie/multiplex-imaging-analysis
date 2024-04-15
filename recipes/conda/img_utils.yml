@@ -14,4 +14,4 @@ dependencies:
     - opencv-python-headless==4.8.1.78
     - pydantic==2.5.3
     - xsdata==23.8
-    - scikit-image=0.23.1
+    - scikit-image==0.23.1
