@@ -185,7 +185,7 @@ def follow_flows(dP, mask=None, niter=200, use_gpu=True, device=None, block_info
         print('WARNING: no mask pixels found')
         return p
     
-    p_interp = steps2D_interp(p[:,inds[:,0], inds[:,1]], dP, niter, use_gpu=use_gpu, device=device)    
+    p_interp = steps2D_interp(p[:,inds[:,0], inds[:,1]], dP, niter, device=device)    
     p[:,inds[:,0],inds[:,1]] = p_interp
     return p
 
@@ -254,7 +254,7 @@ def compute_masks(flows, p=None, niter=200,
         # flow thresholding factored out of get_masks
         if mask.max()>0 and flow_threshold is not None and flow_threshold > 0:
             # make sure labels are unique at output of get_masks
-            mask = remove_bad_flow_masks(mask, dP, threshold=flow_threshold, use_gpu=use_gpu, device=device)
+            mask = remove_bad_flow_masks(mask, dP, threshold=flow_threshold, device=device)
         
         if resize is not None:
             mask = mask.astype(np.float32)

@@ -1,4 +1,4 @@
-FROM biocontainers/cellpose:2.1.1_cv2
+FROM biocontainers/cellpose:3.0.1_cv1
 
 RUN python -m pip install --no-cache-dir \
   pandas==2.0.3 \

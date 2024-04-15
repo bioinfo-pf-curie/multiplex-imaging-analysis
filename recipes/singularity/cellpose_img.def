@@ -1,5 +1,5 @@
 Bootstrap: docker
-From: biocontainers/cellpose:2.1.1_cv2
+From: biocontainers/cellpose:3.0.1_cv1
 
 %post
   python -m pip install --no-cache-dir \

@@ -58,11 +58,14 @@ def tile_generator(arr, nuclei_chan, to_merge_chan, x, y, chunk_x, chunk_y, agg=
         for tmp_arr in _tile_generator(arr, ci, x, y, chunk_x, chunk_y):
             if norm == "gaussian":
                 tmp_arr = gaussian_filter(tmp_arr, 1)
-            elif norm and norm_val is not None and ci == to_merge_chan:
+            elif norm and norm_val is not None:
                 tmp_arr = tmp_arr.astype('float')
                 tmp_arr = gaussian_filter(tmp_arr, 0.2)
-                for i, c in enumerate(ci):
-                    tmp_arr[i] = min_max_norm(tmp_arr[i], *norm_val[c])
+                if not isinstance(ci, int):
+                    for i, c in enumerate(ci):
+                        tmp_arr[i] = min_max_norm(tmp_arr[i], *norm_val[c])
+                else:
+                    tmp_arr = min_max_norm(tmp_arr, *norm_val[ci])
 
             if ci != to_merge_chan:
                 yield tmp_arr.astype('uint16')

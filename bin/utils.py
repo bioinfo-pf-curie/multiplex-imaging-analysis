@@ -75,7 +75,13 @@ def compute_hist(img, channel, x, y, chunk_x, chunk_y, img_min=None, img_max=Non
         value of the bin to normalize img.
     """
     if img_min is None or img_max is None:
-        img_min, img_max = 0, 65535
+        try:
+            from dask import array as da
+            arr = da.from_zarr(img)
+            img_min = da.min(arr[channel]).compute()
+            img_max = da.max(arr[channel]).compute()
+        except:
+            img_min, img_max = 0, 65535
     bins = np.linspace(img_min, img_max, num_bin)
     hist = np.zeros(num_bin-1)
     for tile in _tile_generator(img, channel, x, y, chunk_x, chunk_y):
@@ -411,6 +417,9 @@ with TiffWriter("image_test.ome.tiff", bigtiff=True, shaped=False) as tiff_out:
     tmp_arr = img[:, 5079:5150, 5698:5754]
     metadata.update_shape(tmp_arr.shape)
     tiff_out.write(data=tmp_arr, shape=tmp_arr.shape, **metadata.to_dict())
+
+
+tmp_arr = img[:-1,13240:13603,24307:24612]
 
 
 """
