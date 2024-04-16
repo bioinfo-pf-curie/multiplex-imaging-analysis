@@ -12,8 +12,7 @@ import h5py
 import pandas as pd
 import numpy as np
 import os
-from regionprops import regionprops_table
-from skimage.measure._regionprops import PROP_VALS
+from skimage.measure._regionprops import PROP_VALS, regionprops_table
 import tifffile
 
 from pathlib import Path
