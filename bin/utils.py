@@ -379,6 +379,16 @@ class OmeTifffile(object):
             id=new_id_name, name=channel_name, **kwargs
         ))
 
+    def remove_channel(self, idx=-1):
+        try:
+            self.pix.planes.pop(idx)
+            self.pix.channels.pop(idx)
+            self.pix.size_c -= 1
+            self.pix.tiff_data_blocks = []
+        except IndexError:
+            raise IndexError(f"No channel at {idx} position")
+        
+
     def remove_all_channels(self):
         self.pix.planes = []
         self.pix.channels = []
