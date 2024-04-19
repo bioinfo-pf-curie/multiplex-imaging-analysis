@@ -210,7 +210,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     mesmer_output = imread(vars(args)['in'])[:, None, ..., None]
-    # add batch and channel axis to output. We have : 2 x batch x witdh x height x channel
+    # add batch and channel axis to output. We have : 2 x batch (=1) x witdh x height x channel (=1)
 
     label_img = deep_watershed(mesmer_output, **args.deep_watershed_args)
 
