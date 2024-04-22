@@ -6,7 +6,7 @@ import tifffile
 import numpy as np
 import os
 import cv2
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
 from scipy.ndimage import find_objects
 import zarr
 from utils import OmeTifffile, _tile_generator
@@ -120,7 +120,10 @@ def make_outline(merged_file, png_file, mask_path, out_path, nuclei_channel=0, c
         outline = np.zeros_like(png[..., 0])
         outline[(png[..., 0] == 255) & np.all(png[..., [1,2]] == 0, axis=2)] = 255
     else:
-        mask = np.array(Image.open(mask_path))
+        try:
+            mask = np.array(Image.open(mask_path))
+        except UnidentifiedImageError:
+            mask = tifffile.imread(mask_path)
         outline = create_outline_mask(mask)
 
     tiff = tifffile.TiffFile(merged_file) # blue = nuclei = 0, green = cyto = 1

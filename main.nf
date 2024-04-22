@@ -95,6 +95,7 @@ include { splitImage } from './nf-modules/common/process/splitImage'
 include { stitch } from './nf-modules/common/process/stitch'
 include { computeMasks } from './nf-modules/common/process/computeMasks'
 include { pyramidize } from './nf-modules/common/process/pyramidize'
+include { mergeMasks } from './nf-modules/common/process/mergeMasks'
 
 /*
 =====================================
@@ -139,7 +140,7 @@ workflow {
     merged = mergeChannels(inputsOriginal)
 
     splittedImg = splitImage(merged)
-    splittedImg = splittedImg.transpose().map{nb, meta, splitted -> 
+    splittedImgResult = splittedImg.transpose().map{nb, meta, splitted -> 
       def newMeta = [
         originalName: meta.originalName, 
         imagePath: meta.imagePath, 
@@ -152,23 +153,27 @@ workflow {
       tuple(newMeta, splitted)
     }
 
-    segmented = segmentation(splittedImg)
+    mods = ["tissuenet_cp3", "cyto2_cp3"]
 
-    segmented = segmented.map{meta, segmentedImg ->
-      tuple(groupKey(meta.subMap("originalName", "imagePath", "markersPath", "imgSize"), meta.nbSplittedFile.toInteger()), meta, segmentedImg)
+    segmented = segmentation(splittedImgResult, mods)
+
+    groupSegmented = segmented.map{meta, segmentedImg, models ->
+      meta['model'] = models
+      tuple(groupKey(meta.subMap("originalName", "imagePath", "markersPath", "imgSize", 'model'), meta.nbSplittedFile.toInteger()), meta, segmentedImg)
     }.groupTuple().map{groupedkey, old_meta, segmentedImg -> 
       tuple(groupedkey, segmentedImg)
     }
-    flow = stitch(segmented)
-    // .branch({
-      // npy: it[1].name.endsWith(".npy")
-      // tiff: true 
-    // })
+    flow = stitch(groupSegmented)
 
-    masks = computeMasks(flow)
-    // .npy).mix(flow.tiff)
-    
-    outline = displayOutline(masks)
+    partialMasks = computeMasks(flow)
+
+    partialMaskCh = partialMasks.map{meta, partial ->
+      tuple(groupKey(meta.subMap("originalName", "imagePath", "markersPath", "imgSize"), mods.size()), partial)
+    }.groupTuple()
+
+    finalMask = mergeMasks(partialMaskCh)
+
+    outline = displayOutline(finalMask)
 
     pyramidizeCh = Channel.empty()
     .mix(NFTools.setTag(merged, "merge_channels"))
@@ -176,7 +181,7 @@ workflow {
     
     pyramidize(pyramidizeCh)
   
-    quant = quantification(masks)
+    quant = quantification(finalMask)
 
     //*******************************************
     // Warnings that will be printed in the mqc report

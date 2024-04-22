@@ -3,13 +3,13 @@
 import argparse
 
 import numpy as np
-import pandas as pd
 from tifffile import TiffFile, imwrite
 from cellpose.dynamics import steps2D_interp, get_masks, remove_bad_flow_masks
 from cellpose.transforms import resize_image
 from cv2 import INTER_NEAREST
 
 from utils import OmeTifffile
+from dask_utils import correct_edges_inplace
 
 import fastremap
 from scipy.ndimage import maximum_filter1d
@@ -273,50 +273,7 @@ def compute_masks(flows, p=None, niter=200,
     # cleanup at the prediction scale, or switch depending on which one is bigger... 
     # mask = fill_holes_and_remove_small_masks(mask, min_size=min_size)
     return mask
-
-# for each grp (!= 0) return value most frequent (unless its 0)
-# This function will try to stitch masks together when there is contact between two of them 
-def adjacent_mask_filter(grp):
-    if grp.name:
-        try:
-            v = int(grp.mode().values)
-        except TypeError:
-            return
-        if v:
-            return v
-        
-
-def correct_edges_inplace(masks, chunks_size):
-    """
-    Take the limit of each chunk and stitch together corresponding mask
-
-    parameters
-    ----------
-
-    masks: int32, 2D array
-        masks to modify
-
-    chunks_size: tuple of int
-        size of the chunk
-
-    return
-    ------
-
-    nothing, modifying masks inplace
-    """
-    for dim in [0,1]:
-        for limit in range(chunks_size[dim], masks.shape[dim], chunks_size[dim]):
-            # np.take allow to generalize between dimension (otherwise I should have written masks[limit-1] and masks[:, limit-1])
-            replace = pd.DataFrame({0: masks.take(limit-1, axis=dim), 1: masks.take(limit, axis=dim)}, dtype=int)\
-                .groupby(0, sort=False)[1]\
-                .apply(adjacent_mask_filter)\
-                .dropna().astype(int)
-            sub_masks = masks[:, limit-256:limit+1] if dim else masks[limit-256:limit+1]
-            # take make a copy
-            for k, v in replace.items():
-                sub_masks[sub_masks == k] = v
-            sub_masks = None # garbage collected
-
+     
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -330,11 +287,14 @@ if __name__ == '__main__':
     process = psutil.Process()
     flows = np.lib.format.open_memmap(vars(args)['in'])
     print(f"flow before = {process.memory_info().rss}")
+
     flows_da = da.from_array(flows, chunks=[3, *args.chunks])
     print(f"flow aftr = {process.memory_info().rss}")
+
     masks_graph = da.map_overlap(compute_masks, flows_da, dtype=np.uint32, depth={0: 0, 1: args.overlap, 2: args.overlap}, drop_axis=0)
     mask_memmap = np.lib.format.open_memmap(".tmp_masks.npy", mode='w+', dtype=np.uint32, shape=flows.shape[1:])
     print(f"masks_grpah = {process.memory_info().rss}")
+
     da.store(masks_graph, mask_memmap, compute=True)
     print(f"mask memmap aft= {process.memory_info().rss}")
 

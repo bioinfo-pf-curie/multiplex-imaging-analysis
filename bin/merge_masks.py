@@ -1,10 +1,16 @@
+#!/usr/bin/env python
+
+import argparse
 import tifffile
 import dask.array as da
 import numpy as np
-from scipy.ndimage import find_objects
 import cv2
 import shapely
-from shapely.geometry import GeometryCollection, MultiPolygon, Polygon, Point
+from shapely.geometry import GeometryCollection, MultiPolygon, Polygon
+import fastremap
+
+from dask_utils import correct_edges_inplace
+
 
 ## test sur les flows non concluant ##
 
@@ -192,18 +198,42 @@ def recreate_mask(cells, shape):
 
 
 def on_chunk(chunk):
-    cells = geometrize(chunk[0]) + geometrize(chunk[1])
+    cells = []
+    for i in range(chunk.shape[0]):
+        cells += geometrize(chunk[i])
     results = solve_conflicts(cells)
     return recreate_mask(results, chunk.shape[1:])
 
 
-def merge_masks(mask1_path, mask2_path, out_file, chunk_size=1024, overlap=120):
-    m1 = da.from_zarr(tifffile.TiffFile(mask1_path).series[0].aszarr(), chunks=(chunk_size, chunk_size))
-    m2 = da.from_zarr(tifffile.TiffFile(mask2_path).series[0].aszarr(), chunks=(chunk_size, chunk_size))
-    masks = da.stack([m1, m2])
+def merge_masks(list_of_masks, out_file, chunk_size=1024, overlap=120):
+    masks = [da.from_zarr(tifffile.TiffFile(mask).series[0].aszarr(), chunks=(chunk_size, chunk_size)) for mask in list_of_masks]
+    masks = da.stack(masks)
     final_mask = da.map_overlap(on_chunk, masks, dtype=np.uint32, depth={0: 0, 1: overlap, 2: overlap}, drop_axis=0).compute()
-    tifffile.imwrite(out_file, final_mask, bigtiff=True, shaped=False)
 
+    correct_edges_inplace(final_mask, chunks_size=(chunk_size, chunk_size))
+
+    fastremap.renumber(final_mask, in_place=True) #convenient to guarantee non-skipped labels
+    tifffile.imwrite(out_file, final_mask.astype('uint32'), bigtiff=True, shaped=False, dtype="uint32")
+
+
+# def merge_masks(list_of_masks, out_file):
+#     cells = []
+#     for mask_file in list_of_masks:
+#         mask = tifffile.imread(mask_file)
+#         cells += geometrize(mask)
+
+#     results = solve_conflicts(cells)
+#     final_mask = recreate_mask(results, mask.shape)
+#     tifffile.imwrite(out_file, final_mask, bigtiff=True, shaped=False)
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--list_of_mask', nargs="+", type=str, required=True, help="filename for masks to merge")
+    parser.add_argument('--out', type=str, required=True, help="Output path for resulting image")
+    args = parser.parse_args()
+    print(args.list_of_mask)
+    print(args.out)
+    merge_masks(args.list_of_mask, args.out)
 
 # import sys
 # sys.path.append("/data/users/mcorbe/orion/MIA/bin")
