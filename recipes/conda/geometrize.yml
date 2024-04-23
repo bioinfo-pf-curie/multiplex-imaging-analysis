@@ -1,4 +1,4 @@
-name: img_utils
+name: geometrize
 dependencies:
   - python=3.11.5=h955ad1f_0
   - numpy=1.25.2=py311h24aa872_0
