@@ -230,10 +230,10 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--list_of_mask', nargs="+", type=str, required=True, help="filename for masks to merge")
     parser.add_argument('--out', type=str, required=True, help="Output path for resulting image")
+    parser.add_argument('--overlap', type=int, default=120, required=False, help="overlap between tiles")
+    parser.add_argument('--chunk_size', type=int, default=1024, required=False, help="size of tiles")
     args = parser.parse_args()
-    print(args.list_of_mask)
-    print(args.out)
-    merge_masks(args.list_of_mask, args.out)
+    merge_masks(args.list_of_mask, args.out, overlap=args.overlap, chunk_size=args.chunk_size)
 
 # import sys
 # sys.path.append("/data/users/mcorbe/orion/MIA/bin")
