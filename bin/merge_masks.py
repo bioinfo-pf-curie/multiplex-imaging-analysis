@@ -11,22 +11,6 @@ import fastremap
 
 from dask_utils import correct_edges_inplace
 
-
-## test sur les flows non concluant ##
-
-# import numpy as np
-
-# def load_npy(npy_path):
-#     """Helper to load npy files"""
-#     return np.load(npy_path, allow_pickle=True).item()['flows'][4]
-
-# c = load_npy("test_normalize_nuc.ome_seg_cyto.npy")
-# tn = load_npy("test_normalize_nuc.ome_seg_tn.npy")
-
-# out = np.lib.format.open_memmap("result.npy", dtype="float32", shape=c[4].shape, mode="w+")
-# out[...] = np.max([c[4], tn[4]], axis=0)
-# out.flush()
-
 # taken from SOPA https://github.com/gustaveroussy/sopa/blob/master/sopa/segmentation/shapes.py
 
 def _contours(cell_mask: np.ndarray) -> MultiPolygon:
@@ -191,24 +175,82 @@ def solve_conflicts(
 
 
 def recreate_mask(cells, shape):
+    """
+    From a list of shapes (cells), reconstruct the mask image.
+
+    Parameters
+    ----------
+
+    cells: list of Polygon
+        list of shape to be draw into the mask
+    shape: tuple of int
+        image size (same as the size of original masks)
+
+    Return
+    ------
+
+    result: np.array
+        Merged mask
+    """
     result = np.zeros(shape=shape)
     for i, cell in enumerate(cells, 1):
         result = cv2.fillConvexPoly(result, np.rint(cell.exterior.xy).astype("int32").T, color=i)
     return result
 
 
-def on_chunk(chunk):
+def on_chunk(chunk, threshold):
+    """
+    Convert each masks into a list of shape (cells), concat these lists, solve intersection and then reconvert it to mask image.
+
+    Parameters
+    ----------
+
+    chunk: 3D np.array
+        array of number_of_masks * image_width * image_height
+    threshold: float
+        Intersection over union value for which cells are to be merged
+
+    Return
+    ------
+     
+    merged_mask: 2D np.array
+        resulting mask
+    """
     cells = []
     for i in range(chunk.shape[0]):
         cells += geometrize(chunk[i])
-    results = solve_conflicts(cells)
+    results = solve_conflicts(cells, threshold=threshold)
     return recreate_mask(results, chunk.shape[1:])
 
 
-def merge_masks(list_of_masks, out_file, chunk_size=1024, overlap=120):
+def merge_masks(list_of_masks, out_file, chunk_size=1024, overlap=120, threshold=0.5):
+    """
+    Merge a list of masks (cells labels images) into one, based on a threshold of percentage of intersection
+    (see SOPA for a more detailed implementation of solve conflict)
+
+    Parameters
+    ----------
+
+    list_of_masks: List of (string | Path)
+        List of path of the masks to be merged
+    out_file: string | Path
+        Name of the output file
+    chunk_size: int
+        size of each chunk (square of chunk_size by chunk_size)
+    overlap: int
+        number of pixels taken for the previous and next chunk
+    threshold: float
+        Intersection over union value for which cells are to be merged
+
+    Return
+    ------
+
+    None
+
+    """
     masks = [da.from_zarr(tifffile.TiffFile(mask).series[0].aszarr(), chunks=(chunk_size, chunk_size)) for mask in list_of_masks]
     masks = da.stack(masks)
-    final_mask = da.map_overlap(on_chunk, masks, dtype=np.uint32, depth={0: 0, 1: overlap, 2: overlap}, drop_axis=0).compute()
+    final_mask = da.map_overlap(on_chunk, masks, dtype=np.uint32, depth={0: 0, 1: overlap, 2: overlap}, drop_axis=0, threshold=threshold).compute()
 
     correct_edges_inplace(final_mask, chunks_size=(chunk_size, chunk_size))
 
@@ -216,52 +258,12 @@ def merge_masks(list_of_masks, out_file, chunk_size=1024, overlap=120):
     tifffile.imwrite(out_file, final_mask.astype('uint32'), bigtiff=True, shaped=False, dtype="uint32")
 
 
-# def merge_masks(list_of_masks, out_file):
-#     cells = []
-#     for mask_file in list_of_masks:
-#         mask = tifffile.imread(mask_file)
-#         cells += geometrize(mask)
-
-#     results = solve_conflicts(cells)
-#     final_mask = recreate_mask(results, mask.shape)
-#     tifffile.imwrite(out_file, final_mask, bigtiff=True, shaped=False)
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--list_of_mask', nargs="+", type=str, required=True, help="filename for masks to merge")
     parser.add_argument('--out', type=str, required=True, help="Output path for resulting image")
     parser.add_argument('--overlap', type=int, default=120, required=False, help="overlap between tiles")
     parser.add_argument('--chunk_size', type=int, default=1024, required=False, help="size of tiles")
+    parser.add_argument('--threshold', type=float, default=0.5, required=False, help="Intersection over union for cells to be merged")
     args = parser.parse_args()
-    merge_masks(args.list_of_mask, args.out, overlap=args.overlap, chunk_size=args.chunk_size)
-
-# import sys
-# sys.path.append("/data/users/mcorbe/orion/MIA/bin")
-# import tifffile
-# import numpy as np
-# import merge_masks as mm
-# mm.merge_masks("test_normalize_nuc.ome_cp_masks.tif", "test_normalize_nuc.ome_cp_masks_tn.tif", "result_mergemask.tiff", chunk_size=120, overlap=30)
-# a1 = tifffile.imread("test_normalize_nuc.ome_cp_masks.tif")
-# a2 = tifffile.imread("test_normalize_nuc.ome_cp_masks_tn.tif")
-# cells = mm.geometrize(a1) + mm.geometrize(a2)
-# results = solve_conflicts(cells)
-# mask = recreate_mask(results, chunk.shape[1:])
-
-
-
-
-## pseudo code pour merge masks ##
-
-# objs = find_object(mask_cyto) 
-# autre = find_object(mask_tn)
-# new = []
-# pour chaque cell de objs:
-#   si cell partage sa zone avec une dans autre (et seulement une) alors
-#       si IoU > 70 (pe changer ça) alors suprimer dans autre
-#        sinon nouvel cell (union) + supr les deux
-#   si partage avec plusieurs alors 
-#       si grande diff d'aire alors union avec la + grosse et intersection avec la plus petite commune
-#       sinon on fusionne tout
-#   si pas de cell correspondante alors on enregistre la cell
-# pour chaque cell restante de autre:
-#   enregistrer dans le resultat
+    merge_masks(args.list_of_mask, args.out, overlap=args.overlap, chunk_size=args.chunk_size, threshold=args.threshold)
