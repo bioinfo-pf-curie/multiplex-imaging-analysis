@@ -621,8 +621,9 @@ Available Profiles
   }
 
   public static Object getStartHeight(imageName) {
-    def m = imageName.getBaseName().toString() =~ /\_(\d+)\.tiff$/
-    return m
+    def m = imageName.getBaseName().toString() =~ /\_(\d+)$/
+    assert m.find()
+    return m.group(1) as Integer
   }
 
 }

@@ -148,7 +148,7 @@ workflow {
         nbSplittedFile: nb, 
         splittedName: splitted.name - ~/\.\w+$/, 
         startHeight: NFTools.getStartHeight(splitted),
-        imgSize: meta.imgSize
+        imgSize: meta.imgSize as Integer
       ] 
       tuple(newMeta, splitted)
     }
