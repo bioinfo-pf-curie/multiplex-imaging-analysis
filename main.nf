@@ -173,7 +173,7 @@ workflow {
 
     finalMask = mergeMasks(partialMaskCh)
 
-    outline = displayOutline(finalMask)
+    outline = displayOutline(finalMask.join(merged))
 
     pyramidizeCh = Channel.empty()
     .mix(NFTools.setTag(merged, "merge_channels"))
