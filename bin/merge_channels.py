@@ -11,10 +11,11 @@ import tifffile
 import argparse
 import os
 from scipy.ndimage import gaussian_filter
+from skimage.exposure import equalize_adapthist
 
 from utils import read_tiff_orion, _tile_generator, parse_normalization_values, compute_hist, min_max_norm
 
-def tile_generator(arr, nuclei_chan, to_merge_chan, x, y, chunk_x, chunk_y, agg=np.max, norm='hist', norm_val=None):
+def tile_generator(arr, nuclei_chan, to_merge_chan, x, y, chunk_x, chunk_y, agg=np.max, norm='hist', norm_val=None, nbins=2**14, kernel_size=64, clip_limit=0.01):
     """
     generate tile and compute the merge and normalization on the fly
 
@@ -54,10 +55,13 @@ def tile_generator(arr, nuclei_chan, to_merge_chan, x, y, chunk_x, chunk_y, agg=
             norm_val = {}
             for c in (ci if not isinstance(ci, int) else [ci]):
                 norm_val[c] = compute_hist(arr, c, x, y, chunk_x, chunk_y)
-
+        
         for tmp_arr in _tile_generator(arr, ci, x, y, chunk_x, chunk_y):
             if norm == "gaussian":
                 tmp_arr = gaussian_filter(tmp_arr, 1)
+            elif norm == "equalize":
+                for i in range(tmp_arr.shape[0]):
+                    tmp_arr[i] = (equalize_adapthist(tmp_arr[i], kernel_size=kernel_size, clip_limit=clip_limit, nbins=nbins) * (2**16-1)).astype('uint16')
             elif norm and norm_val is not None:
                 tmp_arr = tmp_arr.astype('float')
                 tmp_arr = gaussian_filter(tmp_arr, 0.2)
@@ -74,7 +78,7 @@ def tile_generator(arr, nuclei_chan, to_merge_chan, x, y, chunk_x, chunk_y, agg=
     tmp_arr = None # don't wait for next iteration to flush this
 
 
-def merge_channels(in_path, out_path, nuclei_chan=0, channels_to_merge=None, chunk_size=(256,256), agg=np.max, norm=None, norm_val=None):
+def merge_channels(in_path, out_path, nuclei_chan=0, channels_to_merge=None, chunk_size=(256,256), agg=np.max, norm=None, norm_val=None, nbins=256, kernel_size=64, clip_limit=0.01):
     """
     take an image on disk, load chunks of it and merged all channels (first dimension) into one by agg function (np.max or np.mean mostly).
     Make exception for first and second channel (by default) to not be merged
@@ -131,7 +135,7 @@ def merge_channels(in_path, out_path, nuclei_chan=0, channels_to_merge=None, chu
     with tifffile.TiffWriter(out_path, bigtiff=True, shaped=False) as tiff_out:
             tiff_out.write(
                 data=tile_generator(img_level, nuclei_chan, channels_to_merge, 
-                                    *img_level.shape[1:], *chunk_size, agg=agg, norm=norm, norm_val=norm_val),
+                                    *img_level.shape[1:], *chunk_size, agg=agg, norm=norm, norm_val=norm_val, nbins=nbins, kernel_size=kernel_size, clip_limit=clip_limit),
                 shape=(2, *img_level.shape[1:]),
                 tile=chunk_size,
                 **metadata.to_dict(shape=img_level.shape[1:])

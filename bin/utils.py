@@ -430,6 +430,7 @@ with TiffWriter("image_test.ome.tiff", bigtiff=True, shaped=False) as tiff_out:
 
 
 tmp_arr = img[:-1,13240:13603,24307:24612]
+tmp_arr = img[:-1,25846:26870,31926:32950]
 
 
 """
