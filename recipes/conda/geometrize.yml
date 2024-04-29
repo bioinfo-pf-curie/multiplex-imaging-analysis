@@ -9,4 +9,5 @@ dependencies:
   - pip=23.3=py311h06a4308_0
   - pip:
     - opencv-python-headless==4.8.1.78
+    - zarr==2.16.1
     - fastremap==1.13.4
