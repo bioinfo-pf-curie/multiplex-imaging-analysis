@@ -127,7 +127,7 @@ workflow {
         originalName: name, 
         imagePath: ipath, 
         markersPath: mpath,
-        imgSize: ipath.size()
+        imgSize: ipath.size() as Float
       ], ipath, mpath)}
     
     // subroutines
@@ -148,7 +148,7 @@ workflow {
         nbSplittedFile: nb, 
         splittedName: splitted.name - ~/\.\w+$/, 
         startHeight: NFTools.getStartHeight(splitted),
-        imgSize: meta.imgSize as Integer
+        imgSize: meta.imgSize
       ] 
       tuple(newMeta, splitted)
     }
