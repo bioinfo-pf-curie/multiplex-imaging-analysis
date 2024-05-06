@@ -30,52 +30,63 @@ Describe here the main steps of the pipeline.
 ### Quick help
 
 ```
-nextflow run main.nf --help
-N E X T F L O W  ~  version 19.10.0
-Launching `main.nf` [stupefied_darwin] - revision: aa905ab621
+nextflow run orion/MIA/ --help
+N E X T F L O W  ~  version 23.04.4
+Launching `orion/MIA/main.nf` [admiring_blackwell] DSL2 - revision: 3aad0eac48
+------------------------------------------------------------------------
+
+                           __  __ ___   _   
+                          |  \/  |_ _| /_\  
+                          | |\/| || | / _ \ 
+                          |_|  |_|___/_/ \_\
+
+                            v0.0.4dev
+------------------------------------------------------------------------
+
+------------------------------------------------------------------------
+DISCLAIMER
+
+This software is currently under active development and the results 
+have been generated with a non stable version.
+The reliability, reproducibility and the quality of the results are 
+therefore not guaranteed.
+
+/!\ Do not use the results for any kind of projects /!\
+------------------------------------------------------------------------
+
+
+
+    Usage:
+
+    The typical command for running the pipeline is as follows:
+
+    nextflow run main.nf --images PATH --markers PATH --profile STRING -profile PROFILES
+
+MANDATORY ARGUMENTS:
+    --images  PATH                                                                                    Path to input images (must be surrounded with 
+                                                                                                      quotes)
+    --markers PATH                                                                                    Path to marker (csv format) one per image (with 
+                                                                                                      same name)
+    --profile STRING [conda, cluster, docker, multiconda, conda, path, multipath, singularity, test]  Configuration profile to use. Can use multiple 
+                                                                                                      (comma separated).
+
+OTHER OPTIONS:
+    --name   STRING   Name for the pipeline run. If not specified, Nextflow will automatically generate a random mnemonic
+    --outDir PATH     The output directory where the results will be saved
+
 =======================================================
-
-Usage:
-
-Mandatory arguments:
---images [file]                   Path to input images directory 
---markers [file]                  Path to markers file (one file per image, must be a csv file listing markers name and metadata about it, see docs for more information)
-
-Optionnal arguments:
---segmentation.name [str]                     Name of the segmenter used (can be "cellpose" or "mesmer") (default = "cellpose")
---segmentation.overlap [float]                Percentage of overlap between tile (default is 0.1)
---segmentation.tileHeight [int]               Size in pixel of the height of each tile (default will compute the best height for available memory)
---segmentation.additionnalParms [str]         Additionnal parms to be passed to segmenter command line
---mask.overlap [int]                          Size in pixel of the overlap for computing masks (default is 60 ~ 2 x mean cell size)
---normalization.mode [str]                    Normalization used before merging channels. Can be either 'custom', 'hist' or 'no-norm' (default is custom if normalization value are present in markers.csv else it's hist)
---quantification.normalization [bool]         Use normalization on markers before quantification (default = false)       
---outDir [str]                                Path where to record output (default = ./results/)
---summaryDir [str]                            Path where to record reporting files (default = ${outDir}/summary)
---queue [str]                                 Specifie the queue in cluster. Only used with cluster or abacus profile (default = "dev")
---clusterOptions                              Options to add for cluster. Only used with cluster or abacus profile (default = "--account dev")
-
-
-Skip options: All are false by default
---skipSoftVersion [bool]         Do not report software version
-
-Other options:
---outDir [dir]                  The output directory where the results will be saved
--w/--work-dir [dir]             The temporary directory where intermediate data will be saved
--name [str]                      Name for the pipeline run. If not specified, Nextflow will automatically generate a random mnemonic
-
-=======================================================
-Available profiles
--profile test                    Run the test dataset
--profile conda                   Build a new conda environment before running the pipeline. Use `--condaCacheDir` to define the conda cache path
--profile multiconda              Build a new conda environment per process before running the pipeline. Use `--condaCacheDir` to define the conda cache path
--profile path                    Use the installation path defined for all tools. Use `--globalPath` to define the installation path
--profile multipath               Use the installation paths defined for each tool. Use `--globalPath` to define the installation path
--profile docker                  Use the Docker images for each process
--profile singularity             Use the Singularity images for each process. Use `--singularityImagePath` to define the path of the singularity containers
--profile cluster                 Run the workflow on the cluster, instead of locally
+Available Profiles
+   -profile test                        Run the test dataset
+   -profile conda                       Build a new conda environment before running the pipeline. Use `--condaCacheDir` to define the conda cache path
+   -profile multiconda                  Build a new conda environment per process before running the pipeline. Use `--condaCacheDir` to define the conda cache path
+   -profile path                        Use the installation path defined for all tools. Use `--globalPath` to define the insallation path
+   -profile multipath                   Use the installation paths defined for each tool. Use `--globalPath` to define the insallation path
+   -profile docker                      Use the Docker images for each process
+   -profile singularity                 Use the Singularity images for each process. Use `--singularityPath` to define the insallation path
+   -profile cluster                     Run the workflow on the cluster, instead of locally
 
 ```
-
+See [usage.md](docs/usage.md) for a more detailed help about options in command line
 
 ### Quick run
 

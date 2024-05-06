@@ -2,6 +2,7 @@
 
 This pipeline is used to segment and quantify large multiplexed tiff image
 
+
 ## Table of contents
 
 * [Introduction](#general-nextflow-info)
@@ -88,13 +89,77 @@ Different Nextflow profiles can be used. See [Profiles](profiles.md) for details
 ## Job resources
 
 Each step in the pipeline has a default set of requirements for number of CPUs, memory and time (see the [`conf/process.conf`](../conf/process.config) file). 
-For most of the steps in the pipeline, if the job exits with an error code of `143` (exceeded requested resources) it will automatically resubmit with higher requests (2 x original, then 3 x original). If it still fails after three times then the pipeline is stopped.
+For most of the steps in the pipeline, if the job exits with an error code of `143` (exceeded requested resources) it will automatically resubmit with higher requests (2 x original). If it still fails then the pipeline is stopped.
+
+## Configuration options
+
+  #### `minMemory`
+
+  Minimum ram used by each process. default='2.GB'
+
+  #### `summaryDir`
+  
+  path for summary directory. default = "${params.outDir}/summary"
+
+  #### `clusterOptions`
+  
+  Options for cluster (not used in local). default for abacus = " --account dev"
+
+
+### Masks
+
+  #### `masks.overlap`
+
+  overlap used by dask to compute mask from cellpose's flows. In pixels. default = 120 
+
+### Normalization
+
+  #### `normalization.mode`
+  
+  Mode used for image normalization before segmentation and before quantification. Accepted values are : ['auto', 'custom', 'hist', 'gaussian', 'equalize']. Default = "auto".
+
+- auto : act as 'custom' if normalization values are given else act as 'hist'
+
+- custom : Perform a normalization based on min/max values given by the user, in markers.csv file (otherwise nothing will be done).
+    
+- hist : Compute min/max values for normalization based on an histogram of intensities values (100 bins, min = 2 + argmax and max = 90bin)
+
+- gaussian : normalize by applying a gaussian filter.
+
+- equalize : Perform a [CLAHE](https://en.wikipedia.org/wiki/Adaptive_histogram_equalization)
+
+### Segmentation 
+  #### `segmentation.name`
+
+  Change segmenter (only cellpose is correctly implemented as of now). default = "cellpose"
+
+  #### `segmentation.tileHeight`
+     
+  Fix height tile in image segmentation. An instance of the segmenter will be launched on each tiles. A null value will compute a good value in respect of available memory. Default = null
+
+  #### `segmentation.overlap`
+  
+  Overlap of the segmenter. Tiles will be further cut into chunk of 224 * 224 pixels (for cellpose by example). In percentage of chunk length. Default = 0.1 (~22 pixels for cellpose)
+
+  #### `segmentation.additionalParms`
+  
+  A string of additional parameters to add to segmenter command. Default = "--restore_type denoise_cyto3"
+
+
+### Quantification
+    
+  #### `quantification.normalization`
+  
+  Wether or not perform normalization of channels before quantification. Default = true
+  
+
+### Outline
+
+  #### `outline` 
+  
+  Which image will be used for displaying outline. Accepted value are ["merged", "original"]. Default = "merged"
 
 ## Other command line parameters
-
-### `--skip*`
-
-The pipeline is made with a few *skip* options that allow to skip optional steps in the workflow.
 
 ### `--outDir`
 The output directory where the results will be saved.

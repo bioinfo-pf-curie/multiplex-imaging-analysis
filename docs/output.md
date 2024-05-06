@@ -19,17 +19,30 @@ The directories listed below will be created in the output directory after the p
 
 **Output directory: `masks`**
 
-* `image_name_merged_cp_masks.tif`
+* `image_name_masks.tif`
   * Mask of segmented cells
 
-**Output directory: `masks`**
+**Output directory: `outlines`**
 
-* `image_name_merged_clear_outlines.tif`
-  * Compressed RGB image (red=outline, blue=nuclear channel green=resulting of the merge) to be able to visualize segmentation.
+* `image_name_outlines.tif`
+  * Original image with one channel added which outline cell contour. (can be changed in options to be merged image instead)
 
 ## Quantification
 
 **Output directory: `quantification`**
 
-* `image_name_merged_cp_masks.csv`
+* `image_name_data.csv`
   * csv table to quantifie cells.
+
+## Report
+
+**Output directory: `summary`**
+
+* `trace`
+  * directory with reporting files
+
+* `pipelineReport.html`
+  * brief overview of the pipeline
+
+* `trace`
+  * brief overview of the resulting output
