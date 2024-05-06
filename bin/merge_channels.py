@@ -55,14 +55,19 @@ def tile_generator(arr, nuclei_chan, to_merge_chan, x, y, chunk_x, chunk_y, agg=
             norm_val = {}
             for c in (ci if not isinstance(ci, int) else [ci]):
                 norm_val[c] = compute_hist(arr, c, x, y, chunk_x, chunk_y)
+
+        if norm == "equalize":
+            copied_arr = np.zeros_like(arr)
+            for i in range(arr.shape[0]):
+                copied_arr[i] = (equalize_adapthist(arr[i], kernel_size=kernel_size, clip_limit=clip_limit, nbins=nbins) * (2**14-1)).astype('uint16')
         
         for tmp_arr in _tile_generator(arr, ci, x, y, chunk_x, chunk_y):
             if norm == "gaussian":
                 tmp_arr = gaussian_filter(tmp_arr, 1)
-            elif norm == "equalize":
-                for i in range(tmp_arr.shape[0]):
-                    tmp_arr[i] = (equalize_adapthist(tmp_arr[i], kernel_size=kernel_size, clip_limit=clip_limit, nbins=nbins) * (2**16-1)).astype('uint16')
-            elif norm and norm_val is not None:
+            # elif norm == "equalize":
+            #     for i in range(tmp_arr.shape[0]):
+            #         tmp_arr[i] = (equalize_adapthist(tmp_arr[i], kernel_size=kernel_size, clip_limit=clip_limit, nbins=nbins) * (2**16-1)).astype('uint16')
+            elif norm in ['custom', 'auto'] and norm_val is not None:
                 tmp_arr = tmp_arr.astype('float')
                 tmp_arr = gaussian_filter(tmp_arr, 0.2)
                 if not isinstance(ci, int):
