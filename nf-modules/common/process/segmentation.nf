@@ -19,6 +19,6 @@ process segmentation {
     def mesmer = "wrapper_mesmer.py --squeeze --output-directory . --output-name ${meta.splittedName}_masks.tiff --nuclear-image $image --membrane-image $image --membrane-channel 1"
     def script = params.segmentation.name == 'cellpose' ? cellpose : mesmer
     """
-    $script $task.ext.args
+    $script
     """
 }
