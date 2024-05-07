@@ -16,7 +16,7 @@ from skimage.morphology import remove_small_objects, h_maxima
 from skimage.morphology import disk, ball, square, cube, dilation
 from skimage.segmentation import relabel_sequential, watershed
 
-from utils import OmeTifffile
+# from utils import OmeTifffile
 
 
 def deep_watershed(outputs,
@@ -214,13 +214,13 @@ if __name__ == '__main__':
 
     label_img = deep_watershed(mesmer_output, **args.deep_watershed_args)
 
-    metadata = OmeTifffile(TiffFile(args.original).pages[0])
-    metadata.remove_all_channels()
-    metadata.add_channel_metadata(channel_name="masks")
+    # metadata = OmeTifffile(TiffFile(args.original).pages[0])
+    # metadata.remove_all_channels()
+    # metadata.add_channel_metadata(channel_name="masks")
 
-    metadata.dtype = label_img.dtype
+    # metadata.dtype = label_img.dtype
 
     with open('i_hope_its_not_here.txt', 'a') as out:
         out.write('but yet....')
 
-    imwrite(args.out, label_img, bigtiff=True, shaped=False)
+    imwrite(args.out, label_img, bigtiff=True)
