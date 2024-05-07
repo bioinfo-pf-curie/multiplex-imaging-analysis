@@ -8,6 +8,7 @@ import cv2
 import shapely
 from shapely.geometry import GeometryCollection, MultiPolygon, Polygon
 import fastremap
+import warnings
 
 from dask_utils import correct_edges_inplace
 
@@ -143,7 +144,9 @@ def solve_conflicts(
     n_cells = len(cells)
     resolved_indices = np.arange(n_cells)
 
-    assert n_cells > 0, "No cells was segmented, cannot continue"
+    if n_cells > 0:
+        warnings.warn("No cells was segmented, cannot continue")
+        return cells
 
     tree = shapely.STRtree(cells)
     conflicts = tree.query(cells, predicate="intersects")
