@@ -149,7 +149,12 @@ def solve_conflicts(
         return cells
 
     tree = shapely.STRtree(cells)
-    conflicts = tree.query(cells, predicate="intersects")
+    try:
+        conflicts = tree.query(cells, predicate="intersects")
+    except:
+        print(cells)
+        print(len(cells))
+        return cells
 
     if patch_indices is not None:
         conflicts = conflicts[:, patch_indices[conflicts[0]] != patch_indices[conflicts[1]]].T
