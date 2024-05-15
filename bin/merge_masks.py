@@ -152,8 +152,6 @@ def solve_conflicts(
     try:
         conflicts = tree.query(cells, predicate="intersects")
     except:
-        print(cells)
-        print(len(cells))
         return cells
 
     if patch_indices is not None:

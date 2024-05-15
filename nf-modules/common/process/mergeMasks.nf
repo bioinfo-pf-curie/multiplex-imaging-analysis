@@ -2,6 +2,7 @@ process mergeMasks {
   label "geometrize"
   label 'lowCpu'
   label 'extraMem'
+  label 'infiniteTime'
 
   input:
       tuple val(meta), path(partialMask, stageAs: "?/*")
