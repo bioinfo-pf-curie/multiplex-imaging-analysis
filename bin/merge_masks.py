@@ -266,7 +266,7 @@ if __name__ == '__main__':
     parser.add_argument('--list_of_mask', nargs="+", type=str, required=True, help="filename for masks to merge")
     parser.add_argument('--out', type=str, required=True, help="Output path for resulting image")
     parser.add_argument('--overlap', type=int, default=120, required=False, help="overlap between tiles")
-    parser.add_argument('--chunk_size', type=int, default=1024, required=False, help="size of tiles")
+    parser.add_argument('--chunk_size', type=int, default=8192, required=False, help="size of tiles")
     parser.add_argument('--threshold', type=float, default=0.5, required=False, help="Intersection over union for cells to be merged")
     args = parser.parse_args()
     merge_masks(args.list_of_mask, args.out, overlap=args.overlap, chunk_size=args.chunk_size, threshold=args.threshold)
