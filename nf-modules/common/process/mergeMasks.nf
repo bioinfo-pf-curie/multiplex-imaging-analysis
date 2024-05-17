@@ -1,6 +1,6 @@
 process mergeMasks {
   label "geometrize"
-  label 'lowCpu'
+  label 'highCpu'
   label 'extraMem'
   label 'infiniteTime'
 
