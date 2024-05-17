@@ -108,8 +108,11 @@ workflow {
   versionsCh = Channel.empty()
 
   main:
+
+    def tiffPattern = ~/tiff?$/
+    def modelList = params.segmentation.models instanceof List ? params.segmentation.models : params.segmentation.models.tokenize(",")
     // Init Channels
-    imgCh = Channel.fromPath((params.images =~ /tiff?$/) ? params.images : "${params.images}/*.ti{f,ff}")
+    imgCh = Channel.fromPath((params.images =~ tiffPattern) ? params.images : "${params.images}/*.ti{f,ff}")
     imgId = imgCh.map{img -> tuple(NFTools.getImageID(img), img)}
     markersCh = Channel.fromPath(params.markers.endsWith(".csv") ? params.markers : "${params.markers}/*.csv")
     mrkId = markersCh.map{img -> tuple(NFTools.getImageID(img), img)}
@@ -153,9 +156,7 @@ workflow {
       tuple(newMeta, splitted)
     }
 
-    mods = ["tissuenet_cp3", "cyto2_cp3"]
-
-    segmented = segmentation(splittedImgResult, mods)
+    segmented = segmentation(splittedImgResult, modelList)
 
     groupSegmented = segmented.map{meta, segmentedImg, models ->
       meta['model'] = models
@@ -168,7 +169,7 @@ workflow {
     partialMasks = computeMasks(flow)
 
     partialMaskCh = partialMasks.map{meta, partial ->
-      tuple(groupKey(meta.subMap("originalName", "imagePath", "markersPath", "imgSize"), mods.size()), partial)
+      tuple(groupKey(meta.subMap("originalName", "imagePath", "markersPath", "imgSize"), modelList.size()), partial)
     }.groupTuple()
 
     finalMask = mergeMasks(partialMaskCh)
