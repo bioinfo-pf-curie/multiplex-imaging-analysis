@@ -16,6 +16,6 @@ process splitImage {
     def maxHeight = params.segmentation.tileHeight ? 0 : task.memory.getBytes() / task.cpus
     def args = task.ext.args ?: ''
     """
-    split_image.py --file_in $image --memory $maxHeight $args
+    split_image.py --file_in $image --memory $maxHeight --overlap $params.segmentation.overlap $args
     """
 }

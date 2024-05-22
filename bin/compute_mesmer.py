@@ -214,6 +214,8 @@ if __name__ == '__main__':
 
     label_img = deep_watershed(mesmer_output, **args.deep_watershed_args)
 
+    label_img = np.squeeze(label_img)
+
     # metadata = OmeTifffile(TiffFile(args.original).pages[0])
     # metadata.remove_all_channels()
     # metadata.add_channel_metadata(channel_name="masks")

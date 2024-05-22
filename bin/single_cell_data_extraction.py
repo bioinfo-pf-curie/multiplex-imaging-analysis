@@ -46,7 +46,7 @@ def MaskChannel(mask_loaded, image_loaded_z, intensity_props=["intensity_mean"])
     builtin_props = set(intensity_props).intersection(PROP_VALS)
     # Otherwise look for them in this module
     extra_props = set(intensity_props).difference(PROP_VALS)
-
+    print(mask_loaded.shape)
     dat = regionprops_table(
         mask_loaded, image_loaded_z,
         properties = tuple(builtin_props),

@@ -110,7 +110,8 @@ workflow {
   main:
 
     def tiffPattern = ~/tiff?$/
-    def modelList = params.segmentation.models instanceof List ? params.segmentation.models : params.segmentation.models.tokenize(",")
+    def modelList = params.segmentation.name == "cellpose" ? params.cellpose.models : [""]
+    modelList = modelList instanceof List ? modelList : modelList.tokenize(",")
     // Init Channels
     imgCh = Channel.fromPath((params.images =~ tiffPattern) ? params.images : "${params.images}/*.ti{f,ff}")
     imgId = imgCh.map{img -> tuple(NFTools.getImageID(img), img)}
@@ -170,9 +171,12 @@ workflow {
 
     partialMaskCh = partialMasks.map{meta, partial ->
       tuple(groupKey(meta.subMap("originalName", "imagePath", "markersPath", "imgSize"), modelList.size()), partial)
-    }.groupTuple()
+    }.groupTuple().branch{
+      solo : modelList.size() == 1
+      multiple : true
+    }
 
-    finalMask = mergeMasks(partialMaskCh)
+    finalMask = mergeMasks(partialMaskCh.multiple).mix(partialMaskCh.solo)
 
     outline = displayOutline(finalMask.join(merged))
 
