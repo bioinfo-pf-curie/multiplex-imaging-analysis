@@ -15,7 +15,7 @@ process segmentation {
   task.ext.when == null || task.ext.when
 
   script:
-    def cellpose = "cellpose --channel_axis 0 --savedir . --verbose --chan 2 --chan2 1 --image_path $image --pretrained_model $models $params.segmentation.cellposeParms"
+    def cellpose = "cellpose --channel_axis 0 --savedir . --chan 2 --chan2 1 --image_path $image --pretrained_model $models $params.segmentation.cellposeParms"
     def mesmer = "wrapper_mesmer.py --squeeze --output-directory . --output-name ${meta.splittedName}_masks.tiff --nuclear-image $image --membrane-image $image --membrane-channel 1"
     def script = params.segmentation.name == 'cellpose' ? cellpose : mesmer
     """

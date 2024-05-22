@@ -8,3 +8,5 @@ From: biocontainers/cellpose:3.0.1_cv1
     zarr==2.16.1 \
     pydantic==2.5.3 \
     xsdata==23.8 \
+    cellpose==3.0.7 \
+    dask==2024.4.1 \
