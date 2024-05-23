@@ -28,10 +28,10 @@ def _contours(cell_mask: np.ndarray) -> MultiPolygon:
     Returns:
         A shapely MultiPolygon
     """
-    contours, _ = cv2.findContours(cell_mask, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
-    return MultiPolygon(
-        [Polygon(contour[:, 0, :]) for contour in contours if contour.shape[0] >= 4]
-    )
+    contours, _ = cv2.findContours(cell_mask, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE)
+    return [MultiPolygon(
+        [Polygon(contour[:, 0, :]) for contour in c if contour.shape[0] >= 4]
+    ) for c in contours]
 
 
 def _ensure_polygon(cell: Polygon | MultiPolygon | GeometryCollection) -> Polygon:
@@ -111,7 +111,7 @@ def geometrize(
         return []
     write_file('start_geo.txt')
     t0 = time.process_time()
-    cells = [_contours((mask == cell_id).astype("uint8")) for cell_id in range(1, max_cells + 1)]
+    cells = _contours(mask.astype("int32"))
     t1 = time.process_time()
     write_file('finish_cells.txt', f"{t1-t0:.2f}s\n")
     mean_radius = np.sqrt(np.array([cell.area for cell in cells]) / np.pi).mean()
