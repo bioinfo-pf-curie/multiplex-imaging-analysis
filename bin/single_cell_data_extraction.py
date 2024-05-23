@@ -240,6 +240,8 @@ def ExtractSingleCells(masks,image,channel_names,output, mask_props=None, intens
 
     #Contrast against the number of markers in the image
     if len(channel_names_loaded_list) != n_channels(image):
+        print(len(channel_names_loaded_list))
+        print(n_channels(image))
         raise Exception("The number of channels in %s doesn't match the image"%channel_names)
     
     #Check for unique marker names -- create new list to store new names
