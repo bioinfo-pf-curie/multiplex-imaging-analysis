@@ -8,11 +8,16 @@ import cv2
 import shapely
 from shapely.geometry import GeometryCollection, MultiPolygon, Polygon
 import fastremap
+import time
 import warnings
 
 from dask_utils import correct_edges_inplace
 
 # taken from SOPA https://github.com/gustaveroussy/sopa/blob/master/sopa/segmentation/shapes.py
+
+def write_file(filename, content=''):
+    with open(filename, 'a') as out:
+        out.write(content)
 
 def _contours(cell_mask: np.ndarray) -> MultiPolygon:
     """Extract the contours of all cells from a binary mask
@@ -204,7 +209,7 @@ def recreate_mask(cells, shape):
     return result
 
 
-def on_chunk(chunk, threshold):
+def on_chunk(chunk, threshold, block_id=None):
     """
     Convert each masks into a list of shape (cells), concat these lists, solve intersection and then reconvert it to mask image.
 
@@ -223,10 +228,19 @@ def on_chunk(chunk, threshold):
         resulting mask
     """
     cells = []
+    if block_id is not None:
+        write_file('on_chunk.txt', f'block {block_id} => {chunk.shape} chunk shape')
     for i in range(chunk.shape[0]):
         cells += geometrize(chunk[i])
+    if block_id is not None:
+        write_file("finish geometrize.txt", f'{block_id}')
     results = solve_conflicts(cells, threshold=threshold)
-    return recreate_mask(results, chunk.shape[1:])
+    if block_id is not None:
+        write_file("finish conflict.txt", f'{block_id}')
+    a = recreate_mask(results, chunk.shape[1:])
+    if block_id is not None:
+        write_file("finish recreate.txt", f'{block_id}')
+    return a
 
 
 def merge_masks(list_of_masks, out_file, chunk_size=1024, overlap=120, threshold=0.5):
@@ -254,14 +268,26 @@ def merge_masks(list_of_masks, out_file, chunk_size=1024, overlap=120, threshold
     None
 
     """
+    t0 = time.process_time()
+    write_file("start init.txt")
     masks = [da.from_zarr(tifffile.TiffFile(mask).series[0].aszarr(), chunks=(chunk_size, chunk_size)) for mask in list_of_masks]
     masks = da.stack(masks)
+    t1 = time.process_time()
+    write_file("start merging masks.txt", f"init time = {t1-t0}")
     final_mask = da.map_overlap(on_chunk, masks, dtype=np.uint32, depth={0: 0, 1: overlap, 2: overlap}, drop_axis=0, threshold=threshold).compute()
+    t2 = time.process_time()
+    write_file("finish merging masks.txt", f"merging time = {t2-t1}")
 
     correct_edges_inplace(final_mask, chunks_size=(chunk_size, chunk_size))
+    t3 = time.process_time()
+    write_file("finish correct edge.txt", f"correct time : {t3-t2}")
 
     fastremap.renumber(final_mask, in_place=True) #convenient to guarantee non-skipped labels
+    t4 = time.process_time()
+    write_file("finish renumber.txt", f"renumber time : {t4-t3}")
     tifffile.imwrite(out_file, final_mask.astype('uint32'), bigtiff=True, shaped=False, dtype="uint32")
+    t5 = time.process_time()
+    write_file("finish writing.txt", f"writing time : {t5-t4}")
 
 
 if __name__ == '__main__':
