@@ -152,12 +152,17 @@ def solve_conflicts(
     if n_cells > 0:
         warnings.warn("No cells was segmented, cannot continue")
         return cells
-
+    t0 = time.process_time()
+    write_file('start create tree.txt')
     tree = shapely.STRtree(cells)
+    t1 = time.process_time()
+    write_file('finish_create_tree.txt', f"{t1-t0}s")
     try:
         conflicts = tree.query(cells, predicate="intersects")
     except:
         return cells
+    t2 = time.process_time()
+    write_file('finish_query_intersect.txt', f"{t2-t1}s")
 
     if patch_indices is not None:
         conflicts = conflicts[:, patch_indices[conflicts[0]] != patch_indices[conflicts[1]]].T
@@ -181,6 +186,8 @@ def solve_conflicts(
 
     if return_indices:
         return unique_cells, np.where(unique_indices < n_cells, unique_indices, -1)
+    t3 = time.process_time()
+    write_file('finish_rest.txt', f"{t3-t2}s")
 
     return unique_cells
 
