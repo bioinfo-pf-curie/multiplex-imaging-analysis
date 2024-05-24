@@ -28,10 +28,13 @@ def _contours(cell_mask: np.ndarray) -> MultiPolygon:
     Returns:
         A shapely MultiPolygon
     """
+    t0 = time.process_time()
     contours, _ = cv2.findContours(cell_mask, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE)
-    return [MultiPolygon(
-        [Polygon(contour[:, 0, :]) for contour in c if contour.shape[0] >= 4]
-    ) for c in contours]
+    t1 = time.process_time()
+    a = [MultiPolygon([Polygon(contour[:, 0, :])]) for contour in contours if contour.shape[0] >= 4]
+    t2 = time.process_time()
+    write_file('contours_finish.txt', f"find contour = {t1-t0:.0f}s - make poly = {t2-t1:.0f}s\n")
+    return a
 
 
 def _ensure_polygon(cell: Polygon | MultiPolygon | GeometryCollection) -> Polygon:
@@ -111,9 +114,11 @@ def geometrize(
         return []
     write_file('start_geo.txt')
     t0 = time.process_time()
-    cells = _contours(mask.astype("int32"))
+    mask = mask.astype("int32")
     t1 = time.process_time()
-    write_file('finish_cells.txt', f"{t1-t0:.2f}s\n")
+    cells = _contours(mask)
+    t2 = time.process_time()
+    write_file('finish_cells.txt', f"dtype = {t1-t0:.0f}s - contour = {t2 - t1:.0f}s\n")
     mean_radius = np.sqrt(np.array([cell.area for cell in cells]) / np.pi).mean()
     smooth_radius = mean_radius * smooth_radius_ratio
 
@@ -155,17 +160,13 @@ def solve_conflicts(
     if n_cells > 0:
         warnings.warn("No cells was segmented, cannot continue")
         return cells
-    t0 = time.process_time()
-    write_file('start create tree.txt')
+
     tree = shapely.STRtree(cells)
-    t1 = time.process_time()
-    write_file('finish_create_tree.txt', f"{t1-t0}s")
+
     try:
         conflicts = tree.query(cells, predicate="intersects")
     except:
         return cells
-    t2 = time.process_time()
-    write_file('finish_query_intersect.txt', f"{t2-t1}s")
 
     if patch_indices is not None:
         conflicts = conflicts[:, patch_indices[conflicts[0]] != patch_indices[conflicts[1]]].T
@@ -189,8 +190,6 @@ def solve_conflicts(
 
     if return_indices:
         return unique_cells, np.where(unique_indices < n_cells, unique_indices, -1)
-    t3 = time.process_time()
-    write_file('finish_rest.txt', f"{t3-t2}s")
 
     return unique_cells
 
