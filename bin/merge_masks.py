@@ -295,6 +295,42 @@ def merge_masks(list_of_masks, out_file, chunk_size=1024, overlap=120, threshold
     fastremap.renumber(final_mask, in_place=True) #convenient to guarantee non-skipped labels
 
     tifffile.imwrite(out_file, final_mask.astype('uint32'), bigtiff=True, shaped=False, dtype="uint32")
+    
+def merge_masks_wo_dask(list_of_masks, out_file, threshold=0.5):
+    """
+    Merge a list of masks (cells labels images) into one, based on a threshold of percentage of intersection
+    (see SOPA for a more detailed implementation of solve conflict)
+
+    Parameters
+    ----------
+
+    list_of_masks: List of (string | Path)
+        List of path of the masks to be merged
+    out_file: string | Path
+        Name of the output file
+    chunk_size: int
+        size of each chunk (square of chunk_size by chunk_size)
+    overlap: int
+        number of pixels taken for the previous and next chunk
+    threshold: float
+        Intersection over union value for which cells are to be merged
+
+    Return
+    ------
+
+    None
+
+    """
+    t0 = time.process_time()
+    masks = [np.array(tifffile.TiffFile(mask).series[0].aszarr(), dtype="int32") for mask in list_of_masks]
+    masks = np.stack(masks)
+    t1 = time.process_time()
+    write_file("start merging masks.txt", f"init time = {t1-t0}")
+    final_mask = on_chunk(masks, threshold)
+    t2 = time.process_time()
+    write_file("finish merging masks.txt", f"merging time = {t2-t1}")
+
+    tifffile.imwrite(out_file, final_mask.astype('uint32'), bigtiff=True, shaped=False, dtype="uint32")
 
 
 
@@ -306,4 +342,5 @@ if __name__ == '__main__':
     parser.add_argument('--chunk_size', type=int, default=8192, required=False, help="size of tiles")
     parser.add_argument('--threshold', type=float, default=0.5, required=False, help="Intersection over union for cells to be merged")
     args = parser.parse_args()
-    merge_masks(args.list_of_mask, args.out, overlap=args.overlap, chunk_size=args.chunk_size, threshold=args.threshold)
+    merge_masks_wo_dask(args.list_of_mask, args.out, threshold=args.threshold)
+    # merge_masks(args.list_of_mask, args.out, overlap=args.overlap, chunk_size=args.chunk_size, threshold=args.threshold)
