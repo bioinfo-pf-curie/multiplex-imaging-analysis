@@ -322,7 +322,7 @@ def merge_masks_wo_dask(list_of_masks, out_file, threshold=0.5):
 
     """
     t0 = time.process_time()
-    masks = [np.array(tifffile.TiffFile(mask).series[0].aszarr(), dtype="int32") for mask in list_of_masks]
+    masks = [np.array(tifffile.imread(mask), dtype="int32") for mask in list_of_masks]
     masks = np.stack(masks)
     t1 = time.process_time()
     write_file("start merging masks.txt", f"init time = {t1-t0}")
