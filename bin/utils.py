@@ -287,6 +287,9 @@ class OmeTifffile(object):
 
     def update_shape(self, arr_shape, order="CYX"):
         """update the shape of image"""
+        if len(arr_shape) == 2 and len(order) != 2:
+            order = 'YX'
+
         for idx, char in enumerate(order):
             self.pix.__setattr__(f"size_{char.lower()}", arr_shape[idx])
 

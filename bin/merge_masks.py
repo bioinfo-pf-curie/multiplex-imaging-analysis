@@ -29,9 +29,11 @@ def _contours(cell_mask: np.ndarray) -> MultiPolygon:
         A shapely MultiPolygon
     """
     t0 = time.process_time()
-    contours, _ = cv2.findContours(cell_mask, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE)
+    contours, _ = cv2.findContours(cell_mask, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
     t1 = time.process_time()
-    a = [MultiPolygon([Polygon(contour[:, 0, :])]) for contour in contours if contour.shape[0] >= 4]
+    a = MultiPolygon(
+        [Polygon(contour[:, 0, :]) for contour in contours if contour.shape[0] >= 4]
+    )
     t2 = time.process_time()
     write_file('contours_finish.txt', f"find contour = {t1-t0:.0f}s - make poly = {t2-t1:.0f}s\n")
     return a
@@ -114,10 +116,9 @@ def geometrize(
         return []
     write_file('start_geo.txt')
     t0 = time.process_time()
-    mask = mask.astype("int32")
+    # mask = mask.astype("int32")
+    cells = [_contours((mask == cell_id).astype("uint8")) for cell_id in range(1, max_cells + 1)]
     t1 = time.process_time()
-    cells = _contours(mask)
-    t2 = time.process_time()
     write_file('finish_cells.txt', f"dtype = {t1-t0:.0f}s - contour = {t2 - t1:.0f}s\n")
     mean_radius = np.sqrt(np.array([cell.area for cell in cells]) / np.pi).mean()
     smooth_radius = mean_radius * smooth_radius_ratio
