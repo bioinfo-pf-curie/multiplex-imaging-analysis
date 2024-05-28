@@ -10,6 +10,9 @@ from shapely.geometry import GeometryCollection, MultiPolygon, Polygon
 import fastremap
 import time
 import warnings
+from skimage.segmentation import find_boundaries
+
+import pandas as pd
 
 from dask_utils import correct_edges_inplace
 
@@ -28,14 +31,14 @@ def _contours(cell_mask: np.ndarray) -> MultiPolygon:
     Returns:
         A shapely MultiPolygon
     """
-    t0 = time.process_time()
+    # t0 = time.process_time()
     contours, _ = cv2.findContours(cell_mask, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
-    t1 = time.process_time()
+    # t1 = time.process_time()
     a = MultiPolygon(
         [Polygon(contour[:, 0, :]) for contour in contours if contour.shape[0] >= 4]
     )
-    t2 = time.process_time()
-    write_file('contours_finish.txt', f"find contour = {t1-t0:.0f}s - make poly = {t2-t1:.0f}s\n")
+    # t2 = time.process_time()
+    # write_file('contours_finish.txt', f"find contour = {t1-t0:.0f}s - make poly = {t2-t1:.0f}s\n")
     return a
 
 
@@ -49,24 +52,18 @@ def _ensure_polygon(cell: Polygon | MultiPolygon | GeometryCollection) -> Polygo
         The shape as a Polygon
     """
     cell = shapely.make_valid(cell)
-
     if isinstance(cell, Polygon):
         if cell.interiors:
             cell = Polygon(list(cell.exterior.coords))
         return cell
-
     if isinstance(cell, MultiPolygon):
         return max(cell.geoms, key=lambda polygon: polygon.area)
-
     if isinstance(cell, GeometryCollection):
         geoms = [geom for geom in cell.geoms if isinstance(geom, Polygon)]
-
         if not geoms:
             print(f"Removing cell of type {type(cell)} as it contains no Polygon geometry")
             return None
-
         return max(geoms, key=lambda polygon: polygon.area)
-
     print(f"Removing cell of unknown type {type(cell)}")
     return None
 
@@ -84,7 +81,6 @@ def _smoothen_cell(cell: MultiPolygon, smooth_radius: float, tolerance: float) -
     """
     cell = cell.buffer(-smooth_radius).buffer(2 * smooth_radius).buffer(-smooth_radius)
     cell = cell.simplify(tolerance)
-
     return None if cell.is_empty else _ensure_polygon(cell)
 
 
@@ -114,12 +110,32 @@ def geometrize(
     if max_cells == 0:
         print("No cell was returned by the segmentation")
         return []
-    write_file('start_geo.txt')
-    t0 = time.process_time()
+    # write_file('start_geo.txt')
+    # unique_val = list(np.unique(mask))
+    # unique_val.remove(0)
+    # t0 = time.process_time()
     # mask = mask.astype("int32")
-    cells = [_contours((mask == cell_id).astype("uint8")) for cell_id in range(1, max_cells + 1)]
-    t1 = time.process_time()
-    write_file('finish_cells.txt', f"dtype = {t1-t0:.0f}s - contour = {t2 - t1:.0f}s\n")
+    # cells2 = [_contours((mask == cell_id).astype("uint8")) for cell_id in unique_val]
+    # t1 = time.process_time()
+    # cells3 = [Polygon(m.coords) for m in regionprops(mask) if len(m.coords) >= 4]
+    t2 = time.process_time()
+    bounds = pd.DataFrame(np.where(find_boundaries(mask, connectivity=2, mode="inner"), mask, 0))
+    bounds = pd.DataFrame(bounds.unstack())
+    # bounds = pd.DataFrame(pd.DataFrame(mask).unstack())
+    cells = []
+    for v, idxs in bounds.groupby([0], sort=False):
+        if v[0] != 0 and len(idxs.index.values) > 4:
+            cells.append(shapely.convex_hull(Polygon(idxs.index.values)))
+    
+    t3 = time.process_time()
+    write_file('finish_cells.txt', f"argwhere = {t3-t2}s\n") # contour = {t1-t0:.0f}s - regionprops = {t2 - t1}s - 
+    _ = """
+from orion.MIA.bin.merge_masks import geometrize
+import tifffile
+mask = tifffile.imread("mask1_sample.tiff")
+cells = geometrize(mask)
+
+    """
     mean_radius = np.sqrt(np.array([cell.area for cell in cells]) / np.pi).mean()
     smooth_radius = mean_radius * smooth_radius_ratio
 
@@ -129,7 +145,7 @@ def geometrize(
     cells = [_smoothen_cell(cell, smooth_radius, tolerance) for cell in cells]
     cells = [cell for cell in cells if cell is not None]
     t2 = time.process_time()
-    write_file('finish_smoothhen.txt', f"{t2-t1:.2f}s\n")
+    write_file('finish_smoothhen.txt', f"{t2-t3:.2f}s\n")
     print(
         f"Percentage of non-geometrized cells: {(max_cells - len(cells)) / max_cells:.2%} (usually due to segmentation artefacts)"
     )
