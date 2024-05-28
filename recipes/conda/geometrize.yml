@@ -12,3 +12,4 @@ dependencies:
     - zarr==2.16.1
     - psutil==5.9.6
     - fastremap==1.13.4
+    - scikit-image==0.23.1
