@@ -13,3 +13,4 @@ dependencies:
     - psutil==5.9.6
     - fastremap==1.13.4
     - scikit-image==0.23.1
+    - ome_types==0.4.2
