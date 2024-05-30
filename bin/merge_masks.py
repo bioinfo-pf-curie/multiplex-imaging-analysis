@@ -123,7 +123,8 @@ def geometrize(
     bounds = pd.DataFrame(bounds.unstack())
     # bounds = pd.DataFrame(pd.DataFrame(mask).unstack())
     cells = []
-    for v, idxs in bounds.groupby([0], sort=False):
+    grouped_bound = bounds.groupby([0], sort=False)
+    for v, idxs in grouped_bound:
         if v[0] != 0 and len(idxs.index.values) > 4:
             cells.append(shapely.convex_hull(Polygon(idxs.index.values)))
     
@@ -147,7 +148,7 @@ cells = geometrize(mask)
     t2 = time.process_time()
     write_file('finish_smoothhen.txt', f"{t2-t3:.2f}s\n")
     print(
-        f"Percentage of non-geometrized cells: {(max_cells - len(cells)) / max_cells:.2%} (usually due to segmentation artefacts)"
+        f"Percentage of non-geometrized cells: {((grouped_bound.ngroups-1) - len(cells)) / (grouped_bound.ngroups-1):.2%} (usually due to segmentation artefacts)"
     )
 
     return cells
@@ -174,8 +175,8 @@ def solve_conflicts(
     n_cells = len(cells)
     resolved_indices = np.arange(n_cells)
 
-    if n_cells > 0:
-        warnings.warn("No cells was segmented, cannot continue")
+    if n_cells == 0:
+        warnings.warn("No cells was segmented, cannot resolve conflicts")
         return cells
 
     tree = shapely.STRtree(cells)
