@@ -14,3 +14,5 @@ dependencies:
     - fastremap==1.13.4
     - scikit-image==0.23.1
     - ome_types==0.4.2
+    - pydantic==2.5.3
+    - xsdata==23.8
