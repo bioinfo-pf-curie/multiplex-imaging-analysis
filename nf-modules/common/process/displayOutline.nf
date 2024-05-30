@@ -2,6 +2,7 @@ process displayOutline {
   label 'img_utils'
   label 'medCpu'
   label 'extraMem'
+  label 'infiniteTime'
   
   input:
     tuple val(meta), path(mask), path(merge)

@@ -2,7 +2,7 @@ process quantification {
   label 'img_utils'
   label "minCpu"
   label 'extraMem'
-  label "highTime"
+  label "infiniteTime"
 
   input:
       tuple val(meta), path(mask)

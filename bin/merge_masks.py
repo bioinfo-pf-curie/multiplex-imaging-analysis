@@ -360,5 +360,5 @@ if __name__ == '__main__':
     parser.add_argument('--chunk_size', type=int, default=8192, required=False, help="size of tiles")
     parser.add_argument('--threshold', type=float, default=0.5, required=False, help="Intersection over union for cells to be merged")
     args = parser.parse_args()
-    merge_masks_wo_dask(args.list_of_mask, args.out, threshold=args.threshold)
-    # merge_masks(args.list_of_mask, args.out, overlap=args.overlap, chunk_size=args.chunk_size, threshold=args.threshold)
+    # merge_masks_wo_dask(args.list_of_mask, args.out, threshold=args.threshold)
+    merge_masks(args.list_of_mask, args.out, overlap=args.overlap, chunk_size=args.chunk_size, threshold=args.threshold)
