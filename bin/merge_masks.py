@@ -269,5 +269,6 @@ if __name__ == '__main__':
     metadata.remove_all_channels()
     metadata.add_channel_metadata(channel_name="masks")
     metadata.dtype = mask.dtype
-
+    print(mask.shape)
+    print(mask.dtype)
     tifffile.imwrite(args.out, mask, bigtiff=True, shaped=False, **metadata.to_dict(shape=mask.shape))
