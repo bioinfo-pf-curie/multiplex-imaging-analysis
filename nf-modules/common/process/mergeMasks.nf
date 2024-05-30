@@ -16,6 +16,6 @@ process mergeMasks {
   script:
     def args = task.ext.args ?: ''
     """
-    merge_masks.py --list_of_mask $partialMask --out ${meta.originalName}_masks.tiff $args
+    merge_masks.py --list_of_mask $partialMask --out ${meta.originalName}_masks.tiff --original $meta.imagePath $args
     """
 }

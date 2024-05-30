@@ -219,7 +219,7 @@ def on_chunk(chunk, threshold, block_id=None):
     return recreate_mask(results, chunk.shape[1:])
 
 
-def merge_masks(list_of_masks, out_file, chunk_size=1024, overlap=120, threshold=0.5):
+def merge_masks(list_of_masks, chunk_size=1024, overlap=120, threshold=0.5):
     """
     Merge a list of masks (cells labels images) into one, based on a threshold of percentage of intersection
     (see SOPA for a more detailed implementation of solve conflict)
@@ -229,8 +229,6 @@ def merge_masks(list_of_masks, out_file, chunk_size=1024, overlap=120, threshold
 
     list_of_masks: List of (string | Path)
         List of path of the masks to be merged
-    out_file: string | Path
-        Name of the output file
     chunk_size: int
         size of each chunk (square of chunk_size by chunk_size)
     overlap: int
@@ -252,14 +250,7 @@ def merge_masks(list_of_masks, out_file, chunk_size=1024, overlap=120, threshold
 
     fastremap.renumber(final_mask, in_place=True) #convenient to guarantee non-skipped labels
 
-    final_mask = final_mask.astype('uint32')
-
-    metadata = OmeTifffile(tifffile.TiffFile(args.original).pages[0])
-    metadata.remove_all_channels()
-    metadata.add_channel_metadata(channel_name="masks")
-    metadata.dtype = final_mask.dtype
-
-    tifffile.imwrite(out_file, final_mask, bigtiff=True, shaped=False, **metadata.to_dict(shape=final_mask.shape))
+    return final_mask.astype('uint32')
     
 
 if __name__ == '__main__':
@@ -272,4 +263,11 @@ if __name__ == '__main__':
     parser.add_argument('--original', type=str, required=False, help="path to original image (metadata except dtype and channels info will be copied)")
     args = parser.parse_args()
     # merge_masks_wo_dask(args.list_of_mask, args.out, threshold=args.threshold)
-    merge_masks(args.list_of_mask, args.out, overlap=args.overlap, chunk_size=args.chunk_size, threshold=args.threshold)
+    mask = merge_masks(args.list_of_mask, overlap=args.overlap, chunk_size=args.chunk_size, threshold=args.threshold)
+
+    metadata = OmeTifffile(tifffile.TiffFile(args.original).pages[0])
+    metadata.remove_all_channels()
+    metadata.add_channel_metadata(channel_name="masks")
+    metadata.dtype = mask.dtype
+
+    tifffile.imwrite(args.out, mask, bigtiff=True, shaped=False, **metadata.to_dict(shape=mask.shape))
