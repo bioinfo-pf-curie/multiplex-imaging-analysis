@@ -8,39 +8,15 @@ import cv2
 import shapely
 from shapely.geometry import GeometryCollection, MultiPolygon, Polygon
 import fastremap
-import time
 import warnings
 from skimage.segmentation import find_boundaries
 
 import pandas as pd
 
 from dask_utils import correct_edges_inplace
+from utils import OmeTifffile
 
-# taken from SOPA https://github.com/gustaveroussy/sopa/blob/master/sopa/segmentation/shapes.py
-
-def write_file(filename, content=''):
-    with open(filename, 'a') as out:
-        out.write(content)
-
-def _contours(cell_mask: np.ndarray) -> MultiPolygon:
-    """Extract the contours of all cells from a binary mask
-
-    Args:
-        cell_mask: An array representing a cell: 1 where the cell is, 0 elsewhere
-
-    Returns:
-        A shapely MultiPolygon
-    """
-    # t0 = time.process_time()
-    contours, _ = cv2.findContours(cell_mask, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
-    # t1 = time.process_time()
-    a = MultiPolygon(
-        [Polygon(contour[:, 0, :]) for contour in contours if contour.shape[0] >= 4]
-    )
-    # t2 = time.process_time()
-    # write_file('contours_finish.txt', f"find contour = {t1-t0:.0f}s - make poly = {t2-t1:.0f}s\n")
-    return a
-
+# optimized from SOPA https://github.com/gustaveroussy/sopa/blob/master/sopa/segmentation/shapes.py
 
 def _ensure_polygon(cell: Polygon | MultiPolygon | GeometryCollection) -> Polygon:
     """Ensures that the provided cell becomes a Polygon
@@ -110,33 +86,16 @@ def geometrize(
     if max_cells == 0:
         print("No cell was returned by the segmentation")
         return []
-    # write_file('start_geo.txt')
-    # unique_val = list(np.unique(mask))
-    # unique_val.remove(0)
-    # t0 = time.process_time()
-    # mask = mask.astype("int32")
-    # cells2 = [_contours((mask == cell_id).astype("uint8")) for cell_id in unique_val]
-    # t1 = time.process_time()
-    # cells3 = [Polygon(m.coords) for m in regionprops(mask) if len(m.coords) >= 4]
-    t2 = time.process_time()
+    
     bounds = pd.DataFrame(np.where(find_boundaries(mask, connectivity=2, mode="inner"), mask, 0))
     bounds = pd.DataFrame(bounds.unstack())
-    # bounds = pd.DataFrame(pd.DataFrame(mask).unstack())
+
     cells = []
     grouped_bound = bounds.groupby([0], sort=False)
     for v, idxs in grouped_bound:
         if v[0] != 0 and len(idxs.index.values) > 4:
             cells.append(shapely.convex_hull(Polygon(idxs.index.values)))
     
-    t3 = time.process_time()
-    write_file('finish_cells.txt', f"argwhere = {t3-t2}s\n") # contour = {t1-t0:.0f}s - regionprops = {t2 - t1}s - 
-    _ = """
-from orion.MIA.bin.merge_masks import geometrize
-import tifffile
-mask = tifffile.imread("mask1_sample.tiff")
-cells = geometrize(mask)
-
-    """
     mean_radius = np.sqrt(np.array([cell.area for cell in cells]) / np.pi).mean()
     smooth_radius = mean_radius * smooth_radius_ratio
 
@@ -145,8 +104,6 @@ cells = geometrize(mask)
 
     cells = [_smoothen_cell(cell, smooth_radius, tolerance) for cell in cells]
     cells = [cell for cell in cells if cell is not None]
-    t2 = time.process_time()
-    write_file('finish_smoothhen.txt', f"{t2-t3:.2f}s\n")
     print(
         f"Percentage of non-geometrized cells: {((grouped_bound.ngroups-1) - len(cells)) / (grouped_bound.ngroups-1):.2%} (usually due to segmentation artefacts)"
     )
@@ -255,23 +212,11 @@ def on_chunk(chunk, threshold, block_id=None):
         resulting mask
     """
     cells = []
-    t0 = time.process_time()
-    if block_id is not None:
-        write_file('on_chunk.txt', f'block {block_id} => {chunk.shape} chunk shape')
     for i in range(chunk.shape[0]):
         cells += geometrize(chunk[i])
-        t1 = time.process_time()
-        write_file('geometrize.txt', f"block {block_id} = {t1-t0} seconde\n")
 
     results = solve_conflicts(cells, threshold=threshold)
-    if block_id is not None:
-        t2 = time.process_time()
-        write_file("finish_conflict.txt", f'{block_id} : {t2-t1} sec\n')
-    a = recreate_mask(results, chunk.shape[1:])
-    if block_id is not None:
-        t3 = time.process_time()
-        write_file("finish_recreate.txt", f'{block_id}: {t3-t2}')
-    return a
+    return recreate_mask(results, chunk.shape[1:])
 
 
 def merge_masks(list_of_masks, out_file, chunk_size=1024, overlap=120, threshold=0.5):
@@ -299,58 +244,23 @@ def merge_masks(list_of_masks, out_file, chunk_size=1024, overlap=120, threshold
     None
 
     """
-    t0 = time.process_time()
     masks = [da.from_zarr(tifffile.TiffFile(mask).series[0].aszarr(), chunks=(chunk_size, chunk_size)) for mask in list_of_masks]
     masks = da.stack(masks)
-    t1 = time.process_time()
-    write_file("start merging masks.txt", f"init time = {t1-t0}")
     final_mask = da.map_overlap(on_chunk, masks, dtype=np.uint32, depth={0: 0, 1: overlap, 2: overlap}, drop_axis=0, threshold=threshold).compute()
-    t2 = time.process_time()
-    write_file("finish merging masks.txt", f"merging time = {t2-t1}")
 
     correct_edges_inplace(final_mask, chunks_size=(chunk_size, chunk_size))
 
     fastremap.renumber(final_mask, in_place=True) #convenient to guarantee non-skipped labels
 
-    tifffile.imwrite(out_file, final_mask.astype('uint32'), bigtiff=True, shaped=False, dtype="uint32")
+    final_mask = final_mask.astype('uint32')
+
+    metadata = OmeTifffile(tifffile.TiffFile(args.original).pages[0])
+    metadata.remove_all_channels()
+    metadata.add_channel_metadata(channel_name="masks")
+    metadata.dtype = final_mask.dtype
+
+    tifffile.imwrite(out_file, final_mask, bigtiff=True, shaped=False, **metadata.to_dict(shape=final_mask.shape))
     
-def merge_masks_wo_dask(list_of_masks, out_file, threshold=0.5):
-    """
-    Merge a list of masks (cells labels images) into one, based on a threshold of percentage of intersection
-    (see SOPA for a more detailed implementation of solve conflict)
-
-    Parameters
-    ----------
-
-    list_of_masks: List of (string | Path)
-        List of path of the masks to be merged
-    out_file: string | Path
-        Name of the output file
-    chunk_size: int
-        size of each chunk (square of chunk_size by chunk_size)
-    overlap: int
-        number of pixels taken for the previous and next chunk
-    threshold: float
-        Intersection over union value for which cells are to be merged
-
-    Return
-    ------
-
-    None
-
-    """
-    t0 = time.process_time()
-    masks = [np.array(tifffile.imread(mask), dtype="int32") for mask in list_of_masks]
-    masks = np.stack(masks)
-    t1 = time.process_time()
-    write_file("start merging masks.txt", f"init time = {t1-t0}")
-    final_mask = on_chunk(masks, threshold)
-    t2 = time.process_time()
-    write_file("finish merging masks.txt", f"merging time = {t2-t1}")
-
-    tifffile.imwrite(out_file, final_mask.astype('uint32'), bigtiff=True, shaped=False, dtype="uint32")
-
-
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -359,6 +269,7 @@ if __name__ == '__main__':
     parser.add_argument('--overlap', type=int, default=120, required=False, help="overlap between tiles")
     parser.add_argument('--chunk_size', type=int, default=8192, required=False, help="size of tiles")
     parser.add_argument('--threshold', type=float, default=0.5, required=False, help="Intersection over union for cells to be merged")
+    parser.add_argument('--original', type=str, required=False, help="path to original image (metadata except dtype and channels info will be copied)")
     args = parser.parse_args()
     # merge_masks_wo_dask(args.list_of_mask, args.out, threshold=args.threshold)
     merge_masks(args.list_of_mask, args.out, overlap=args.overlap, chunk_size=args.chunk_size, threshold=args.threshold)
