@@ -300,6 +300,5 @@ if __name__ == '__main__':
     metadata.add_channel_metadata(channel_name="masks")
 
     metadata.dtype = mask_memmap.dtype
-    print(mask_memmap.shape)
-    print(mask_memmap.dtype)
+
     imwrite(args.out, mask_memmap, bigtiff=True, shaped=False, **metadata.to_dict(shape=mask_memmap.shape))
