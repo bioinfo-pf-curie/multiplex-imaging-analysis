@@ -169,7 +169,7 @@ def solve_conflicts(
     return unique_cells
 
 
-def recreate_mask(cells, shape):
+def recreate_mask(cells, shape, idx_start=1):
     """
     From a list of shapes (cells), reconstruct the mask image.
 
@@ -180,6 +180,8 @@ def recreate_mask(cells, shape):
         list of shape to be draw into the mask
     shape: tuple of int
         image size (same as the size of original masks)
+    idx_start: int
+        index to start from
 
     Return
     ------
@@ -188,12 +190,12 @@ def recreate_mask(cells, shape):
         Merged mask
     """
     result = np.zeros(shape=shape)
-    for i, cell in enumerate(cells, 1):
+    for i, cell in enumerate(cells, idx_start):
         result = cv2.fillConvexPoly(result, np.rint(cell.exterior.xy).astype("int32").T, color=i)
     return result
 
 
-def on_chunk(chunk, threshold, block_id=None):
+def on_chunk(chunk, threshold, block_info=None):
     """
     Convert each masks into a list of shape (cells), concat these lists, solve intersection and then reconvert it to mask image.
 
@@ -216,7 +218,16 @@ def on_chunk(chunk, threshold, block_id=None):
         cells += geometrize(chunk[i])
 
     results = solve_conflicts(cells, threshold=threshold)
-    return recreate_mask(results, chunk.shape[1:])
+    if block_info is None:
+        current_cell_id = 1
+    else:
+        current_chunk = block_info[0]['chunk-location']
+        total_chunk = block_info[0]['num-chunks']
+
+        # 600 is mean cell area (determine by cellpose parameters) todo : should be a parameters or computed
+        current_cell_id = int((current_chunk[1] +  current_chunk[2] * total_chunk[1]) * np.multiply(*chunk.shape[1:]) / 600)
+
+    return recreate_mask(results, chunk.shape[1:], current_cell_id)
 
 
 def merge_masks(list_of_masks, chunk_size=1024, overlap=120, threshold=0.5):
