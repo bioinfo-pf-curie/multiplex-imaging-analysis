@@ -226,6 +226,9 @@ def on_chunk(chunk, threshold, block_info=None):
 
         # 600 is mean cell area (determine by cellpose parameters) todo : should be a parameters or computed
         current_cell_id = int((current_chunk[1] +  current_chunk[2] * total_chunk[1]) * np.multiply(*chunk.shape[1:]) / 600)
+        a = len(results)
+        with open('merge_data.txt', "a") as out:
+            out.write(f"block {current_chunk}({(current_chunk[1] +  current_chunk[2] * total_chunk[1])}) => {a} cells and {current_cell_id} cell id\n")
 
     return recreate_mask(results, chunk.shape[1:], current_cell_id)
 
