@@ -218,15 +218,15 @@ def on_chunk(chunk, threshold, block_info=None):
         cells += geometrize(chunk[i])
 
     results = solve_conflicts(cells, threshold=threshold)
-    if block_info is None:
-        current_cell_id = 1
-    else:
+    try:
         current_chunk = block_info[0]['chunk-location']
         row_total, col_total = block_info[0]['num-chunks']
         row_shape, col_shape = block_info[0]['shape']
         mean_cells_per_chunk = (row_shape / row_total) * (col_shape / col_total) / 600
         # 600 is mean cell area (determine by cellpose parameters) todo : should be a parameters or computed
         current_cell_id = int((current_chunk[1] +  current_chunk[2] * col_total) * mean_cells_per_chunk)
+    except:
+        current_cell_id = 1
         
         a = len(results)
         with open('merge_data.txt', "a") as out:
