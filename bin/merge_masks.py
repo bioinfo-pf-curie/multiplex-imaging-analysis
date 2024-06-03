@@ -225,12 +225,12 @@ def on_chunk(chunk, threshold, block_info=None):
         mean_cells_per_chunk = (row_shape / row_total) * (col_shape / col_total) / 600
         # 600 is mean cell area (determine by cellpose parameters) todo : should be a parameters or computed
         current_cell_id = int((current_chunk[1] +  current_chunk[2] * col_total) * mean_cells_per_chunk)
-    except:
-        current_cell_id = 1
-        
         a = len(results)
         with open('merge_data.txt', "a") as out:
             out.write(f"block {current_chunk}({(current_chunk[1] +  current_chunk[2] * col_total)}) => {a} cells and {current_cell_id} cell id\n")
+    except:
+        current_cell_id = 1
+        
 
     return recreate_mask(results, chunk.shape[1:], current_cell_id)
 
