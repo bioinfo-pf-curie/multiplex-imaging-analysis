@@ -219,15 +219,15 @@ def on_chunk(chunk, threshold, block_info=None):
 
     results = solve_conflicts(cells, threshold=threshold)
     try:
-        current_chunk = block_info[0]['chunk-location']
-        row_total, col_total = block_info[0]['num-chunks']
-        row_shape, col_shape = block_info[0]['shape']
+        _, row_chunk, col_chunk = block_info[0]['chunk-location']
+        _, row_total, col_total = block_info[0]['num-chunks']
+        _, row_shape, col_shape = block_info[0]['shape']
         mean_cells_per_chunk = (row_shape / row_total) * (col_shape / col_total) / 600
         # 600 is mean cell area (determine by cellpose parameters) todo : should be a parameters or computed
-        current_cell_id = int((current_chunk[1] +  current_chunk[2] * col_total) * mean_cells_per_chunk)
+        current_cell_id = int((row_chunk +  col_chunk * row_total) * mean_cells_per_chunk)
         a = len(results)
         with open('merge_data.txt', "a") as out:
-            out.write(f"block {current_chunk}({(current_chunk[1] +  current_chunk[2] * col_total)}) => {a} cells and {current_cell_id} cell id\n")
+            out.write(f"block {row_chunk +  col_chunk * row_total} => {a} cells and {current_cell_id} cell id\n")
     except:
         current_cell_id = 1
         
