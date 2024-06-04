@@ -9,7 +9,7 @@ from cellpose.transforms import resize_image
 from cv2 import INTER_NEAREST
 
 from utils import OmeTifffile
-from dask_utils import correct_edges_inplace
+from dask_utils import correct_edges_inplace, compute_current_cell_id
 
 import fastremap
 from scipy.ndimage import maximum_filter1d
@@ -241,12 +241,8 @@ def compute_masks(flows, p=None, niter=200,
         if p is None:
             p = follow_flows(dP * cp_mask / 5., niter=niter, 
                                             use_gpu=use_gpu, device=device)
-
-        current_chunk = block_info[0]['chunk-location']
-        total_chunk = block_info[0]['num-chunks']
-
-        # 600 is mean cell area (determine by cellpose parameters)
-        current_cell_id = int((current_chunk[1] +  current_chunk[2] * total_chunk[1]) * np.multiply(*dP.shape[1:]) / 600)
+        
+        current_cell_id = compute_current_cell_id(block_info)
         
         #calculate masks
         mask = get_masks(p, iscell=cp_mask, cell_id=current_cell_id)

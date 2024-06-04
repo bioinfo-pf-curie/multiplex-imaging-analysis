@@ -13,7 +13,7 @@ from skimage.segmentation import find_boundaries
 
 import pandas as pd
 
-from dask_utils import correct_edges_inplace
+from dask_utils import correct_edges_inplace, compute_current_cell_id
 from utils import OmeTifffile
 
 # optimized from SOPA https://github.com/gustaveroussy/sopa/blob/master/sopa/segmentation/shapes.py
@@ -218,19 +218,8 @@ def on_chunk(chunk, threshold, block_info=None):
         cells += geometrize(chunk[i])
 
     results = solve_conflicts(cells, threshold=threshold)
-    try:
-        _, row_chunk, col_chunk = block_info[0]['chunk-location']
-        _, row_total, col_total = block_info[0]['num-chunks']
-        _, row_shape, col_shape = block_info[0]['shape']
-        mean_cells_per_chunk = (row_shape / row_total) * (col_shape / col_total) / 600
-        # 600 is mean cell area (determine by cellpose parameters) todo : should be a parameters or computed
-        current_cell_id = int((row_chunk +  col_chunk * row_total) * mean_cells_per_chunk)
-        a = len(results)
-        with open('merge_data.txt', "a") as out:
-            out.write(f"block {row_chunk +  col_chunk * row_total} => {a} cells and {current_cell_id} cell id\n")
-    except:
-        current_cell_id = 1
-        
+
+    current_cell_id = compute_current_cell_id(block_info)
 
     return recreate_mask(results, chunk.shape[1:], current_cell_id)
 
