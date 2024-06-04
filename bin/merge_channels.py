@@ -56,30 +56,29 @@ def tile_generator(arr, nuclei_chan, to_merge_chan, x, y, chunk_x, chunk_y, agg=
             for c in (ci if not isinstance(ci, int) else [ci]):
                 norm_val[c] = compute_hist(arr, c, x, y, chunk_x, chunk_y)
 
-        if norm == "equalize":
+        elif norm == "equalize":
             copied_arr = np.zeros_like(arr)
             for i in range(arr.shape[0]):
-                copied_arr[i] = (equalize_adapthist(arr[i], kernel_size=kernel_size, clip_limit=clip_limit, nbins=nbins) * (2**14-1)).astype('uint16')
+                copied_arr[i] = equalize_adapthist(arr[i], kernel_size=kernel_size, clip_limit=clip_limit, nbins=nbins)
         
         for tmp_arr in _tile_generator(arr, ci, x, y, chunk_x, chunk_y):
             if norm == "gaussian":
                 tmp_arr = gaussian_filter(tmp_arr, 1)
-            # elif norm == "equalize":
-            #     for i in range(tmp_arr.shape[0]):
-            #         tmp_arr[i] = (equalize_adapthist(tmp_arr[i], kernel_size=kernel_size, clip_limit=clip_limit, nbins=nbins) * (2**16-1)).astype('uint16')
-            elif norm in ['custom', 'auto'] and norm_val is not None:
+            elif norm_val is not None:
                 tmp_arr = tmp_arr.astype('float')
-                tmp_arr = gaussian_filter(tmp_arr, 0.2)
+                # tmp_arr = gaussian_filter(tmp_arr, 0.2)
                 if not isinstance(ci, int):
                     for i, c in enumerate(ci):
-                        tmp_arr[i] = min_max_norm(tmp_arr[i], *norm_val[c])
+                        tmp_arr[i] = min_max_norm(tmp_arr[i], *norm_val[c], output_max=1)
                 else:
-                    tmp_arr = min_max_norm(tmp_arr, *norm_val[ci])
+                    tmp_arr = min_max_norm(tmp_arr, *norm_val[ci], output_max=1)
+            else:
+                raise ValueError(f"Unknown normalization method : {norm} with values '{norm_val}'")
 
             if ci != to_merge_chan:
-                yield tmp_arr.astype('uint16')
+                yield tmp_arr
             else:
-                yield agg(tmp_arr, axis=0).astype('uint16')
+                yield agg(tmp_arr, axis=0)
     tmp_arr = None # don't wait for next iteration to flush this
 
 
@@ -130,7 +129,7 @@ def merge_channels(in_path, out_path, nuclei_chan=0, channels_to_merge=None, chu
     else:
         metadata.add_channel_metadata(channel_name="nuclear_channel")
     metadata.add_channel_metadata(channel_name="merged_channels")
-    metadata.dtype='uint16'
+    metadata.dtype='float'
 
     # todo : add annotation about channels used
 

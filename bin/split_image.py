@@ -4,7 +4,8 @@ import os
 from tifffile import TiffWriter
 import argparse
 
-from utils import read_tiff_orion
+from utils import read_tiff_orion, min_max_norm
+import numpy as np
 
 
 def split_img(img_path, out_dir, height=224, overlap=0.1, memory=0):
@@ -21,10 +22,12 @@ def split_img(img_path, out_dir, height=224, overlap=0.1, memory=0):
         #                     memory_per_cpu / (size_of_pixel_in_bytes * nb_bit_per_byte * width * channel + 2 to get some margin)
         height = min(height, computed_max_height) if height else computed_max_height
 
+    low, high = np.percentile(img_zarr, [1,99], axis=(1,2))
+
     for i, cur_height in enumerate(range(0, total_height, int(height * (1 - overlap))), 1):
         out_path = os.path.join(out_dir, img_name + f"_{cur_height}" + ext)
         with TiffWriter(out_path, bigtiff=True, shaped=False) as tiff_out:
-            tmp_arr = img_zarr[:, cur_height: cur_height+height, :]
+            tmp_arr = min_max_norm(img_zarr[:, cur_height: cur_height+height, :], low[:,None,None], high[:,None,None], 1)
             metadata.pix.size_y = tmp_arr.shape[1] # last one is not height unless total_heigh % height = 0
             tiff_out.write(
                 data=tmp_arr,
