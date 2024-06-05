@@ -198,8 +198,9 @@ def read_tiff_orion(img_path, idx_serie=0, idx_level=0, *args, **kwargs):
     metadata: OmeTifffile
         metadata from ome tiff arranged in a pythonnic way (see OmeTifffile)
     """
+    zarr_mode = kwargs.pop('zarr_mode', "r") 
     tiff = tifffile.TiffFile(img_path, *args, **kwargs)
-    zarray = zarr.open(tiff.series[idx_serie].aszarr())
+    zarray = zarr.open(tiff.series[idx_serie].aszarr(), mode=zarr_mode)
     return (zarray[idx_level] if idx_level is not None and tiff.series[idx_level].is_pyramidal else zarray), OmeTifffile(tiff.pages[0])
 
 class OmeTifffile(object):
