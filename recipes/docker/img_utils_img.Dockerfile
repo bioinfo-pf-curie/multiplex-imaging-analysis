@@ -13,7 +13,6 @@ RUN python -m pip install --no-cache-dir \
   scikit-image==0.23.1 \
   psutil==5.9.6 \
   fastremap==1.13.4 \
-  palom==2023.9.2 \
   pandas==2.1.1 \
   numpy==1.25.2 \
   tifffile==2023.4.12 \
