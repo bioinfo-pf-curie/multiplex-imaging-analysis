@@ -1,5 +1,5 @@
 process pyramidize {
-  label 'pyramidize'
+  label 'img_utils'
   label 'lowCpu'
   label "extraMem"
   label "highTime"

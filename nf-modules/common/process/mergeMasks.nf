@@ -1,5 +1,5 @@
 process mergeMasks {
-  label "geometrize"
+  label "img_utils"
   label 'medCpu'
   memory {MemoryUnit.of(Math.max(Math.min(meta.imgSize * 0.4, params.maxMemory.size), params.minMemory.size).toLong())}
 
