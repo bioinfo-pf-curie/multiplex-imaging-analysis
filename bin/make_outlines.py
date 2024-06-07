@@ -9,6 +9,8 @@ import cv2
 from PIL import Image, UnidentifiedImageError
 from scipy.ndimage import find_objects
 import zarr
+from pandas import read_csv
+
 from utils import OmeTifffile, _tile_generator
 
 # ===! VULNERABILITY !===
@@ -77,7 +79,7 @@ def create_outline_mask(masks):
             outlines[vr, vc] = 255
     return outlines
 
-def make_outline(merged_file, png_file, mask_path, out_path, nuclei_channel=0, cyto_channel=1, all_channels=False):
+def make_outline(merged_file, png_file, mask_path, out_path, nuclei_channel=0, cyto_channel=1, all_channels=False, channel_info=None):
     """
     This function accept two sort of input to get outlines.
     First case a png file with red channel = outlines, green channel = cyto and blue = nucleus (can be an options in cellpose parameters)
@@ -143,6 +145,16 @@ def make_outline(merged_file, png_file, mask_path, out_path, nuclei_channel=0, c
         metadata.dtype = result.dtype
         return tifffile.imwrite(out_path, result)#, bigtiff=True, shaped=False, **metadata.to_dict())
     else:
+        if channel_info is not None:
+            try:
+                channel_csv = read_csv(channel_info)
+                if (len(channel_csv) + 1) == len(metadata.pix.channels):
+                    for i, channel in enumerate(channel_csv["marker_name"]):
+                        if channel:
+                            metadata.pix.channels[i].name = channel
+            except:
+                raise
+
         result = zarr.open(tiff.series[0].aszarr())
         c, x, y = tiff.series[0].shape
 
@@ -171,6 +183,7 @@ if __name__ == "__main__":
     parser.add_argument('--nuclei', type=str, required=False, default=0, help="index of nuclei channel in tiff file")
     parser.add_argument('--cyto', type=str, required=False, default=1, help="index of cytoplasm channel in tiff file")
     parser.add_argument('--all-channels', required=False, dest="all_channels", action='store_true', help="if selected will use original image and append outline to it")
+    parser.add_argument('--channel-info', dest="channel_info", type=str, required=False, help="path of csv file with correct channel name")
     args = parser.parse_args()
 
     merge_tiff = vars(args)['merge_tiff']
@@ -181,6 +194,6 @@ if __name__ == "__main__":
         if len(tokens) < 2:       stem = merge_tiff
         elif tokens[-2] == "ome": stem = os.extsep.join(tokens[0:-2])
         else:                     stem = os.extsep.join(tokens[0:-1])
-        out_path = stem + "_clear_outlines.tiff"
+        out_path = stem + "_outlines.tiff"
 
-    make_outline(merge_tiff, args.png_outline, args.mask, out_path, args.nuclei, args.cyto, args.all_channels)
+    make_outline(merge_tiff, args.png_outline, args.mask, out_path, args.nuclei, args.cyto, args.all_channels, args.channel_info)

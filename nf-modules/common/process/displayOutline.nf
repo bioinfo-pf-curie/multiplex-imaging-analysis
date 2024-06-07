@@ -15,7 +15,8 @@ process displayOutline {
 
   script:
     def inpt = params.outline == "merged" ? merge : meta.imagePath
+    def replaceNames = params.keepChannelName ? "": "--channel-info $meta.markersPath"
     """
-    make_outlines.py --merge-tiff $inpt --mask $mask --all-channels --out ${meta.originalName}_outline.tiff
+    make_outlines.py --merge-tiff $inpt --mask $mask --all-channels --out ${meta.originalName}_outline.tiff $replaceNames
     """
 }

@@ -2,6 +2,7 @@ name: pyramidize
 dependencies:
   - python=3.11.5=h955ad1f_0
   - scikit-image=0.19.3=py311h6a678d5_2
+  - pandas=2.1.1=py311ha02d727_0
   - pip=23.3=py311h06a4308_0
   - tifffile=2023.4.12=py311h06a4308_0
   - pip:
