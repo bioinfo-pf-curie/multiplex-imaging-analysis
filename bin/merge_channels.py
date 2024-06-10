@@ -168,7 +168,6 @@ def guess_channels_to_merge(img_path):
 def parse_markers(img_path, markers_path):
     """Use of markers.csv mandatory file for mcmicro to point channel to be merge for helping segmentation"""
     segmentation_col_name = "segmentation"
-    marker_name = "marker_name"
     mrk = read_csv(markers_path)
 
     if segmentation_col_name in mrk.columns:

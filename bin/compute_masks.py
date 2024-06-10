@@ -15,6 +15,9 @@ import fastremap
 from scipy.ndimage import maximum_filter1d
 import dask.array as da
 
+# a lot of those function are from https://github.com/MouseLand/cellpose/blob/main/cellpose/dynamics.py
+# but were adaptated to be used in a memory efficient way when dealing with large images
+
 
 def get_masks(p, iscell=None, rpad=20, cell_id=0):
     """ create masks using pixel convergence after running dynamics
@@ -111,9 +114,6 @@ def get_masks(p, iscell=None, rpad=20, cell_id=0):
             if iter==4:
                 pix[k] = tuple(pix[k])
 
-    # everything before this should be chunked (should be possible to)
-    # make M a memmap
-
     M = np.zeros(h.shape, np.uint32)
     for k in range(len(pix)):
         M[pix[k]] = 1+k + cell_id
@@ -132,7 +132,7 @@ def get_masks(p, iscell=None, rpad=20, cell_id=0):
     M0 = np.reshape(M0, shape0)
     return M0
 
-def follow_flows(dP, mask=None, niter=200, use_gpu=True, device=None, block_info=None):
+def follow_flows(dP, niter=200, device=None, block_info=None):
     """ define pixels and run dynamics to recover masks in 2D
     
     Pixels are meshgrid. Only pixels with non-zero cell-probability
@@ -143,9 +143,6 @@ def follow_flows(dP, mask=None, niter=200, use_gpu=True, device=None, block_info
 
     dP: float32, 3D or 4D array
         flows [axis x Ly x Lx] or [axis x Lz x Ly x Lx]
-    
-    mask: (optional, default None)
-        pixel mask to seed masks. Useful when flows have low magnitudes.
 
     niter: int (optional, default 200)
         number of iterations of dynamics to run
@@ -153,10 +150,6 @@ def follow_flows(dP, mask=None, niter=200, use_gpu=True, device=None, block_info
     interp: bool (optional, default True)
         interpolate during 2D dynamics (not available in 3D) 
         (in previous versions + paper it was False)
-
-    use_gpu: bool (optional, default False)
-        use GPU to run interpolated dynamics (faster than CPU)
-
 
     Returns
     ---------------

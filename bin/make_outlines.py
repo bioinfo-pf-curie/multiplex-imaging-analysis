@@ -45,8 +45,7 @@ def to_8int(arr, method="median_unbiased", percentile=[0.1,99.9], channel_axis=0
     min_, max_ = np.percentile(arr, percentile, axis=[a for a in range(len(arr.shape)) if a != channel_axis], 
                                keepdims=True, method=method)
     new_arr = ((arr - min_) * 255 / max_)
-    new_arr[new_arr < 0] = 0
-    new_arr[new_arr > 254] = 254
+    np.clip(new_arr, 0, 254, new_arr)
     return new_arr.astype('uint8')
 
 def create_outline_mask(masks):
