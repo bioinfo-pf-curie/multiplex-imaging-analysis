@@ -1,8 +1,9 @@
 process displayOutline {
   label 'img_utils'
-  label 'medCpu'
-  label 'extraMem'
+  label 'minCpu'
   label 'infiniteTime'
+
+  memory {MemoryUnit.of(Math.max(Math.min(meta.imgSize * 0.4, params.maxMemory.size), params.minMemory.size).toLong())}
   
   input:
     tuple val(meta), path(mask), path(merge)

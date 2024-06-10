@@ -1,6 +1,6 @@
 process computeMasks {
   label "${params.segmentation.name == 'cellpose'? 'cellpose': 'img_utils'}"
-  label 'highCpu'
+  label 'medCpu'
   label 'infiniteTime'
   label 'onlyLinux' // only for geniac lint...
 

@@ -1,6 +1,6 @@
 process segmentation {
   label "${params.segmentation.name}"
-  label 'lowCpu'
+  label 'medCpu'
   label 'medMem'
   label 'onlyLinux' // only for geniac lint...
 

@@ -1,6 +1,6 @@
 process splitImage {
   label 'img_utils'
-  label 'minCpu'
+  label 'lowCpu'
   label 'lowMem'
 
   input:
