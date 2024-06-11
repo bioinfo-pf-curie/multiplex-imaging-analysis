@@ -192,6 +192,7 @@ if __name__ == "__main__":
                         help="comma separated list or file with channels index to be merged (by default use every channels except the first)")
     parser.add_argument("--nuclei-channels", type=str, required=False, default=0, help="index of nuclei channel")
     parser.add_argument("--norm", type=str, required=False, default=None, help="normalization channels type")
+    parser.add_argument("--segmentation_norm", action='store_true', required=False, help="perform normalization on merged channels for segmentation")
     args = parser.parse_args()
 
     norm_val = None
@@ -225,4 +226,14 @@ if __name__ == "__main__":
         norm = args.norm
 
     merge_channels(in_path, out_path, channels_to_merge=channels, nuclei_chan=args.nuclei_channels, norm=norm, norm_val=norm_val)
+
+    if args.segmentation_norm:
+        from dask import array as da
+        img, mtd = read_tiff_orion(out_path, zarr_mode='a', mode='r+b')
+        arr = da.from_zarr(img)
+        for i in [0,1]:
+            img_min, img_max = da.percentile(arr[i].flatten(), [1, 99]).compute()
+            arr[i] = ((arr[i] - img_min) / (img_max - img_min))
+        arr.to_zarr(img, overwrite=True, compute=True)
+    # low, high = np.percentile(img_zarr, [1,99], axis=(1,2))
  

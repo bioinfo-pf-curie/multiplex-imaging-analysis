@@ -15,6 +15,6 @@ process mergeChannels {
   script:
     def args = task.ext.args ?: ''
     """
-    merge_channels.py --in $img --channels $ch --out ${meta.originalName}.merged.tiff $args
+    merge_channels.py --in $img --channels $ch --out ${meta.originalName}.merged.tiff --segmentation_norm $args
     """
 }

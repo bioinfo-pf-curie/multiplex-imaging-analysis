@@ -232,8 +232,7 @@ def compute_masks(flows, p=None, niter=200,
     if np.any(cp_mask): #mask at this point is a cell cluster binary map, not labels     
         # follow flows
         if p is None:
-            p = follow_flows(dP * cp_mask / 5., niter=niter, 
-                                            use_gpu=use_gpu, device=device)
+            p = follow_flows(dP * cp_mask / 5., niter=niter, device=device)
         
         current_cell_id = compute_current_cell_id(block_info)
         
