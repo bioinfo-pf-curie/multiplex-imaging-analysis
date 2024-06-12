@@ -17,6 +17,6 @@ From: python:3.11
     h5py==3.9.0 \
     xsdata==23.8 \
     shapely==2.0.1 \
-    dask-core==2023.6.0 \
+    dask==2023.6.0 \
     psutil==5.9.6 \
     fastremap==1.13.4 \
