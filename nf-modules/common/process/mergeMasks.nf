@@ -1,6 +1,6 @@
 process mergeMasks {
   label "img_utils"
-  label 'lowCpu'
+  label 'medCpu'
   memory {MemoryUnit.of(Math.max(Math.min(meta.imgSize * 0.6, params.maxMemory.size), params.minMemory.size).toLong())}
 
   input:

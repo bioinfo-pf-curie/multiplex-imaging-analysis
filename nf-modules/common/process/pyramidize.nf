@@ -1,6 +1,6 @@
 process pyramidize {
   label 'pyramidize'
-  label 'lowCpu'
+  label 'minCpu'
   label "highTime"
 
   memory {MemoryUnit.of(Math.max(Math.min(meta.imgSize * 0.2, params.maxMemory.size), params.minMemory.size).toLong())}

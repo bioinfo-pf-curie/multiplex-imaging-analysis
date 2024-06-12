@@ -1,6 +1,6 @@
 process quantification {
   label 'img_utils'
-  label "lowCpu"
+  label "minCpu"
   label "infiniteTime"
 
   memory {MemoryUnit.of(Math.max(Math.min(meta.imgSize * 0.3, params.maxMemory.size), params.minMemory.size).toLong())}
