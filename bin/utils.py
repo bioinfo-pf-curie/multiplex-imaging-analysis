@@ -26,10 +26,10 @@ def _tile_generator(arr, channel, x, y, chunk_x, chunk_y):
             yield arr[channel, x_cur: x_cur + chunk_x, y_cur: y_cur + chunk_y]
 
 
-def min_max_norm(a, min_, max_):
+def min_max_norm(a, min_, max_, output_max=(2**16 - 1)):
     a = (a - min_) / (max_ - min_)
     a = np.clip(a, 0, 1)
-    return a * (2**16 - 1)
+    return a * output_max
 
 def parse_normalization_values(df):
     normalization_col_name = "normalization"
@@ -198,8 +198,9 @@ def read_tiff_orion(img_path, idx_serie=0, idx_level=0, *args, **kwargs):
     metadata: OmeTifffile
         metadata from ome tiff arranged in a pythonnic way (see OmeTifffile)
     """
+    zarr_mode = kwargs.pop('zarr_mode', "r") 
     tiff = tifffile.TiffFile(img_path, *args, **kwargs)
-    zarray = zarr.open(tiff.series[idx_serie].aszarr())
+    zarray = zarr.open(tiff.series[idx_serie].aszarr(), mode=zarr_mode)
     return (zarray[idx_level] if idx_level is not None and tiff.series[idx_level].is_pyramidal else zarray), OmeTifffile(tiff.pages[0])
 
 class OmeTifffile(object):
@@ -219,6 +220,7 @@ class OmeTifffile(object):
         self.ome = None
         self.size = [None, None]
         qptiff_xml = None
+        self._dtype = ""
 
         for tag in tifffile_metadata.tags:
             if tag.name == "ImageDescription":
@@ -262,7 +264,17 @@ class OmeTifffile(object):
             warnings.warn("Planar Configuration read as 1 (contigue) will be removed from metadata."
                           "Orion used to not correctly set this to 1. To keep the same planarconfig set force_planarconfig to False")
             self.tags.pop('planarconfig')
-            
+
+        if not self.pix.planes:
+            self.pix.planes = [model.Plane(the_z=0, the_t=0, the_c=c) for c in range(self.pix.size_c)]
+
+    @property
+    def dtype(self):
+        return self._dtype
+    
+    @dtype.setter
+    def dtype(self, value):
+        self._dtype = str(value) # force numpy dtype into str
 
     @classmethod
     def from_path(cls, tiff_path):
@@ -335,11 +347,8 @@ class OmeTifffile(object):
             the_c = 0 if self.pix.size_c == 1 and len(self.pix.planes) == 0 else int(self.pix.size_c)
             # particular case due to validation error on size_c if = 0
             self.pix.planes.append(model.Plane(the_z=0, the_t=0, the_c=the_c))
-        try:
-            self.pix.tiff_data_blocks = [{'uuid': None, 'ifd': 0, 'first_z': 0, 'first_t': 0, 'first_c': 0, 'plane_count': len(self.pix.planes)}]
-        except BaseException as e: 
-            print("add channel error")
-            print(e)
+
+        self.pix.tiff_data_blocks = [{'uuid': None, 'ifd': 0, 'first_z': 0, 'first_t': 0, 'first_c': 0, 'plane_count': len(self.pix.planes)}]
         self.pix.channels.append(channel_data)
         self.pix.size_c = len(self.pix.channels)
     

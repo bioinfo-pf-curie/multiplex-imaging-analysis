@@ -1,3 +1,14 @@
+v-0.5dev
+NEW FEATURES
+  - When selecting cellpose, can perform multiple segmentation using different pre-trained weight and merge results
+  - Added a new method of normalization (adaptative equalization histogram)
+
+SIGNIFICANT USER-VISIBLE CHANGES
+  - updated documentation
+
+BUG FIXES
+  - change type of variable in segmentation process to be able to get a hash (resume function of nextflow was broken)
+
 v-0.4dev
 NEW FEATURES
   - added a new segmenter (Mesmer), only compatible with singularity profile

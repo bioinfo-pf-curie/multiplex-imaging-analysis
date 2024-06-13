@@ -8,8 +8,8 @@ From: python:3.11
   python -m pip install --no-cache-dir \
     scikit-image==0.19.3 \
     tifffile==2023.4.12 \
-    zarr \
+    pandas==2.1.1 \
     ome_types>=0.4.2 \
-    palom==2023.9.2 \
+    palom==2024.4.1 \
     pydantic==2.5.3 \
     xsdata==23.8 \

@@ -16,8 +16,7 @@ from skimage.morphology import remove_small_objects, h_maxima
 from skimage.morphology import disk, ball, square, cube, dilation
 from skimage.segmentation import relabel_sequential, watershed
 
-# from utils import OmeTifffile
-
+from utils import OmeTifffile
 
 def deep_watershed(outputs,
                    radius=10,
@@ -131,17 +130,9 @@ def deep_watershed(outputs,
         maxima = nd.gaussian_filter(maxima[..., 0], maxima_smooth)
         interior = nd.gaussian_filter(interior[..., 0], interior_smooth)
 
-
-        with open("01_should_be_good", "a") as out:
-            out.write('yes !')
-
         if pixel_expansion:
             fn = cube if input_is_3d else square
             interior = dilation(interior, footprint=fn(pixel_expansion * 2 + 1))
-
-
-        with open("02_should_be_good", "a") as out:
-            out.write('yes !')
 
         # peak_local_max is much faster but has poorer performance
         # when dealing with more ambiguous local maxima
@@ -153,9 +144,6 @@ def deep_watershed(outputs,
                 threshold_abs=maxima_threshold,
                 exclude_border=kwargs.get('exclude_border', False))
 
-            with open("03a_probably_here", "a") as out:
-                out.write('yes !')
-
             markers = np.zeros_like(maxima)
             slc = tuple(coords[:, i] for i in range(coords.shape[1]))
             markers[slc] = 1
@@ -165,19 +153,10 @@ def deep_watershed(outputs,
             markers = h_maxima(image=maxima,
                                h=maxima_threshold,
                                footprint=fn(radius))
-            
-            with open("03b_or_here", "a") as out:
-                out.write('yes !')
-        
+                    
         del maxima 
 
-        with open("04_not_here", "a") as out:
-            out.write('yes !')
-
         markers = label(markers)
-
-        with open("are_we_going_here.txt", "a") as out:
-            out.write('yes !')
 
         label_image = watershed(-1 * interior, markers,
                                 mask=interior > interior_threshold,
@@ -216,13 +195,13 @@ if __name__ == '__main__':
 
     label_img = np.squeeze(label_img)
 
-    # metadata = OmeTifffile(TiffFile(args.original).pages[0])
-    # metadata.remove_all_channels()
-    # metadata.add_channel_metadata(channel_name="masks")
+    metadata = OmeTifffile(TiffFile(args.original).pages[0])
+    metadata.remove_all_channels()
+    metadata.add_channel_metadata(channel_name="masks")
 
-    # metadata.dtype = label_img.dtype
+    metadata.dtype = label_img.dtype
 
     with open('i_hope_its_not_here.txt', 'a') as out:
         out.write('but yet....')
 
-    imwrite(args.out, label_img, bigtiff=True)
+    imwrite(args.out, label_img, bigtiff=True, **metadata.to_dict(shape=label_img.shape))

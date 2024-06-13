@@ -1,10 +1,10 @@
 process computeMasks {
   label "${params.segmentation.name == 'cellpose'? 'cellpose': 'img_utils'}"
-  label 'highCpu'
+  label 'medCpu'
   label 'infiniteTime'
   label 'onlyLinux' // only for geniac lint...
 
-  memory {params.segmentation.name == 'cellpose'? MemoryUnit.of(Math.max(Math.min(meta.imgSize * 0.4, params.maxMemory.size), params.minMemory.size).toLong()) : params.maxMemory}
+  memory {params.segmentation.name == 'cellpose'? MemoryUnit.of(Math.max(Math.min(meta.imgSize * 0.4, params.maxMemory.size), params.minMemory.size).toLong()) : 64.GB}
   // take 40% of the size of image input with a minimum of 2GB and a max of 190GB 
 
   input:

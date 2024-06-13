@@ -9,11 +9,14 @@ from cellpose.transforms import resize_image
 from cv2 import INTER_NEAREST
 
 from utils import OmeTifffile
-from dask_utils import correct_edges_inplace
+from dask_utils import correct_edges_inplace, compute_current_cell_id
 
 import fastremap
 from scipy.ndimage import maximum_filter1d
 import dask.array as da
+
+# a lot of those function are from https://github.com/MouseLand/cellpose/blob/main/cellpose/dynamics.py
+# but were adaptated to be used in a memory efficient way when dealing with large images
 
 
 def get_masks(p, iscell=None, rpad=20, cell_id=0):
@@ -111,9 +114,6 @@ def get_masks(p, iscell=None, rpad=20, cell_id=0):
             if iter==4:
                 pix[k] = tuple(pix[k])
 
-    # everything before this should be chunked (should be possible to)
-    # make M a memmap
-
     M = np.zeros(h.shape, np.uint32)
     for k in range(len(pix)):
         M[pix[k]] = 1+k + cell_id
@@ -132,7 +132,7 @@ def get_masks(p, iscell=None, rpad=20, cell_id=0):
     M0 = np.reshape(M0, shape0)
     return M0
 
-def follow_flows(dP, mask=None, niter=200, use_gpu=True, device=None, block_info=None):
+def follow_flows(dP, niter=200, device=None, block_info=None):
     """ define pixels and run dynamics to recover masks in 2D
     
     Pixels are meshgrid. Only pixels with non-zero cell-probability
@@ -143,9 +143,6 @@ def follow_flows(dP, mask=None, niter=200, use_gpu=True, device=None, block_info
 
     dP: float32, 3D or 4D array
         flows [axis x Ly x Lx] or [axis x Lz x Ly x Lx]
-    
-    mask: (optional, default None)
-        pixel mask to seed masks. Useful when flows have low magnitudes.
 
     niter: int (optional, default 200)
         number of iterations of dynamics to run
@@ -153,10 +150,6 @@ def follow_flows(dP, mask=None, niter=200, use_gpu=True, device=None, block_info
     interp: bool (optional, default True)
         interpolate during 2D dynamics (not available in 3D) 
         (in previous versions + paper it was False)
-
-    use_gpu: bool (optional, default False)
-        use GPU to run interpolated dynamics (faster than CPU)
-
 
     Returns
     ---------------
@@ -239,14 +232,9 @@ def compute_masks(flows, p=None, niter=200,
     if np.any(cp_mask): #mask at this point is a cell cluster binary map, not labels     
         # follow flows
         if p is None:
-            p = follow_flows(dP * cp_mask / 5., niter=niter, 
-                                            use_gpu=use_gpu, device=device)
-
-        current_chunk = block_info[0]['chunk-location']
-        total_chunk = block_info[0]['num-chunks']
-
-        # 600 is mean cell area (determine by cellpose parameters)
-        current_cell_id = int((current_chunk[1] +  current_chunk[2] * total_chunk[1]) * np.multiply(*dP.shape[1:]) / 600)
+            p = follow_flows(dP * cp_mask / 5., niter=niter, device=device)
+        
+        current_cell_id = compute_current_cell_id(block_info)
         
         #calculate masks
         mask = get_masks(p, iscell=cp_mask, cell_id=current_cell_id)

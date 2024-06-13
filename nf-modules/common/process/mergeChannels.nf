@@ -1,7 +1,8 @@
 process mergeChannels {
   label 'img_utils'
-  label 'minCpu'
-  label 'lowMem'
+  label 'highCpu'
+  label 'extraMem'
+  label 'infiniteTime'
   
   input:
     tuple val(meta), path(img), path(ch)
@@ -15,6 +16,6 @@ process mergeChannels {
   script:
     def args = task.ext.args ?: ''
     """
-    merge_channels.py --in $img --channels $ch --out ${meta.originalName}.merged.tiff $args
+    merge_channels.py --in $img --channels $ch --out ${meta.originalName}.merged.tiff --segmentation_norm $args
     """
 }
