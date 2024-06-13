@@ -230,7 +230,7 @@ if __name__ == "__main__":
     if args.segmentation_norm:
         from dask import array as da
         img, mtd = read_tiff_orion(out_path, zarr_mode='a', mode='r+b')
-        arr = da.from_zarr(img)
+        arr = da.from_zarr(img, chunks=(1,8192,8192))
         for i in [0,1]:
             img_min, img_max = da.percentile(arr[i].flatten(), [1, 99]).compute()
             arr[i] = ((arr[i] - img_min) / (img_max - img_min))
