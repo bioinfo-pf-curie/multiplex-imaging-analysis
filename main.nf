@@ -89,14 +89,10 @@ include { getSoftwareVersions } from './nf-modules/common/process/utils/getSoftw
 include { outputDocumentation } from './nf-modules/common/process/utils/outputDocumentation'
 include { mergeChannels } from './nf-modules/common/process/mergeChannels'
 include { displayOutline } from './nf-modules/common/process/displayOutline'
-include { segmentation } from './nf-modules/common/process/segmentation'
 include { quantification } from './nf-modules/common/process/quantification'
-include { splitImage } from './nf-modules/common/process/splitImage'
-include { stitch } from './nf-modules/common/process/stitch'
-include { computeMasks } from './nf-modules/common/process/computeMasks'
 include { pyramidize } from './nf-modules/common/process/pyramidize'
 include { mergeMasks } from './nf-modules/common/process/mergeMasks'
-
+include { segmentation } from './nf-modules/common/workflow/segmentation'
 /*
 =====================================
             WORKFLOW 
@@ -142,42 +138,7 @@ workflow {
 
     // PROCESS
     merged = mergeChannels(inputsOriginal)
-
-    splittedImg = splitImage(merged)
-    splittedImgResult = splittedImg.transpose().map{nb, meta, splitted -> 
-      def newMeta = [
-        originalName: meta.originalName, 
-        imagePath: meta.imagePath, 
-        markersPath: meta.markersPath, 
-        nbSplittedFile: nb, 
-        splittedName: splitted.name - ~/\.\w+$/, 
-        startHeight: NFTools.getStartHeight(splitted),
-        imgSize: meta.imgSize
-      ] 
-      tuple(newMeta, splitted)
-    }
-
-    segmented = segmentation(splittedImgResult, modelList)
-
-    groupSegmented = segmented.map{meta, segmentedImg, models ->
-      meta['model'] = models
-      tuple(groupKey(meta.subMap("originalName", "imagePath", "markersPath", "imgSize", 'model'), meta.nbSplittedFile.toInteger()), meta, segmentedImg)
-    }.groupTuple().map{groupedkey, old_meta, segmentedImg -> 
-      tuple(groupedkey, segmentedImg)
-    }
-    flow = stitch(groupSegmented)
-
-    partialMasks = computeMasks(flow)
-
-    partialMaskCh = partialMasks.map{meta, partial ->
-      tuple(groupKey(meta.subMap("originalName", "imagePath", "markersPath", "imgSize"), modelList.size()), partial)
-    }.groupTuple().branch{
-      solo : modelList.size() == 1
-      multiple : true
-    }
-
-    finalMask = mergeMasks(partialMaskCh.multiple).mix(partialMaskCh.solo)
-
+    finalMask = segmentation(merged, modelList)
     outline = displayOutline(finalMask.join(merged))
 
     pyramidizeCh = Channel.empty()
