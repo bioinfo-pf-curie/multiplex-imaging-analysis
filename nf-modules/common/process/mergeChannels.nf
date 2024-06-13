@@ -1,7 +1,8 @@
 process mergeChannels {
   label 'img_utils'
-  label 'lowCpu'
-  label 'lowMem'
+  label 'highCpu'
+  label 'extraMem'
+  label 'infiniteTime'
   
   input:
     tuple val(meta), path(img), path(ch)
