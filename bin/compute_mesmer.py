@@ -121,9 +121,6 @@ def deep_watershed(outputs,
 
     input_is_3d = maximas.ndim > 4
 
-    with open("checking", "a") as out:
-        out.write('yes !')
-
     label_images = []
     for maxima, interior in zip(maximas, interiors): # batch is always one in my case...
         # squeeze out the channel dimension if passed
@@ -200,8 +197,5 @@ if __name__ == '__main__':
     metadata.add_channel_metadata(channel_name="masks")
 
     metadata.dtype = label_img.dtype
-
-    with open('i_hope_its_not_here.txt', 'a') as out:
-        out.write('but yet....')
 
     imwrite(args.out, label_img, bigtiff=True, **metadata.to_dict(shape=label_img.shape))

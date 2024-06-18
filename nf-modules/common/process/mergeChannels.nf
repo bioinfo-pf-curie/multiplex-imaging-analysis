@@ -1,6 +1,6 @@
 process mergeChannels {
   label 'img_utils'
-  label 'highCpu'
+  label 'minCpu'
   label 'extraMem'
   label 'infiniteTime'
   
