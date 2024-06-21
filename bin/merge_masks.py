@@ -270,9 +270,12 @@ if __name__ == '__main__':
     # merge_masks_wo_dask(args.list_of_mask, args.out, threshold=args.threshold)
     mask = merge_masks(args.list_of_mask, overlap=args.overlap, chunk_size=args.chunk_size, threshold=args.threshold)
 
-    metadata = OmeTifffile(tifffile.TiffFile(args.original).pages[0])
-    metadata.remove_all_channels()
-    metadata.add_channel_metadata(channel_name="masks")
-    metadata.dtype = mask.dtype
+    kwargs = {}
+    if args.original:
+        metadata = OmeTifffile(tifffile.TiffFile(args.original).pages[0])
+        metadata.remove_all_channels()
+        metadata.add_channel_metadata(channel_name="masks")
+        metadata.dtype = mask.dtype
+        kwargs.update(metadata.to_dict(shape=mask.shape))
 
-    tifffile.imwrite(args.out, mask, bigtiff=True, shaped=False, **metadata.to_dict(shape=mask.shape))
+    tifffile.imwrite(args.out, mask, bigtiff=True, shaped=False, **kwargs)

@@ -46,7 +46,7 @@ def correct_edges_inplace(masks, chunks_size):
             sub_masks = None # garbage collected
 
 
-def compute_current_cell_id(block_info, mean_cell_area=600):
+def compute_current_cell_id(block_info, mean_cell_area=300):
     """
     From chunk info (from dask map_block, see https://docs.dask.org/en/stable/generated/dask.array.map_blocks.html)
     compute the current cell id based on chunk position, mean chunk size and mean cell area
@@ -68,7 +68,7 @@ def compute_current_cell_id(block_info, mean_cell_area=600):
                 'dtype': dtype('float64')}}
         
     mean_cell_area: int
-        mean cell area, can be infered on the image but a value of 600 (default) is satisfying for now
+        mean cell area, can be infered on the image but a value of 300 (default) is satisfying for now
 
     return
     ------
