@@ -16,13 +16,13 @@ process seg {
     each models
 
   output:
-    tuple val(meta), path(params.segmentation.name == 'cellpose'? '*.npy': '*.tiff'), val(models)
+    tuple val(meta), path(params.segmentation.name == 'cellpose'? '*.npy': '*.tiff'), val(models), stdout
 
   when:
   task.ext.when == null || task.ext.when
 
   script:
-    def cellpose = "cellpose --channel_axis 0 --savedir . --chan 2 --chan2 1 --image_path $image --pretrained_model $models $params.cellpose.additionalParms"
+    def cellpose = "cellpose --channel_axis 0 --verbose --savedir . --diameter $params.segmentation.diameter --chan 2 --chan2 1 --image_path $image --pretrained_model $models $params.cellpose.additionalParms"
     def mesmer = "wrapper_mesmer.py --squeeze --output-directory . --output-name ${meta.splittedName}_masks.tiff --nuclear-image $image --membrane-image $image --membrane-channel 1"
     def script = params.segmentation.name == 'cellpose' ? cellpose : mesmer
     """
@@ -52,11 +52,12 @@ workflow segmentation {
         tuple(newMeta, splitted)
       }
 
-      segmented = seg(splittedImgResult, modelList)
+      seg(splittedImgResult, modelList)
 
-      groupSegmented = segmented.map{meta, segmentedImg, models ->
+      groupSegmented = seg.out[0].map{meta, segmentedImg, models, diameter ->
         meta['model'] = models
-        tuple(groupKey(meta.subMap("originalName", "imagePath", "markersPath", "imgSize", 'model'), meta.nbSplittedFile.toInteger()), meta, segmentedImg)
+        meta['diameter'] = (diameter.toString() =~ /using diameter (\d+\.?\d*)/)[0][1] as Float
+        tuple(groupKey(meta.subMap("originalName", "imagePath", "markersPath", "imgSize", 'model', 'diameter'), meta.nbSplittedFile.toInteger()), meta, segmentedImg)
       }.groupTuple().map{groupedkey, old_meta, segmentedImg -> 
         tuple(groupedkey, segmentedImg)
       }
@@ -65,7 +66,7 @@ workflow segmentation {
       partialMasks = computeMasks(flow)
 
       partialMaskCh = partialMasks.map{meta, partial ->
-        tuple(groupKey(meta.subMap("originalName", "imagePath", "markersPath", "imgSize"), modelList.size()), partial)
+        tuple(groupKey(meta.subMap("originalName", "imagePath", "markersPath", "imgSize"), modelList.size()), partial, meta["diameter"])
       }.groupTuple().branch{
         solo : modelList.size() == 1
         multiple : true

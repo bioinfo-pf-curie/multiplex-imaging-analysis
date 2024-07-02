@@ -195,7 +195,7 @@ def recreate_mask(cells, shape, idx_start=1):
     return result
 
 
-def on_chunk(chunk, threshold, block_info=None):
+def on_chunk(chunk, threshold, block_info=None, diameter=30):
     """
     Convert each masks into a list of shape (cells), concat these lists, solve intersection and then reconvert it to mask image.
 
@@ -219,12 +219,12 @@ def on_chunk(chunk, threshold, block_info=None):
 
     results = solve_conflicts(cells, threshold=threshold)
 
-    current_cell_id = compute_current_cell_id(block_info)
+    current_cell_id = compute_current_cell_id(block_info, mean_cell_area=np.pi * (diameter / 2) ** 2)
 
     return recreate_mask(results, chunk.shape[1:], current_cell_id)
 
 
-def merge_masks(list_of_masks, chunk_size=1024, overlap=120, threshold=0.5):
+def merge_masks(list_of_masks, chunk_size=1024, overlap=120, threshold=0.5, diameter=30):
     """
     Merge a list of masks (cells labels images) into one, based on a threshold of percentage of intersection
     (see SOPA for a more detailed implementation of solve conflict)
@@ -249,7 +249,7 @@ def merge_masks(list_of_masks, chunk_size=1024, overlap=120, threshold=0.5):
     """
     masks = [da.from_zarr(tifffile.TiffFile(mask).series[0].aszarr(), chunks=(chunk_size, chunk_size)) for mask in list_of_masks]
     masks = da.stack(masks)
-    final_mask = da.map_overlap(on_chunk, masks, dtype=np.uint32, depth={0: 0, 1: overlap, 2: overlap}, drop_axis=0, threshold=threshold).compute()
+    final_mask = da.map_overlap(on_chunk, masks, dtype=np.uint32, depth={0: 0, 1: overlap, 2: overlap}, drop_axis=0, threshold=threshold, diameter=diameter).compute()
 
     correct_edges_inplace(final_mask, chunks_size=(chunk_size, chunk_size))
 
@@ -266,9 +266,10 @@ if __name__ == '__main__':
     parser.add_argument('--chunk_size', type=int, default=8192, required=False, help="size of tiles")
     parser.add_argument('--threshold', type=float, default=0.5, required=False, help="Intersection over union for cells to be merged")
     parser.add_argument('--original', type=str, required=False, help="path to original image (metadata except dtype and channels info will be copied)")
+    parser.add_argument('--diameter', type=float, default=30, required=False, help="mean diameter (in pixels) of cells")
     args = parser.parse_args()
     # merge_masks_wo_dask(args.list_of_mask, args.out, threshold=args.threshold)
-    mask = merge_masks(args.list_of_mask, overlap=args.overlap, chunk_size=args.chunk_size, threshold=args.threshold)
+    mask = merge_masks(args.list_of_mask, overlap=args.overlap, chunk_size=args.chunk_size, threshold=args.threshold, diameter=args.diameter)
 
     kwargs = {}
     if args.original:

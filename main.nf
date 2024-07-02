@@ -138,16 +138,15 @@ workflow {
 
     // PROCESS
     merged = mergeChannels(inputsOriginal)
-    finalMask = segmentation(merged, modelList)
-    outline = displayOutline(finalMask.join(merged))
-
+    mask = segmentation(merged, modelList)
+    outline = displayOutline(mask.join(merged))
     pyramidizeCh = Channel.empty()
     .mix(NFTools.setTag(merged, "merge_channels"))
     .mix(NFTools.setTag(outline, "outlines"))
     
     pyramidize(pyramidizeCh)
   
-    quant = quantification(finalMask)
+    quant = quantification(mask)
 
     //*******************************************
     // Warnings that will be printed in the mqc report

@@ -185,6 +185,7 @@ def follow_flows(dP, niter=200, device=None, block_info=None):
 def compute_masks(flows, p=None, niter=200, 
                    cellprob_threshold=0.0,
                    flow_threshold=0.4, 
+                   diameter=30,
                    min_size=15, resize=None, 
                    use_gpu=False,device=None, block_info=None):
     """ compute masks using dynamics from dP, cellprob, and boundary 
@@ -234,7 +235,7 @@ def compute_masks(flows, p=None, niter=200,
         if p is None:
             p = follow_flows(dP * cp_mask / 5., niter=niter, device=device)
         
-        current_cell_id = compute_current_cell_id(block_info)
+        current_cell_id = compute_current_cell_id(block_info, mean_cell_area=np.pi * (diameter / 2) ** 2)
         
         #calculate masks
         mask = get_masks(p, iscell=cp_mask, cell_id=current_cell_id)
@@ -270,12 +271,13 @@ if __name__ == '__main__':
     parser.add_argument('--original', type=str, required=True, help="File path of original image (to get metadata from)")
     parser.add_argument('--chunks', type=int, nargs=2, required=False, default=(8192, 8192), help="Size of chunk for dask")
     parser.add_argument('--overlap', type=int, required=False, default=60, help="Overlap (in pixel) for dask to perform computing of masks on chunks")
+    parser.add_argument('--mean_cell_diam', type=float, required=False, default=60, help="mean diameter (in pixels) of cells")
     args = parser.parse_args()
 
     flows = np.lib.format.open_memmap(vars(args)['in'])
     flows_da = da.from_array(flows, chunks=[3, *args.chunks])
 
-    masks_graph = da.map_overlap(compute_masks, flows_da, dtype=np.uint32, depth={0: 0, 1: args.overlap, 2: args.overlap}, drop_axis=0)
+    masks_graph = da.map_overlap(compute_masks, flows_da, dtype=np.uint32, depth={0: 0, 1: args.overlap, 2: args.overlap}, drop_axis=0, diameter=args.mean_cell_diam)
     mask_memmap = np.lib.format.open_memmap(".tmp_masks.npy", mode='w+', dtype=np.uint32, shape=flows.shape[1:])
 
     da.store(masks_graph, mask_memmap, compute=True)
