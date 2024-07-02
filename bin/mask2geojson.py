@@ -30,7 +30,7 @@ def mask2geojson(mask: np.ndarray, object_type='annotation', connectivity: int=4
         # Create properties
         props = dict(object_type=object_type)
         if include_labels:
-            props['measurements'] = [{'name': 'Label', 'value': s[1]}]
+            props['measurements'] = [{'name': 'CellID', 'value': s[1]}]
             
         # Just to show how a classification can be added
         if classification is not None:
