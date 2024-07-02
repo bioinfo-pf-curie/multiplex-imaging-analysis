@@ -93,6 +93,7 @@ include { quantification } from './nf-modules/common/process/quantification'
 include { pyramidize } from './nf-modules/common/process/pyramidize'
 include { mergeMasks } from './nf-modules/common/process/mergeMasks'
 include { segmentation } from './nf-modules/common/workflow/segmentation'
+include { mask2geojson } from './nf-modules/common/process/mask2geojson'
 /*
 =====================================
             WORKFLOW 
@@ -145,6 +146,8 @@ workflow {
     .mix(NFTools.setTag(outline, "outlines"))
     
     pyramidize(pyramidizeCh)
+
+    geojson = mask2geojson(mask)
   
     quant = quantification(mask)
 

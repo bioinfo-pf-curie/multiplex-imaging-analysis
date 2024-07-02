@@ -20,4 +20,5 @@ RUN python -m pip install --no-cache-dir \
   zarr==2.16.1 \
   opencv-python-headless==4.8.1.78 \
   pydantic==2.5.3 \
-  xsdata==23.8
+  xsdata==23.8 \
+  rasterio==1.3.10
