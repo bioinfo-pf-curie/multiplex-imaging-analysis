@@ -4,12 +4,10 @@
 #       MODULES        #
 # ==================== #
 
-import os
 import sys
 import pathlib
 import argparse
 import numpy as np
-import matplotlib.pyplot as plt
 import geojson
 from collections import namedtuple
 import io
@@ -18,7 +16,9 @@ import random
 from skimage.draw import polygon, polygon_perimeter
 from skimage.io import imsave
 import tifffile
+from shapely import geometry, STRtree
 
+from mask2geojson import mask2geojson
 
 def get_outline_image(gj, height, width):
     n = len(gj)
@@ -104,15 +104,81 @@ def determine_size(list_img):
         i += 1
     return tifffile.TiffFile(list_img[i]).pages[0].shape
 
-def compare_geojson(args):
-    pass
-    # shapely.geometry.shape(geojson)
-
+def geojson2shapely(geojson):
+    result = []
+    if isinstance(geojson, dict):
+        geojson = geojson['features']
+    if isinstance(geojson, list):
+        for cell in geojson:
+            result += [geometry.shape(cell.get('geometry', cell))]
+    else:
+        raise ValueError("Unkwown type for geojson file")
+    return result
 
 def compare(args):
     gt = args.ground_truth
+
+    if not gt.endswith('.geojson'):
+        gjson = mask2geojson(mask=tifffile.imread(gt))
+    else:
+        with open(gt, "r") as gtf:
+            gjson = geojson.load(gtf)
+    gt_cells = geojson2shapely(gjson)
+    gt_tree = STRtree(gt_cells)
+    gt_cells_nb = len(gt_cells)
+
+    for gj_files in args.images:
+        if not gj_files.endswith('.geojson'):
+            gjson = mask2geojson(mask=tifffile.imread(gj_files))
+        else:
+            with open(gj_files, 'r') as gjf:
+                gjson = geojson.load(gjf)
+        other_cells = geojson2shapely(gjson)
+        nb_cell = len(other_cells)
+        common = gt_tree.query(other_cells, predicate="intersects")
+        if common.size == 0:
+            print('no common cells')
+            return
+        # filter non unique pair of common cells based on best intersection
+        def intersect_area(cpl):
+            return gt_cells[cpl[1]].intersection(other_cells[cpl[0]]).area
+        
+        common = np.array([
+            max(common[:,common[0] == idx].T, key=intersect_area)
+            for idx in np.unique(common[0])
+        ])
+        
+        common = np.array([
+            max(common[:,common[1] == idx].T, key=intersect_area)
+            for idx in np.unique(common[1])
+        ])
+
+        ap_cellpose = []
+        ap_common = []
+        iou_mean = []
+        
+        for paired_cells in common.T:
+            gtc = gt_cells[paired_cells[1]]
+            oc = other_cells[paired_cells[0]]
+            intersect = gtc.intersection(oc).area
+            iou = intersect / gtc.union(oc).area
+            ap = intersect / (intersect + oc.difference(gtc).area + gtc.difference(oc).area)
+            if iou > 0.5:
+                ap_cellpose.append(ap)
+            ap_common.append(ap)
+            iou_mean.append(iou)
+            
+        print(f"{pathlib.Path(gj_files).stem}\n")
+        print(f"\tfound {nb_cell} cells out of {gt_cells_nb} in ground truth")
+        print(f"\tavg prec = {sum(ap_common) / len(ap_common):.4f}\n")
+        print(f"\tcellpose avg prec = {sum(ap_cellpose) / len(ap_cellpose):.4f}\n")
+        print(f"\tiou mean = {sum(iou_mean) / len(iou_mean)}\n")
+            
+
+def compare_img(args):
+    gt = args.ground_truth
     if all(img.endswith(".geojson") for img in args.images) and gt.endswith(".geojson"):
-        return compare_geojson(args)
+        return compare(args)
     
     height, width = determine_size(args.images + [gt])
     g2m_args = namedtuple('args', ['gjfile', 'height', 'width', 'out'])
@@ -174,6 +240,14 @@ def compare(args):
             print(f'\tcell {label} : {iou=:.02f}\n')
         print(f"\tiou mean = {sum(iou_mean.values()) / len(iou_mean)}\n")
 
+def m2g(args):
+    gjson = mask2geojson(mask=args.mask, object_type=args.object_type, 
+                           connectivity=args.connectivity, transform=args.transform,
+                           downsample=args.downsample, include_labels=args.include_labels,
+                           classification=args.classification)
+    with open(args.out, "w") as out:
+       geojson.dump(gjson, out)
+    
 
 # ==========
 # Arguments
@@ -223,7 +297,16 @@ def parse_args(args=None):
     parser_compare.add_argument('--images', type=str, nargs="+",
                              help='list of image (or geojson) to compare to gt')
     parser_compare.set_defaults(func=compare)
-    
+
+    parser_m2g = subparsers.add_parser('m2g')
+    parser_m2g.add_argument("--mask", type=str, help="mask path")
+    parser_m2g.add_argument("--object_type", type=str, default='annotation')
+    parser_m2g.add_argument("--connectivity", type=int, default=4)
+    parser_m2g.add_argument("--transform", type=str, default=None)
+    parser_m2g.add_argument("--downsample", type=float, default=1.0)
+    parser_m2g.add_argument("--include_labels", type=bool, default=False)
+    parser_m2g.add_argument("--classification", type=str, default=None)
+    parser_m2g.set_defaults(func=m2g)
     return parser.parse_args(args)
 
 # ==================== #

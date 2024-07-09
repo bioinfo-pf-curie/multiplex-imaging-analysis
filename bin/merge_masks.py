@@ -9,9 +9,10 @@ import shapely
 from shapely.geometry import GeometryCollection, MultiPolygon, Polygon
 import fastremap
 import warnings
-from skimage.segmentation import find_boundaries
+# from skimage.segmentation import find_boundaries
+import rasterio.features
 
-import pandas as pd
+# import pandas as pd
 
 from dask_utils import correct_edges_inplace, compute_current_cell_id
 from utils import OmeTifffile
@@ -44,71 +45,71 @@ def _ensure_polygon(cell: Polygon | MultiPolygon | GeometryCollection) -> Polygo
     return None
 
 
-def _smoothen_cell(cell: MultiPolygon, smooth_radius: float, tolerance: float) -> Polygon | None:
-    """Smoothen a cell polygon
+# def _smoothen_cell(cell: MultiPolygon, smooth_radius: float, tolerance: float) -> Polygon | None:
+#     """Smoothen a cell polygon
 
-    Args:
-        cell_id: ID of the cell to geometrize
-        smooth_radius: radius used to smooth the cell polygon
-        tolerance: tolerance used to simplify the cell polygon
+#     Args:
+#         cell_id: ID of the cell to geometrize
+#         smooth_radius: radius used to smooth the cell polygon
+#         tolerance: tolerance used to simplify the cell polygon
 
-    Returns:
-        Shapely polygon representing the cell, or `None` if the cell was empty after smoothing
-    """
-    cell = cell.buffer(-smooth_radius).buffer(2 * smooth_radius).buffer(-smooth_radius)
-    cell = cell.simplify(tolerance)
-    return None if cell.is_empty else _ensure_polygon(cell)
-
-
-def _default_tolerance(mean_radius: float) -> float:
-    if mean_radius < 10:
-        return 0.4
-    if mean_radius < 20:
-        return 1
-    return 2
+#     Returns:
+#         Shapely polygon representing the cell, or `None` if the cell was empty after smoothing
+#     """
+#     cell = cell.buffer(-smooth_radius).buffer(2 * smooth_radius).buffer(-smooth_radius)
+#     cell = cell.simplify(tolerance)
+#     return None if cell.is_empty else _ensure_polygon(cell)
 
 
-def geometrize(
-    mask: np.ndarray, tolerance: float | None = None, smooth_radius_ratio: float = 0.1
-) -> list[Polygon]:
-    """Convert a cells mask to multiple `shapely` geometries. Inspired from https://github.com/Vizgen/vizgen-postprocessing
+# def _default_tolerance(mean_radius: float) -> float:
+#     if mean_radius < 10:
+#         return 0.4
+#     if mean_radius < 20:
+#         return 1
+#     return 2
+
+
+# def geometrize(
+#     mask: np.ndarray, tolerance: float | None = None, smooth_radius_ratio: float = 0.1
+# ) -> list[Polygon]:
+#     """Convert a cells mask to multiple `shapely` geometries. Inspired from https://github.com/Vizgen/vizgen-postprocessing
     
 
-    Args:
-        mask: A cell mask. Non-null values correspond to cell ids
-        tolerance: Tolerance parameter used by `shapely` during simplification. By default, define the tolerance automatically.
+#     Args:
+#         mask: A cell mask. Non-null values correspond to cell ids
+#         tolerance: Tolerance parameter used by `shapely` during simplification. By default, define the tolerance automatically.
 
-    Returns:
-        List of `shapely` polygons representing each cell ID of the mask
-    """
-    max_cells = mask.max()
+#     Returns:
+#         List of `shapely` polygons representing each cell ID of the mask
+#     """
+#     max_cells = mask.max()
 
-    if max_cells == 0:
-        print("No cell was returned by the segmentation")
-        return []
+#     if max_cells == 0:
+#         print("No cell was returned by the segmentation")
+#         return []
     
-    bounds = pd.DataFrame(np.where(find_boundaries(mask, connectivity=2, mode="inner"), mask, 0))
-    bounds = pd.DataFrame(bounds.unstack())
+#     bounds = pd.DataFrame(np.where(find_boundaries(mask, connectivity=2, mode="inner"), mask, 0))
+#     bounds = pd.DataFrame(bounds.unstack())
 
-    cells = []
-    grouped_bound = bounds.groupby([0], sort=False)
-    for v, idxs in grouped_bound:
-        if v[0] != 0 and len(idxs.index.values) > 4:
-            cells.append(shapely.convex_hull(Polygon(idxs.index.values)))
+#     cells = []
+#     grouped_bound = bounds.groupby([0], sort=False)
+#     for v, idxs in grouped_bound:
+#         if v[0] != 0 and len(idxs.index.values) > 4:
+#             cells.append(shapely.convex_hull(Polygon(idxs.index.values)))
     
-    mean_radius = np.sqrt(np.array([cell.area for cell in cells]) / np.pi).mean()
-    smooth_radius = mean_radius * smooth_radius_ratio
+#     mean_radius = np.sqrt(np.array([cell.area for cell in cells]) / np.pi).mean()
+#     smooth_radius = mean_radius * smooth_radius_ratio
 
-    if tolerance is None:
-        tolerance = _default_tolerance(mean_radius)
+#     if tolerance is None:
+#         tolerance = _default_tolerance(mean_radius)
 
-    cells = [_smoothen_cell(cell, smooth_radius, tolerance) for cell in cells]
-    cells = [cell for cell in cells if cell is not None]
-    print(
-        f"Percentage of non-geometrized cells: {((grouped_bound.ngroups-1) - len(cells)) / (grouped_bound.ngroups-1):.2%} (usually due to segmentation artefacts)"
-    )
+#     cells = [_smoothen_cell(cell, smooth_radius, tolerance) for cell in cells]
+#     cells = [cell for cell in cells if cell is not None]
+#     print(
+#         f"Percentage of non-geometrized cells: {((grouped_bound.ngroups-1) - len(cells)) / (grouped_bound.ngroups-1):.2%} (usually due to segmentation artefacts)"
+#     )
 
-    return cells
+#     return cells
 
 
 def solve_conflicts(
@@ -215,7 +216,9 @@ def on_chunk(chunk, threshold, block_info=None, diameter=30):
     """
     cells = []
     for i in range(chunk.shape[0]):
-        cells += geometrize(chunk[i])
+        # cells += geometrize(chunk[i])
+        mask = chunk[i].astype('float32')
+        cells += [Polygon(c[0]['coordinates'][0]) for c in rasterio.features.shapes(mask, mask=mask > 0, connectivity=4) if len(c[0]['coordinates'][0]) > 4]
 
     results = solve_conflicts(cells, threshold=threshold)
 
