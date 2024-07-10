@@ -3,7 +3,7 @@ From: python:3.11
 
 %post
   apt-get -y update
-  apt-get install -y python3-opencv
+  apt-get install -y python3-opencv g++ python3-dev
   rm -rf /var/lib/apt/lists/* 
   python -m pip install --no-cache-dir \
     pandas==2.1.1 \
@@ -19,5 +19,5 @@ From: python:3.11
     shapely==2.0.1 \
     dask==2023.6.0 \
     psutil==5.9.6 \
-    fastremap==1.13.4 \
-    rasterio==1.3.10 \
+    rasterio==1.3.10 
+  python -m pip install fastremap==1.13.4 --no-binary :all:
