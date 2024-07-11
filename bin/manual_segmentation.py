@@ -83,8 +83,6 @@ def make_tile(args):
     img_path = pathlib.Path(args.image).expanduser()
     out_dir = pathlib.Path(args.out_dir).expanduser()
     
-    
-    
     img, metadata = read_tiff_orion(img_path)
     position = [(random.choice(range(img.size[0] - args.size)), random.choice(range(img.size[1] - args.size))) for _ in range(args.nb)] if args.position == "random" else args.position
     for tile_pos in position:
@@ -241,10 +239,12 @@ def compare_img(args):
         print(f"\tiou mean = {sum(iou_mean.values()) / len(iou_mean)}\n")
 
 def m2g(args):
-    gjson = mask2geojson(mask=args.mask, object_type=args.object_type, 
+    gjson = mask2geojson(mask=tifffile.imread(args.mask), object_type=args.object_type, 
                            connectivity=args.connectivity, transform=args.transform,
                            downsample=args.downsample, include_labels=args.include_labels,
                            classification=args.classification)
+    if args.out is None:
+        args.out = pathlib.Path(args.mask).stem + ".geojson"
     with open(args.out, "w") as out:
        geojson.dump(gjson, out)
     
@@ -287,7 +287,7 @@ def parse_args(args=None):
     parser_tile.add_argument('--position', type=str, nargs="+",
                              help='either "random" or a list of position to take tile from')
     parser_tile.add_argument('--nb', type=int, help="If position is random, how many tile will be create (otherwise it is len(position))")
-    parser_tile.add_argument('--out_dir', type=str,
+    parser_tile.add_argument('--out_dir', type=str, default=".",
                              help='Output directory name. if not exist, will be created')
     parser_tile.set_defaults(func=make_tile)
     
@@ -306,6 +306,7 @@ def parse_args(args=None):
     parser_m2g.add_argument("--downsample", type=float, default=1.0)
     parser_m2g.add_argument("--include_labels", type=bool, default=False)
     parser_m2g.add_argument("--classification", type=str, default=None)
+    parser_m2g.add_argument("--out", type=str, default=None, help="path for geojson file")
     parser_m2g.set_defaults(func=m2g)
     return parser.parse_args(args)
 

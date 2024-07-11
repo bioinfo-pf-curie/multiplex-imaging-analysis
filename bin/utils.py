@@ -249,13 +249,12 @@ class OmeTifffile(object):
         self.dtype = tifffile_metadata.dtype
 
         if self.ome is None:
-            default = get_info_qptiff(qptiff_xml) if qptiff_xml is not None else {}
-            default['size_x'] = self.size[1]
-            default['size_y'] = self.size[0]
-            default['dtype'] = self.dtype
-            default.update(kwargs)
-
             try:
+                default = get_info_qptiff(qptiff_xml) if qptiff_xml is not None else {}
+                default['size_x'] = self.size[1]
+                default['size_y'] = self.size[0]
+                default['dtype'] = self.dtype
+                default.update(kwargs)
                 self.ome = make_ome_data(**default)
             except BaseException:
                 self.ome = make_ome_data(1,1,1) # better default ? i don't want to fail when there is 0 metadata
