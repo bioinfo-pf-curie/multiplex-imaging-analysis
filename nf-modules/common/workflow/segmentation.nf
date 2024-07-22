@@ -7,10 +7,6 @@ process seg {
   label "${params.segmentation.name}"
   label 'onlyLinux' // only for geniac lint...
 
-
-  memory {params.segmentation.memory}
-  cpus {params.segmentation.cpu}
-
   input:
     tuple val(meta), path(image)
     each models
