@@ -84,7 +84,9 @@ def make_tile(args):
     out_dir = pathlib.Path(args.out_dir).expanduser()
     
     img, metadata = read_tiff_orion(img_path)
-    position = [(random.choice(range(img.size[0] - args.size)), random.choice(range(img.size[1] - args.size))) for _ in range(args.nb)] if args.position == "random" else args.position
+    position = [(random.choice(range(img.size[0] - args.size)), 
+                 random.choice(range(img.size[1] - args.size))) 
+                 for _ in range(args.nb)] if args.position == "random" else args.position
     for tile_pos in position:
         tile_pos = [int(t) for t in tile_pos.split(',')]
         out_name = out_dir / f"{img_path.stem}_tiled_{tile_pos[0]}_{tile_pos[1]}.tiff"
