@@ -16,7 +16,7 @@ import random
 from skimage.draw import polygon, polygon_perimeter
 from skimage.io import imsave
 import tifffile
-from shapely import geometry, STRtree
+from shapely import geometry, STRtree, GeometryCollection
 
 from mask2geojson import mask2geojson
 
@@ -127,6 +127,9 @@ def compare(args):
     gt_tree = STRtree(gt_cells)
     gt_cells_nb = len(gt_cells)
 
+    total = GeometryCollection(gt_cells).bounds
+    total = total[2] * total[3]
+
     for gj_files in args.images:
         if not gj_files.endswith('.geojson'):
             gjson = mask2geojson(mask=tifffile.imread(gj_files))
@@ -142,37 +145,65 @@ def compare(args):
         # filter non unique pair of common cells based on best intersection
         def intersect_area(cpl):
             return gt_cells[cpl[1]].intersection(other_cells[cpl[0]]).area
-        
+
         common = np.array([
             max(common[:,common[0] == idx].T, key=intersect_area)
             for idx in np.unique(common[0])
-        ])
-        
+        ]).T
+
         common = np.array([
             max(common[:,common[1] == idx].T, key=intersect_area)
             for idx in np.unique(common[1])
-        ])
+        ]).T
 
         ap_cellpose = []
         ap_common = []
         iou_mean = []
+
+        not_found = [gt_cells[i] for i in range(len(gt_cells)) if i not in common[1]]
+        not_cells = [other_cells[i] for i in range(len(other_cells)) if i not in common[0]]
+
+        tp = 0
+        fp = sum([c.area for c in not_cells])
+        fn = sum([c.area for c in not_found])
         
         for paired_cells in common.T:
             gtc = gt_cells[paired_cells[1]]
             oc = other_cells[paired_cells[0]]
+
             intersect = gtc.intersection(oc).area
+            too_much = oc.difference(gtc).area
+            not_enough = gtc.difference(oc).area
+
+            tp += intersect
+            fp += too_much
+            fn += not_enough
+
             iou = intersect / gtc.union(oc).area
-            ap = intersect / (intersect + oc.difference(gtc).area + gtc.difference(oc).area)
+            ap = intersect / (intersect + too_much + not_enough)
+
             if iou > 0.5:
                 ap_cellpose.append(ap)
             ap_common.append(ap)
             iou_mean.append(iou)
             
         print(f"{pathlib.Path(gj_files).stem}\n")
-        print(f"\tfound {nb_cell} cells out of {gt_cells_nb} in ground truth")
-        print(f"\tavg prec = {sum(ap_common) / len(ap_common):.4f}\n")
-        print(f"\tcellpose avg prec = {sum(ap_cellpose) / len(ap_cellpose):.4f}\n")
+        print(f"\tfound {nb_cell} (with {len(not_cells)} false cells and {len(not_found)} cells not found) cells out of {gt_cells_nb} in ground truth")
+        if len(ap_common):
+            print(f"\tavg prec = {sum(ap_common) / len(ap_common):.4f}\n")
+        if len(ap_cellpose):
+            print(f"\tcellpose avg prec = {sum(ap_cellpose) / len(ap_cellpose):.4f}\n")
         print(f"\tiou mean = {sum(iou_mean) / len(iou_mean)}\n")
+        tn = (total - (tp + fp + fn)) / total
+        tp /= total
+        fp /= total
+        fn /= total
+        print(f"\ttotal pixel classification = \n")
+        print("\t+--------+------+------+")
+        print("\t|        |  POS |  NEG |")
+        print(f"\t| TRUE   | {tp:.02f} | {tn:.02f} |")
+        print(f"\t| FALSE  | {fp:.02f} | {fn:.02f} |")
+        print("\t+--------+------+------+")
             
 
 def compare_img(args):
@@ -294,7 +325,7 @@ def parse_args(args=None):
     parser_tile.set_defaults(func=make_tile)
     
     parser_compare = subparsers.add_parser('compare')
-    parser_compare.add_argument('--ground_truth', type=str,
+    parser_compare.add_argument('-gt', '--ground_truth', type=str,
                              help='Ground truth file (geojson or mask)')
     parser_compare.add_argument('--images', type=str, nargs="+",
                              help='list of image (or geojson) to compare to gt')
@@ -308,7 +339,7 @@ def parse_args(args=None):
     parser_m2g.add_argument("--downsample", type=float, default=1.0)
     parser_m2g.add_argument("--include_labels", type=bool, default=False)
     parser_m2g.add_argument("--classification", type=str, default=None)
-    parser_m2g.add_argument("--out", type=str, default=None, help="path for geojson file")
+    parser_m2g.add_argument('-o', "--out", type=str, default=None, help="path for geojson file")
     parser_m2g.set_defaults(func=m2g)
     return parser.parse_args(args)
 
