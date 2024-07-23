@@ -1,7 +1,7 @@
 process mergeChannels {
   label 'img_utils'
   label 'minCpu'
-  label 'extraMem'
+  label 'highMem'
   label 'infiniteTime'
   
   input:

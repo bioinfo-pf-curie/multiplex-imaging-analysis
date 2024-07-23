@@ -156,7 +156,6 @@ def compare(args):
             for idx in np.unique(common[1])
         ]).T
 
-        ap_cellpose = []
         ap_common = []
         iou_mean = []
 
@@ -166,6 +165,10 @@ def compare(args):
         tp = 0
         fp = sum([c.area for c in not_cells])
         fn = sum([c.area for c in not_found])
+
+        tpcp = 0
+        fpcp = len(not_cells)
+        fncp = len(not_found)
         
         for paired_cells in common.T:
             gtc = gt_cells[paired_cells[1]]
@@ -183,16 +186,21 @@ def compare(args):
             ap = intersect / (intersect + too_much + not_enough)
 
             if iou > 0.5:
-                ap_cellpose.append(ap)
+                tpcp += 1
+            else:
+                fpcp += 1
+                fncp += 1
             ap_common.append(ap)
             iou_mean.append(iou)
+
             
         print(f"{pathlib.Path(gj_files).stem}\n")
-        print(f"\tfound {nb_cell} (with {len(not_cells)} false cells and {len(not_found)} cells not found) cells out of {gt_cells_nb} in ground truth")
+        print(f"\tfound {nb_cell} (with {len(not_cells)} false cells and {len(not_found)} cells not found) cells out of {gt_cells_nb} in ground truth\n")
         if len(ap_common):
             print(f"\tavg prec = {sum(ap_common) / len(ap_common):.4f}\n")
-        if len(ap_cellpose):
-            print(f"\tcellpose avg prec = {sum(ap_cellpose) / len(ap_cellpose):.4f}\n")
+        if (tpcp + fpcp + fncp):
+            ap_cellpose = tpcp / (tpcp + fpcp + fncp)
+            print(f"\tcellpose avg prec = {ap_cellpose:.4f}\n")
         print(f"\tiou mean = {sum(iou_mean) / len(iou_mean)}\n")
         tn = (total - (tp + fp + fn)) / total
         tp /= total
@@ -204,6 +212,7 @@ def compare(args):
         print(f"\t| TRUE   | {tp:.02f} | {tn:.02f} |")
         print(f"\t| FALSE  | {fp:.02f} | {fn:.02f} |")
         print("\t+--------+------+------+")
+        print(f'\n\t F1 score = {2*tp / (2*tp + fp + fn):.02f}\n\n')
             
 
 def compare_img(args):
