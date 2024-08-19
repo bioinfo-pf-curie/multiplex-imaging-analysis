@@ -232,6 +232,8 @@ def compute_masks(flows, p=None, niter=200,
     cellprob = flows[-1]
     
     cp_mask = cellprob > cellprob_threshold 
+    with open('singulariy_write_this_1.txt', 'a') as out:
+        out.write("coucou\n")
 
     if np.any(cp_mask): #mask at this point is a cell cluster binary map, not labels     
         # follow flows
