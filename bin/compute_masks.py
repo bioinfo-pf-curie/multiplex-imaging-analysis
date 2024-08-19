@@ -282,8 +282,9 @@ if __name__ == '__main__':
     mask_memmap = np.lib.format.open_memmap(".tmp_masks.npy", mode='w+', dtype=np.uint32, shape=flows.shape[1:])
     with open("this_should_work.txt", "w") as out:
         out.write("coucou")
-    with performance_report(filename="dask-report.html"):
-        da.store(masks_graph, mask_memmap, compute=True)
+
+    da.store(masks_graph, mask_memmap, compute=True)
+    
     with open("not_work.txt", "w") as out:
         out.write("coucou")
     correct_edges_inplace(mask_memmap, chunks_size=args.chunks)
