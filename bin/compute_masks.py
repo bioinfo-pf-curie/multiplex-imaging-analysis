@@ -274,7 +274,7 @@ if __name__ == '__main__':
     parser.add_argument('--overlap', type=int, required=False, default=60, help="Overlap (in pixel) for dask to perform computing of masks on chunks")
     parser.add_argument('--mean_cell_diam', type=float, required=False, default=60, help="mean diameter (in pixels) of cells")
     args = parser.parse_args()
-    from dask.distributed import performance_report
+
     flows = np.lib.format.open_memmap(vars(args)['in'])
     flows_da = da.from_array(flows, chunks=[3, *args.chunks])
 
