@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 import argparse
-import os
 
 import numpy as np
 from tifffile import TiffFile, imwrite
@@ -15,9 +14,7 @@ from dask_utils import correct_edges_inplace, compute_current_cell_id
 import fastremap
 from scipy.ndimage import maximum_filter1d
 
-import dask 
 import dask.array as da
-dask.config.set({"temporary-directory": os.getcwd()})
 
 # a lot of those function are from https://github.com/MouseLand/cellpose/blob/main/cellpose/dynamics.py
 # but were adaptated to be used in a memory efficient way when dealing with large images
