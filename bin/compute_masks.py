@@ -226,6 +226,8 @@ def compute_masks(flows, p=None, niter=200,
     device: str
         name of the device where the calculation happen
     """
+    with open('singulariy_write_this.txt', 'a') as out:
+        out.write("coucou\n")
     dP = flows[:-1]
     cellprob = flows[-1]
     
@@ -237,10 +239,13 @@ def compute_masks(flows, p=None, niter=200,
             p = follow_flows(dP * cp_mask / 5., niter=niter, device=device)
         
         current_cell_id = compute_current_cell_id(block_info, mean_cell_area=np.pi * (diameter / 2) ** 2)
-        
+        with open('singulariy_write_this_2.txt', 'a') as out:
+            out.write("coucou\n")
         #calculate masks
         mask = get_masks(p, iscell=cp_mask, cell_id=current_cell_id)
-            
+        
+        with open('singulariy_write_this_3.txt', 'a') as out:
+            out.write("coucou\n")
         # flow thresholding factored out of get_masks
         if mask.max()>0 and flow_threshold is not None and flow_threshold > 0:
             # make sure labels are unique at output of get_masks
@@ -255,13 +260,7 @@ def compute_masks(flows, p=None, niter=200,
         shape = resize if resize is not None else cellprob.shape
         mask = np.zeros(shape, np.uint16)
         p = np.zeros((len(shape), *shape), np.uint16)
-        return mask
 
-
-    # moving the cleanup to the end helps avoid some bugs arising from scaling...
-    # maybe better would be to rescale the min_size and hole_size parameters to do the
-    # cleanup at the prediction scale, or switch depending on which one is bigger... 
-    # mask = fill_holes_and_remove_small_masks(mask, min_size=min_size)
     return mask
      
 
