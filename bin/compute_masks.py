@@ -283,7 +283,7 @@ if __name__ == '__main__':
     with open("this_should_work.txt", "w") as out:
         out.write("coucou")
 
-    da.store(masks_graph, mask_memmap, compute=True, scheduler='processes')
+    da.store(masks_graph, mask_memmap, compute=True, scheduler='processes', num_workers=1)
     
     with open("not_work.txt", "w") as out:
         out.write("coucou")
