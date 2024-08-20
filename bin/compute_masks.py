@@ -271,7 +271,7 @@ if __name__ == '__main__':
     parser.add_argument('--in', type=str, required=True, help="filename of flows in npy format")
     parser.add_argument('--out', type=str, required=True, help="Output path for resulting image")
     parser.add_argument('--original', type=str, required=True, help="File path of original image (to get metadata from)")
-    parser.add_argument('--chunks', type=int, nargs=2, required=False, default=(8192, 8192), help="Size of chunk for dask")
+    parser.add_argument('--chunks', type=int, nargs=2, required=False, default=(4096, 4096), help="Size of chunk for dask")
     parser.add_argument('--overlap', type=int, required=False, default=60, help="Overlap (in pixel) for dask to perform computing of masks on chunks")
     parser.add_argument('--mean_cell_diam', type=float, required=False, default=60, help="mean diameter (in pixels) of cells")
     args = parser.parse_args()
