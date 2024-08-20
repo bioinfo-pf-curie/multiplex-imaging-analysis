@@ -285,7 +285,14 @@ if __name__ == '__main__':
     with open("this_should_work.txt", "w") as out:
         out.write("coucou")
 
-    da.store(masks_graph, mask_memmap, compute=True)
+    from dask.distributed import Client, LocalCluster
+    cluster = LocalCluster()
+
+    with Client(cluster) as client:
+        da.store(masks_graph, mask_memmap, compute=True)
+
+    with open('dask_log.txt', 'a') as out:
+        out.write(cluster.get_logs())
     
     with open("not_work.txt", "w") as out:
         out.write("coucou")

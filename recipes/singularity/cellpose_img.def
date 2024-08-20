@@ -10,3 +10,4 @@ From: biocontainers/cellpose:3.0.1_cv1
     xsdata==23.8 \
     cellpose==3.0.7 \
     dask==2024.4.1 \
+    distributed==2024.4.1 \
