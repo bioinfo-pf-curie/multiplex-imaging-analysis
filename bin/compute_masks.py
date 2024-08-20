@@ -230,7 +230,8 @@ def compute_masks(flows, p=None, niter=200,
         out.write("coucou\n")
     dP = flows[:-1]
     cellprob = flows[-1]
-    
+    with open('ahahah.txt', 'a') as out:
+        out.write("coucou\n")
     cp_mask = cellprob > cellprob_threshold 
     with open('singulariy_write_this_1.txt', 'a') as out:
         out.write("coucou\n")
@@ -271,7 +272,7 @@ if __name__ == '__main__':
     parser.add_argument('--in', type=str, required=True, help="filename of flows in npy format")
     parser.add_argument('--out', type=str, required=True, help="Output path for resulting image")
     parser.add_argument('--original', type=str, required=True, help="File path of original image (to get metadata from)")
-    parser.add_argument('--chunks', type=int, nargs=2, required=False, default=(4096, 4096), help="Size of chunk for dask")
+    parser.add_argument('--chunks', type=int, nargs=2, required=False, default=(8192, 8192), help="Size of chunk for dask")
     parser.add_argument('--overlap', type=int, required=False, default=60, help="Overlap (in pixel) for dask to perform computing of masks on chunks")
     parser.add_argument('--mean_cell_diam', type=float, required=False, default=60, help="mean diameter (in pixels) of cells")
     args = parser.parse_args()
@@ -284,7 +285,7 @@ if __name__ == '__main__':
     with open("this_should_work.txt", "w") as out:
         out.write("coucou")
 
-    da.store(masks_graph, mask_memmap, compute=True, scheduler='processes', num_workers=1)
+    da.store(masks_graph, mask_memmap, compute=True)
     
     with open("not_work.txt", "w") as out:
         out.write("coucou")
