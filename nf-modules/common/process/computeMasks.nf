@@ -19,7 +19,8 @@ process computeMasks {
   script:
     def args = task.ext.args ?: ''
     def script = params.segmentation.name == 'cellpose' ? "compute_masks.py" : "compute_mesmer.py"
+    def specificParms = params.segmentation.name == "cellpose" ? "--mean_cell_diam $meta.diameter" : ""
     """
-    $script --in $flow --out ${meta.originalName}_masks.tiff --mean_cell_diam $meta.diameter --original $meta.imagePath $args
+    $script --in $flow --out ${meta.originalName}_masks.tiff --original $meta.imagePath $specificParms $args
     """
 }

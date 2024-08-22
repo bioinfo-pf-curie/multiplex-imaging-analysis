@@ -274,7 +274,7 @@ if __name__ == '__main__':
     masks_graph = da.map_overlap(compute_masks, flows_da, dtype=np.uint32, depth={0: 0, 1: args.overlap, 2: args.overlap}, drop_axis=0, diameter=args.mean_cell_diam)
     mask_memmap = np.lib.format.open_memmap(".tmp_masks.npy", mode='w+', dtype=np.uint32, shape=flows.shape[1:])
 
-    da.store(masks_graph, mask_memmap, compute=True, max_memory="4 GiB", num_workers=10)
+    da.store(masks_graph, mask_memmap, compute=True, max_memory="4 GiB", num_workers=10) # should it be based on nextflow limitation ?
 
     correct_edges_inplace(mask_memmap, chunks_size=args.chunks)
     fastremap.renumber(mask_memmap, in_place=True) #convenient to guarantee non-skipped labels
