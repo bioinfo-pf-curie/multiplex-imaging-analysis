@@ -288,8 +288,8 @@ if __name__ == '__main__':
     from dask.distributed import Client, LocalCluster
     cluster = LocalCluster()
 
-    with Client(cluster) as client:
-        da.store(masks_graph, mask_memmap, compute=True)
+    client = Client(cluster)
+    da.store(masks_graph, mask_memmap, compute=True)
 
     with open('dask_log.txt', 'a') as out:
         out.write(cluster.get_logs())
