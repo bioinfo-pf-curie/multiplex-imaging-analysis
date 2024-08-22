@@ -59,19 +59,3 @@ if __name__ == '__main__':
     # Convert to GeoJSON string
     with open(args.out, "w") as f:
         json.dump(features, f)
-
-# with open("../orion/fichier_test/240523_POCIJ_multi_2024-05-23-10-18_P102_CYTPIC_A31_C99e_full_000201.geojson") as filein, open("../cytpic.geojson", "w") as fileout:
-#     chunk = json_buffer(filein)
-#     while not chunk:
-#         _ = fileout.write(p.sub("detection", chunk))
-#         chunk = json_buffer(filein)
-
-# def json_buffer(stream):
-#     c = stream.read(1)
-#     res = c
-#     while c != "}":
-#         c = stream.read(1)
-#         res += c
-#         if not c:
-#             break
-#     return res

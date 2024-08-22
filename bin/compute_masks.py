@@ -226,15 +226,9 @@ def compute_masks(flows, p=None, niter=200,
     device: str
         name of the device where the calculation happen
     """
-    with open('singulariy_write_this.txt', 'a') as out:
-        out.write("coucou\n")
     dP = flows[:-1]
     cellprob = flows[-1]
-    with open('ahahah.txt', 'a') as out:
-        out.write("coucou\n")
     cp_mask = cellprob > cellprob_threshold 
-    with open('singulariy_write_this_1.txt', 'a') as out:
-        out.write("coucou\n")
 
     if np.any(cp_mask): #mask at this point is a cell cluster binary map, not labels     
         # follow flows
@@ -242,13 +236,10 @@ def compute_masks(flows, p=None, niter=200,
             p = follow_flows(dP * cp_mask / 5., niter=niter, device=device)
         
         current_cell_id = compute_current_cell_id(block_info, mean_cell_area=np.pi * (diameter / 2) ** 2)
-        with open('singulariy_write_this_2.txt', 'a') as out:
-            out.write("coucou\n")
+
         #calculate masks
         mask = get_masks(p, iscell=cp_mask, cell_id=current_cell_id)
         
-        with open('singulariy_write_this_3.txt', 'a') as out:
-            out.write("coucou\n")
         # flow thresholding factored out of get_masks
         if mask.max()>0 and flow_threshold is not None and flow_threshold > 0:
             # make sure labels are unique at output of get_masks
@@ -282,20 +273,9 @@ if __name__ == '__main__':
 
     masks_graph = da.map_overlap(compute_masks, flows_da, dtype=np.uint32, depth={0: 0, 1: args.overlap, 2: args.overlap}, drop_axis=0, diameter=args.mean_cell_diam)
     mask_memmap = np.lib.format.open_memmap(".tmp_masks.npy", mode='w+', dtype=np.uint32, shape=flows.shape[1:])
-    with open("this_should_work.txt", "w") as out:
-        out.write("coucou")
 
-    # from dask.distributed import Client, LocalCluster
-    # cluster = LocalCluster()
+    da.store(masks_graph, mask_memmap, compute=True, max_memory="4 GiB", num_workers=10)
 
-    # client = Client()
-    da.store(masks_graph, mask_memmap, compute=True)
-
-    # with open('dask_log.txt', 'a') as out:
-    #     out.write(cluster.get_logs())
-    
-    with open("not_work.txt", "w") as out:
-        out.write("coucou")
     correct_edges_inplace(mask_memmap, chunks_size=args.chunks)
     fastremap.renumber(mask_memmap, in_place=True) #convenient to guarantee non-skipped labels
 
