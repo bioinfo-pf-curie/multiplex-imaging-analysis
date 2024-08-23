@@ -73,7 +73,9 @@ workflow segmentation {
         multiple : true
       }
 
-      finalMask = mergeMasks(partialMaskCh.multiple).mix(partialMaskCh.solo)
+      finalMask = mergeMasks(partialMaskCh.multiple).mix(partialMaskCh.solo.map{meta, mask, diam ->
+        tuple(meta, mask)
+      })
 
     emit:
       finalMask
