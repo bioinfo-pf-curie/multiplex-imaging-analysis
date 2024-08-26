@@ -266,6 +266,7 @@ if __name__ == '__main__':
     parser.add_argument('--chunks', type=int, nargs=2, required=False, default=(8192, 8192), help="Size of chunk for dask")
     parser.add_argument('--overlap', type=int, required=False, default=60, help="Overlap (in pixel) for dask to perform computing of masks on chunks")
     parser.add_argument('--mean_cell_diam', type=float, required=False, default=60, help="mean diameter (in pixels) of cells")
+    parser.add_argument('--max_mem', type=float, required=False, default=40, help="Max memory (in GiB) available for dask (issue with singularity not showing correct value) ")
     args = parser.parse_args()
 
     flows = np.lib.format.open_memmap(vars(args)['in'])
@@ -274,7 +275,13 @@ if __name__ == '__main__':
     masks_graph = da.map_overlap(compute_masks, flows_da, dtype=np.uint32, depth={0: 0, 1: args.overlap, 2: args.overlap}, drop_axis=0, diameter=args.mean_cell_diam)
     mask_memmap = np.lib.format.open_memmap(".tmp_masks.npy", mode='w+', dtype=np.uint32, shape=flows.shape[1:])
 
-    da.store(masks_graph, mask_memmap, compute=True, max_memory="4 GiB", num_workers=10) # should it be based on nextflow limitation ?
+    mem_per_worker = np.multiply(*args.chunks) * 32 / 10e9
+    if mem_per_worker > 4:
+        raise ValueError('Too large chunk')
+    mem = 2 if mem_per_worker < 2 else 4
+    n_workers = int(args.max_mem / mem)
+
+    da.store(masks_graph, mask_memmap, compute=True, max_memory=f"{mem} GiB", num_workers=n_workers) # should it be based on nextflow limitation ?
 
     correct_edges_inplace(mask_memmap, chunks_size=args.chunks)
     fastremap.renumber(mask_memmap, in_place=True) #convenient to guarantee non-skipped labels

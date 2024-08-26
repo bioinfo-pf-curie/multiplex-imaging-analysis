@@ -19,7 +19,8 @@ process computeMasks {
   script:
     def args = task.ext.args ?: ''
     def script = params.segmentation.name == 'cellpose' ? "compute_masks.py" : "compute_mesmer.py"
-    def specificParms = params.segmentation.name == "cellpose" ? "--mean_cell_diam $meta.diameter" : ""
+    def availableMem = MemoryUnit.of(Math.max(Math.min(meta.imgSize * 0.6, params.maxMemory.size), params.minMemory.size).toLong())
+    def specificParms = params.segmentation.name == "cellpose" ? "--mean_cell_diam $meta.diameter --max_mem $availableMem" : ""
     """
     $script --in $flow --out ${meta.originalName}_masks.tiff --original $meta.imagePath $specificParms $args
     """
