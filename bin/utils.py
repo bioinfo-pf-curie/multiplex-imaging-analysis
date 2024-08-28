@@ -34,8 +34,11 @@ def min_max_norm(a, min_, max_, output_max=(2**16 - 1)):
 def parse_normalization_values(df):
     normalization_col_name = "normalization"
     if normalization_col_name in df.columns:
-        return df[normalization_col_name].str.split(";", expand=True).fillna({0:0, 1:2**16}).astype(int).reset_index(drop=True).T.to_dict('list')
-    
+        try:
+            return df[normalization_col_name].str.split(";", expand=True).fillna({0:0, 1:2**16}).astype(int).reset_index(drop=True).T.to_dict('list')
+        except:
+            warnings.warn('Err when parsing norm value. Will not be used')
+
 def compute_hist(img, channel, x, y, chunk_x, chunk_y, img_min=None, img_max=None, num_bin=100, max_bin=0.9, s_factor=2):
     """
     Compute the histogram of a channel from an image and get automatically min and max index for normalizing image afterward.
