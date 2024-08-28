@@ -242,6 +242,9 @@ class OmeTifffile(object):
             elif tag.name in ("XResolution", "YResolution", "ResolutionUnit"):
                 self.tags["resolution"][("XResolution", "YResolution", "ResolutionUnit").index(tag.name)] = tag.value
 
+            elif tag.code in (50838, 50839):
+                    continue # remove imageJ custom tags (could be used to convert it to ome tiff)
+
             else:
                 self.tags['extratags'].append((tag.code, tag.dtype, tag.count, tag.value, True)) # true for tag.writeonce (orion is one image per tiff)
                 if tag.code == 256:
