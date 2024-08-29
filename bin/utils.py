@@ -310,6 +310,17 @@ class OmeTifffile(object):
         for idx, char in enumerate(order):
             self.pix.__setattr__(f"size_{char.lower()}", arr_shape[idx])
 
+    def update_info(self, img, order="CYX", channel_name=None):
+        self.update_shape(img.shape, order=order)
+        
+        if len(self.pix.channels) != self.pix.size_c: # mismatch between channels metadata and image shape
+            self.remove_all_channels() # can't trust old info
+            for i in range(self.pix.size_c):
+                try:
+                    self.add_channel_metadata(channel_name[i])
+                except (IndexError, TypeError):
+                    self.add_channel_metadata(f"Channel {i}")
+
     def to_dict(self, dtype=True, shape=None):
         """transform this class to a dict of parameters, each of them can be passed to tifffile.write and assimilated"""
         this_dict = self.tags.copy()
