@@ -147,10 +147,12 @@ def make_outline(merged_file, png_file, mask_path, out_path, nuclei_channel=0, c
         result = zarr.open(tiff.series[0].aszarr())
 
         if channel_info is not None or c != len(metadata.pix.channels):
-            channel_csv = read_csv(channel_info)
-            metadata.update_info(result, channel_name=channel_csv['marker_name'].tolist() + ["Outline"])
-        else:
-            metadata.add_channel_metadata(channel_name="Outline")
+            try:
+                channel_csv = read_csv(channel_info)['marker_name'].tolist()
+            except:
+                channel_csv = []
+            metadata.update_info(result, channel_name=channel_csv)
+        metadata.add_channel_metadata(channel_name="Outline")
 
         def tile_gen(original, outline, c, x, y, chunk_size=(256,256)):
             for c_cur in range(c):

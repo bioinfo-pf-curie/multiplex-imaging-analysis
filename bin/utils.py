@@ -312,10 +312,10 @@ class OmeTifffile(object):
 
     def update_info(self, img, order="CYX", channel_name=None):
         self.update_shape(img.shape, order=order)
-        
-        if len(self.pix.channels) != self.pix.size_c: # mismatch between channels metadata and image shape
+        c = self.pix.size_c
+        if len(self.pix.channels) != c: # mismatch between channels metadata and image shape
             self.remove_all_channels() # can't trust old info
-            for i in range(self.pix.size_c):
+            for i in range(c):
                 try:
                     self.add_channel_metadata(channel_name[i])
                 except (IndexError, TypeError):
