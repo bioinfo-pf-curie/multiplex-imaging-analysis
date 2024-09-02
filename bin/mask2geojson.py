@@ -30,7 +30,7 @@ def mask2geojson(mask: np.ndarray, object_type='detection', connectivity: int=8,
         # Create properties
         props = dict(objectType=object_type)
         if include_labels:
-            props['measurements'] = [{'name': 'CellID', 'value': s[1]}]
+            props['measurements'] = {'CellID': s[1]}
             
         # Just to show how a classification can be added
         if classification is not None:
@@ -41,7 +41,7 @@ def mask2geojson(mask: np.ndarray, object_type='detection', connectivity: int=8,
 
         features.append(po)
     
-    return features
+    return {"type": "FeatureCollection", "features": features}
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -58,4 +58,4 @@ if __name__ == '__main__':
 
     # Convert to GeoJSON string
     with open(args.out, "w") as f:
-        json.dump(features, f)
+        json.dump(features, f, separators=(",", ":"))
