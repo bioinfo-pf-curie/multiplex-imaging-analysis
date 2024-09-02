@@ -16,7 +16,8 @@ process splitImage {
 
   script:
     // if params.segmentation.tileHeight is set, it will be passed into args
-    def availableMem = params.segmentation.tileHeight ? 0 : (params.segmentation.memory instanceof MemoryUnit ? params.segmentation.memory : MemoryUnit.of(params.segmentation.memory)) 
+    // availableMem need to be scaled down if diameter if lower than 30 because of rescaling tile...
+    def availableMem = params.segmentation.tileHeight ? 0 : (params.segmentation.memory instanceof MemoryUnit ? params.segmentation.memory : MemoryUnit.of(params.segmentation.memory)) * (params.segmentation.diameter / 30)
     if (availableMem instanceof MemoryUnit) {
       availableMem = availableMem.getBytes()
     }
