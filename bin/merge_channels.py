@@ -82,7 +82,7 @@ def tile_generator(arr, nuclei_chan, to_merge_chan, x, y, chunk_x, chunk_y, agg=
     tmp_arr = None # don't wait for next iteration to flush this
 
 
-def merge_channels(in_path, out_path, nuclei_chan=0, channels_to_merge=None, chunk_size=(256,256), agg=np.max, norm=None, norm_val=None, nbins=256, kernel_size=64, clip_limit=0.01):
+def merge_channels(in_path, out_path, nuclei_chan=0, channels_to_merge=None, chunk_size=(1024,1024), agg=np.max, norm=None, norm_val=None, nbins=256, kernel_size=64, clip_limit=0.01):
     """
     take an image on disk, load chunks of it and merged all channels (first dimension) into one by agg function (np.max or np.mean mostly).
     Make exception for first and second channel (by default) to not be merged
@@ -98,7 +98,7 @@ def merge_channels(in_path, out_path, nuclei_chan=0, channels_to_merge=None, chu
     channels_to_merge : list of int
         list of all channels to be included in the merge
     chunk_size : tuple of two int
-        Size of the chunk to be loaded in-memory (default = (256,256))
+        Size of the chunk to be loaded in-memory (default = (1024,1024))
     agg : function
         Function to be use to aggregate channels together (default np.max). 
         np.mean can also be used or any function that take an array of shape [:,*chunk_size] 
