@@ -275,7 +275,7 @@ if __name__ == '__main__':
     masks_graph = da.map_overlap(compute_masks, flows_da, dtype=np.uint32, depth={0: 0, 1: args.overlap, 2: args.overlap}, drop_axis=0, diameter=args.mean_cell_diam)
     mask_memmap = np.lib.format.open_memmap(".tmp_masks.npy", mode='w+', dtype=np.uint32, shape=flows.shape[1:])
 
-    mem_per_worker = np.multiply(*args.chunks) * 32 / 10e9
+    mem_per_worker = np.multiply(*args.chunks) * 32 / 1e9
     if mem_per_worker > 4:
         raise ValueError('Too large chunk')
     mem = 2 if mem_per_worker < 2 else 4

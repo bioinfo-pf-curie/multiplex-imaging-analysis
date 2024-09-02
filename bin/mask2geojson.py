@@ -11,7 +11,7 @@ import json
 import tifffile
 import argparse
 
-def mask2geojson(mask: np.ndarray, object_type='detection', connectivity: int=4, 
+def mask2geojson(mask: np.ndarray, object_type='detection', connectivity: int=8, 
                  transform: Affine=None, downsample: float=1.0, include_labels=False,
                  classification=None):
     """
@@ -28,7 +28,7 @@ def mask2geojson(mask: np.ndarray, object_type='detection', connectivity: int=4,
                                       connectivity=connectivity, transform=transform):
 
         # Create properties
-        props = dict(object_type=object_type)
+        props = dict(objectType=object_type)
         if include_labels:
             props['measurements'] = [{'name': 'CellID', 'value': s[1]}]
             
