@@ -16,7 +16,7 @@ process splitImage {
 
   script:
     // if params.segmentation.tileHeight is set, it will be passed into args
-    def availableMem = params.segmentation.tileHeight ? 0 : params.segmentation.memory
+    def availableMem = params.segmentation.tileHeight ? 0 : MemoryUnit.of(params.segmentation.memory)
     if (availableMem instanceof MemoryUnit) {
       availableMem = availableMem.getBytes()
     }
