@@ -22,7 +22,7 @@ process splitImage {
       availableMem = availableMem.getBytes()
     }
     def args = task.ext.args ?: ''
-    def scaling = params.segmentation.diameter / 30 // default is 1
+    def scaling = (params.segmentation.diameter / 30) ** 2 // default is 1
     """
     split_image.py --file_in $image --memory $availableMem --scaling $scaling $args
     """

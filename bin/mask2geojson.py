@@ -59,3 +59,26 @@ if __name__ == '__main__':
     # Convert to GeoJSON string
     with open(args.out, "w") as f:
         json.dump(features, f, separators=(",", ":"))
+
+
+"""
+def read_part(start=0, length=100000):
+    with open("orion/fichier_test/240523_POCIJ_mesmer.geojson") as geojson:
+        geojson.seek(start)
+        return geojson.read(length)
+
+def convert_json(dfg, start_char, stop_char):
+    return json.loads("[" + dfg[start_char: stop_char] + "]")
+
+def handle_unique(data, seen=None):
+    seen = seen or []
+    for poly in data:
+        pid = poly["properties"]['measurements'][0]["value"]
+        if pid not in seen:
+            seen.append(pid)
+        else:
+            print(f"{pid} has been found")
+            break
+    return seen
+
+"""
