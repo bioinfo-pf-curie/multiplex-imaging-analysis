@@ -5,6 +5,7 @@ include { mergeMasks } from '../process/mergeMasks'
 
 process seg {
   label "${params.segmentation.name}"
+  label 'infiniteTime'
   label 'onlyLinux' // only for geniac lint...
 
   input:
