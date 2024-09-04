@@ -279,9 +279,9 @@ if __name__ == '__main__':
     if mem_per_worker > 4:
         raise ValueError('Too large chunk')
     mem = 2 if mem_per_worker < 2 else 4
-    n_workers = int(args.max_mem / mem)
+    n_workers = int((args.max_mem * 0.9) / mem) # take some margin
 
-    da.store(masks_graph, mask_memmap, compute=True, max_memory=f"{mem} GiB", num_workers=n_workers) # should it be based on nextflow limitation ?
+    da.store(masks_graph, mask_memmap, compute=True, max_memory=f"{mem} GiB", num_workers=n_workers)
 
     correct_edges_inplace(mask_memmap, chunks_size=args.chunks)
     fastremap.renumber(mask_memmap, in_place=True) #convenient to guarantee non-skipped labels
