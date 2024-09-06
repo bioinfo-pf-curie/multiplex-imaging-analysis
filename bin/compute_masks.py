@@ -268,6 +268,7 @@ if __name__ == '__main__':
     parser.add_argument('--mean_cell_diam', type=float, required=False, default=60, help="mean diameter (in pixels) of cells")
     parser.add_argument('--max_mem', type=float, required=False, default=40, help="Max memory (in GiB) available for dask (issue with singularity not showing correct value) ")
     parser.add_argument('--mem_per_worker', type=float, required=False, default=2, help="Memory allocated to each worker (in GiB) available for dask (issue with singularity not showing correct value) ")
+    parser.add_argument('--singularity', required=False, action="store_true", help="Use special memory management if this is True")
     args = parser.parse_args()
 
     flows = np.lib.format.open_memmap(vars(args)['in'])
@@ -276,11 +277,13 @@ if __name__ == '__main__':
     masks_graph = da.map_overlap(compute_masks, flows_da, dtype=np.uint32, depth={0: 0, 1: args.overlap, 2: args.overlap}, drop_axis=0, diameter=args.mean_cell_diam)
     mask_memmap = np.lib.format.open_memmap(".tmp_masks.npy", mode='w+', dtype=np.uint32, shape=flows.shape[1:])
 
-    n_workers = max(int(args.max_mem * 0.8 / args.mem_per_worker), 1) # take some margin
-
-    da.store(masks_graph, mask_memmap, compute=True, 
-            #  max_memory=f"{args.mem_per_worker} GiB", num_workers=n_workers
-    )
+    store_args = dict(compute=True)
+    
+    if args.singularity:
+        n_workers = max(int(args.max_mem / args.mem_per_worker), 1) # take some margin
+        store_args.update(dict(max_memory=f"{args.mem_per_worker} GiB", num_workers=n_workers))
+        
+    da.store(masks_graph, mask_memmap, **store_args)
 
     correct_edges_inplace(mask_memmap, chunks_size=args.chunks)
     fastremap.renumber(mask_memmap, in_place=True) #convenient to guarantee non-skipped labels
