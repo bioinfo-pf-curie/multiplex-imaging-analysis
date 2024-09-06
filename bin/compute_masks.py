@@ -278,7 +278,9 @@ if __name__ == '__main__':
 
     n_workers = max(int(args.max_mem * 0.8 / args.mem_per_worker), 1) # take some margin
 
-    da.store(masks_graph, mask_memmap, compute=True, max_memory=f"{args.mem_per_worker} GiB", num_workers=n_workers)
+    da.store(masks_graph, mask_memmap, compute=True, 
+            #  max_memory=f"{args.mem_per_worker} GiB", num_workers=n_workers
+    )
 
     correct_edges_inplace(mask_memmap, chunks_size=args.chunks)
     fastremap.renumber(mask_memmap, in_place=True) #convenient to guarantee non-skipped labels
