@@ -218,7 +218,7 @@ def on_chunk(chunk, threshold, block_info=None, diameter=30):
     for i in range(chunk.shape[0]):
         # cells += geometrize(chunk[i])
         mask = chunk[i].astype('float32')
-        cells += [Polygon(c[0]['coordinates'][0]) for c in rasterio.features.shapes(mask, mask=mask > 0, connectivity=8) if len(c[0]['coordinates'][0]) > 4]
+        cells += [Polygon(c[0]['coordinates'][0]).buffer(0) for c in rasterio.features.shapes(mask, mask=mask > 0, connectivity=8) if len(c[0]['coordinates'][0]) > 4]
 
     results = solve_conflicts(cells, threshold=threshold)
 
