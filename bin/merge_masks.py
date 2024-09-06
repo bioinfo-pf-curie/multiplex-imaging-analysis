@@ -220,7 +220,7 @@ def on_chunk(chunk, threshold, block_info=None, diameter=30):
         mask = chunk[i].astype('float32')
         for cell in rasterio.features.shapes(mask, mask=mask > 0, connectivity=8):
             if len(cell[0]['coordinates'][0]) > 4:
-                polygon = Polygon(c[0]['coordinates'][0]).buffer(0)
+                polygon = Polygon(cell[0]['coordinates'][0]).buffer(0)
                 if not polygon.is_valid:
                     polygon = shapely.simplify(polygon, preserve_topology=False)
                 if not polygon.is_valid:
