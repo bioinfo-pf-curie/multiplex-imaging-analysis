@@ -11,7 +11,7 @@ import json
 import tifffile
 import argparse
 
-def mask2geojson(mask: np.ndarray, object_type='detection', connectivity: int=8, 
+def mask2geojson(mask: np.ndarray, object_type='detection', connectivity: int=4, 
                  transform: Affine=None, downsample: float=1.0, include_labels=False,
                  classification=None):
     """

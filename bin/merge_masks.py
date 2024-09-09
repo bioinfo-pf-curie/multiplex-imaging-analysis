@@ -216,23 +216,10 @@ def on_chunk(chunk, threshold, block_info=None, diameter=30):
     """
     cells = []
     for i in range(chunk.shape[0]):
-        # cells += geometrize(chunk[i])
         mask = chunk[i].astype('float32')
         for cell in rasterio.features.shapes(mask, mask=mask > 0, connectivity=8):
             if len(cell[0]['coordinates'][0]) > 4:
-                polygon = Polygon(cell[0]['coordinates'][0]).buffer(0)
-                if not polygon.is_valid:
-                    polygon = shapely.simplify(polygon, preserve_topology=False)
-                if not polygon.is_valid:
-                    print(polygon)
-                    print('not_valid\n')
-                if not polygon.is_closed:
-                    print(polygon)
-                    print("not closed\n")
-                if polygon.is_ring:
-                    print(polygon)
-                    print('is ring\n')
-                cells.append(polygon)
+                cells.append(_ensure_polygon(Polygon(cell[0]['coordinates'][0])))
 
     results = solve_conflicts(cells, threshold=threshold)
 
