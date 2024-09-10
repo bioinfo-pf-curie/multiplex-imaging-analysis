@@ -62,23 +62,26 @@ if __name__ == '__main__':
 
 
 """
-def read_part(start=0, length=100000):
-    with open("orion/fichier_test/240523_POCIJ_mesmer.geojson") as geojson:
-        geojson.seek(start)
-        return geojson.read(length)
+import json_stream
+geojson_path = "orion/fichier_test/240523_POCIJ_15diam.geojson"
+with open(geojson_path) as f:
+    data = json_stream.load(f)
+    total = []
+    for polygon in data['features']:
+        # geom = polygon['geometry']['coordinates'] # its written first in dict, so if we want that we need to acces it first in stream
+        total.append(polygon['properties']['measurements']['CellID'])
+print(len(total))
+print(len(set(total)))
 
-def convert_json(dfg, start_char, stop_char):
-    return json.loads("[" + dfg[start_char: stop_char] + "]")
 
-def handle_unique(data, seen=None):
-    seen = seen or []
-    for poly in data:
-        pid = poly["properties"]['measurements'][0]["value"]
-        if pid not in seen:
-            seen.append(pid)
-        else:
-            print(f"{pid} has been found")
-            break
-    return seen
+with open(geojson_path) as f:
+    data = json_stream.load(f)
+    total = []
+    for polygon in data['features']:
+            geom = json_stream.to_standard_types(polygon['geometry']['coordinates'])
+            if polygon['properties']['measurements']['CellID'] == double[0]:
+                    total.append(geom)
+            if len(total) > 1:
+                    break
 
 """

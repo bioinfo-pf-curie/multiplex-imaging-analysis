@@ -218,8 +218,10 @@ def on_chunk(chunk, threshold, block_info=None, diameter=30):
     for i in range(chunk.shape[0]):
         mask = chunk[i].astype('float32')
         for cell in rasterio.features.shapes(mask, mask=mask > 0, connectivity=8):
-            if len(cell[0]['coordinates'][0]) > 4:
-                cells.append(_ensure_polygon(Polygon(cell[0]['coordinates'][0])))
+            if len(cell[0]['coordinates'][0]) > 5:
+                polygon = _ensure_polygon(Polygon(cell[0]['coordinates'][0]))
+                if polygon.area > 10:
+                    cells.append(polygon)
 
     results = solve_conflicts(cells, threshold=threshold)
 
