@@ -11,7 +11,7 @@ from scipy.ndimage import find_objects
 import zarr
 from pandas import read_csv
 
-from utils import OmeTifffile, _tile_generator
+from utils import OmeTifffile, _tile_generator, read_tiff_orion
 
 # ===! VULNERABILITY !===
 Image.MAX_IMAGE_PIXELS = None # raise DOSbombing error when too many pixels
@@ -127,8 +127,7 @@ def make_outline(merged_file, png_file, mask_path, out_path, nuclei_channel=0, c
             mask = tifffile.imread(mask_path)
         outline = create_outline_mask(mask)
 
-    tiff = tifffile.TiffFile(merged_file) # blue = nuclei = 0, green = cyto = 1
-    metadata = OmeTifffile(tiff.pages[0])
+    tiff, metadata = read_tiff_orion(merged_file)
 
     if not all_channels:
         channel_to_keep = [int(nuclei_channel)]
@@ -138,20 +137,18 @@ def make_outline(merged_file, png_file, mask_path, out_path, nuclei_channel=0, c
         except ValueError:
             pass
 
-        result = np.moveaxis(to_8int(tiff.series[0].asarray()[channel_to_keep, ...]), 0, -1).copy() # tiff are CYX
+        result = np.moveaxis(to_8int(tiff[channel_to_keep, ...]), 0, -1).copy() # tiff are CYX
         result = np.append(outline[..., np.newaxis], np.flip(result, axis=2), axis=2)
         metadata.dtype = result.dtype
         return tifffile.imwrite(out_path, result)#, bigtiff=True, shaped=False, **metadata.to_dict())
     else:
-        c, x, y = tiff.series[0].shape  
-        result = zarr.open(tiff.series[0].aszarr())
-
+        c, x, y = tiff.shape  
         if channel_info is not None or c != len(metadata.pix.channels):
             try:
                 channel_csv = read_csv(channel_info)['marker_name'].tolist()
             except:
                 channel_csv = []
-            metadata.update_info(result, channel_name=channel_csv)
+            metadata.update_info(tiff, channel_name=channel_csv)
         metadata.add_channel_metadata(channel_name="Outline")
 
         def tile_gen(original, outline, c, x, y, chunk_size=(256,256)):
@@ -162,7 +159,7 @@ def make_outline(merged_file, png_file, mask_path, out_path, nuclei_channel=0, c
 
         with tifffile.TiffWriter(out_path, bigtiff=True, shaped=False) as tiff_out:
             tiff_out.write(
-                data=tile_gen(result[0] if tiff.series[0].is_pyramidal else result, outline, c=c, x=x, y=y), 
+                data=tile_gen(tiff, outline, c=c, x=x, y=y), 
                 shape=[c+1, x, y], 
                 tile=(256, 256), 
                 **metadata.to_dict(shape=[x, y])
