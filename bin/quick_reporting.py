@@ -53,6 +53,8 @@ def main(csv_path, report_name, method):
     sm.pl.spatial_interaction(adata, 
                           spatial_interaction='spatial_interaction_radius',
                           linewidths=0.75, linecolor='black', figsize=(5,4), saveDir="scimap", fileName="spatial_interaction.jpg")
+    sm.pl.heatmap(adata, groupBy=method, standardScale="column",
+                  saveDir="scimap", fileName="cluster_phenotype.jpg")
 
     sm.pl.voronoi(adata, color_by='spatial_aggregate_radius', 
                  voronoi_edge_color = 'black',
