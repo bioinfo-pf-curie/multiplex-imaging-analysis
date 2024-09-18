@@ -185,7 +185,7 @@ def compare(args):
             iou = intersect / gtc.union(oc).area
             ap = intersect / (intersect + too_much + not_enough)
 
-            if iou > 0.5:
+            if iou > 0.5: # cellpose compute this only in case iou > .5
                 tpcp += 1
             else:
                 fpcp += 1
