@@ -39,10 +39,10 @@ def write_report(report_path):
 
     doc = SimpleDocTemplate(report_path, pagesize=letter)
     parts = []
-    parts.append(Image("scimap/spatial_interaction.jpg", width=400, height=600))
-    parts.append(Image("scimap/test_colormap.jpg", width=400, height=600))
-    parts.append(Image("scimap/test_interaction.jpg", width=400, height=600))
-    parts.append(Image("scimap/voronoi.jpg", width=400, height=600))
+    parts.append(Image("scimap/spatial_interaction.jpg", width=400, height=560))
+    parts.append(Image("scimap/test_colormap.jpg", width=400, height=560))
+    parts.append(Image("scimap/test_interaction.jpg", width=400, height=560))
+    parts.append(Image("scimap/voronoi.jpg", width=400, height=560))
     doc.build(parts)
 
 def main(csv_path, report_name, method):
