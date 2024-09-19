@@ -56,9 +56,6 @@ outputDocsImagesCh = file("$projectDir/docs/images/", checkIfExists: true)
 if (!params.images){
   exit 1, "Missing input image (use --images to indicate image path directory)" 
 }
-if (!params.markers){
-  exit 1, "Missing markers file (use --markers to list markers file path)"
-}
 
 /*
 ===========================
@@ -87,6 +84,7 @@ workflowSummaryCh = NFTools.summarize(summary, workflow, params)
 // Processes
 include { getSoftwareVersions } from './nf-modules/common/process/utils/getSoftwareVersions'
 include { outputDocumentation } from './nf-modules/common/process/utils/outputDocumentation'
+include { ome2panel } from './nf-modules/common/process/ome2panel'
 include { mergeChannels } from './nf-modules/common/process/mergeChannels'
 include { displayOutline } from './nf-modules/common/process/displayOutline'
 include { quantification } from './nf-modules/common/process/quantification'
@@ -112,7 +110,14 @@ workflow {
     // Init Channels
     imgCh = Channel.fromPath((params.images =~ tiffPattern) ? params.images : "${params.images}/*.ti{f,ff}")
     imgId = imgCh.map{img -> tuple(NFTools.getImageID(img), img)}
-    markersCh = Channel.fromPath(params.markers.endsWith(".csv") ? params.markers : "${params.markers}/*.csv")
+
+    if (file("${params.markers}").exists()) {
+      markersCh = Channel.fromPath("${params.markers}".endsWith(".csv") ? "${params.markers}" : "${params.markers}/*.csv")
+    }
+    else {
+      markersCh = ome2panel(imgCh)
+    } 
+
     mrkId = markersCh.map{img -> tuple(NFTools.getImageID(img), img)}
 
     intermediate = markersCh.count().branch{

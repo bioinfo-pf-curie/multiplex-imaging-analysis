@@ -24,7 +24,7 @@
       "pattern": ".*\\*.*",
       "render": "textfield",
       "arity": 0,
-      "group": "Mandatory arguments"
+      "group": "Other options"
     },
     {
       "name": "profile",
