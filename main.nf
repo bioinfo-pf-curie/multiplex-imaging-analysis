@@ -37,6 +37,16 @@ customRunName = NFTools.checkRunName(workflow.runName, params.name)
 
 // Custom functions/variables
 
+// find current commit hash (short version)
+gitDir = projectDir.resolve(".git")
+gitHead = gitDir.resolve("HEAD")
+if (gitHead.exists()) {
+  gitFile = gitDir.resolve(gitHead.text - ~/^ref:\s/ - ~/[\n\s]$/)
+  gitHash = gitFile.exists() ? gitFile.text.substring(0, 8) : null
+} else {
+  gitHash = null
+}
+
 /*
 ===================================
   SET UP CONFIGURATION VARIABLES
@@ -74,6 +84,7 @@ summary = [
   'Profile' : workflow.profile,
   'OutDir' : params.outDir,
   'WorkDir': workflow.workDir,
+  'git commit': gitHash,
   'CommandLine': workflow.commandLine
 ].findAll{ it.value != null }
 
