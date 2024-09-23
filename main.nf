@@ -44,6 +44,7 @@ if (gitHead.exists()) {
   gitFile = gitDir.resolve(gitHead.text - ~/^ref:\s/ - ~/[\n\s]$/)
   gitHash = gitFile.exists() ? gitFile.text.substring(0, 8) : null
 } else {
+  gitFile = null
   gitHash = null
 }
 
@@ -84,7 +85,8 @@ summary = [
   'Profile' : workflow.profile,
   'OutDir' : params.outDir,
   'WorkDir': workflow.workDir,
-  'git commit': gitHash,
+  'Git branch': gitFile?.name,
+  'Git commit': gitHash,
   'CommandLine': workflow.commandLine
 ].findAll{ it.value != null }
 
