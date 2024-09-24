@@ -105,6 +105,8 @@ include { pyramidize } from './nf-modules/common/process/pyramidize'
 include { mergeMasks } from './nf-modules/common/process/mergeMasks'
 include { segmentation } from './nf-modules/common/workflow/segmentation'
 include { mask2geojson } from './nf-modules/common/process/mask2geojson'
+include { qc } from './nf-modules/common/process/qc'
+
 /*
 =====================================
             WORKFLOW 
@@ -168,6 +170,8 @@ workflow {
     geojson = mask2geojson(mask)
   
     quant = quantification(mask)
+
+    filtered_quant = qc(quant)
 
     //*******************************************
     // Warnings that will be printed in the mqc report
