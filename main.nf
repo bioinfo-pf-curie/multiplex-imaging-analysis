@@ -42,7 +42,7 @@ gitDir = projectDir.resolve(".git")
 gitHead = gitDir.resolve("HEAD")
 if (gitHead.exists()) {
   gitFile = gitDir.resolve(gitHead.text - ~/^ref:\s/ - ~/[\n\s]$/)
-  gitHash = gitFile.exists() ? gitFile.text.substring(0, 8) : null
+  gitHash = gitFile.exists() ? gitFile.text.substring(0, 8) : gitHead.text.substring(0, 8) // if HEAD is detached hash is directly in it
 } else {
   gitFile = null
   gitHash = null

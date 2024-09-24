@@ -1,36 +1,48 @@
 #!/usr/bin/env python
 
 import argparse
+import pandas as pd
 
-def size_filter(cells, smin, smax):
-    for cell in cells:
-        if smin < cell.area < smax:
-            yield cell
+CELLID = "CellID"
+AREA = "Area"
 
-def segmented_area(mask):
-    return mask.astype(bool).sum() / mask.size
+def perform_filtering(csv, size_min=None, size_max=None, necrotic_intensity_treshold=0.9):
+    df = pd.read_csv(csv)
 
-def artefact_filter():
-    pass
+    form_cols = (
+        "X_centroid",
+        "Y_centroid",
+        "column_centroid",
+        "row_centroid",
+        "Area",
+        "MajorAxisLength",
+        "MinorAxisLength",
+        "Eccentricity",
+        "Solidity",
+        "Extent",
+        "Orientation",
+    )
 
-def co_expression_intracell():
-    pass
+    markers_cols = [c for c in df.columns if (c not in form_cols) and (c != CELLID)]
 
-def co_expression_neighboor():
-    pass
+    # size filtering
+    df = df.loc[(size_min or 0) < df[AREA] <= (size_max or df[AREA].max())]
 
-def perform_filtering(img, size_min=None, size_max=None):
-    pass
+    # necrotic filtering
+    df = df.loc[~(df[markers_cols] > df[markers_cols].quantile(necrotic_intensity_treshold)).all(axis=1)]
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--image', type=str, required=True, help="original image path")
-    parser.add_argument('--mask', type=str, required=True, help="mask path")
+    # parser.add_argument('--image', type=str, required=True, help="original image path")
+    # parser.add_argument('--mask', type=str, required=True, help="mask path")
     parser.add_argument('--csv_path', type=str, required=True, help="path for csv file of quantification")
-    parser.add_argument('--report_name', type=str, required=True, help="Output filepath")
-    parser.add_argument('--cluster_method', type=str, required=False, default="phenograph", 
-                        help="name of the cluster method (currently available : kmeans, phenograph or leiden)")
+    parser.add_argument('--area_min', type=int, required=False, help="minimal cell area")
+    parser.add_argument('--area_max', type=int, required=False, help="maximal cell area")
+    parser.add_argument('--necrotic_intensity_treshold', type=float, required=False, 
+                        help="treshold of intensity (normalized between 0 and 1) "
+                             "for a cell to be considered as necrotic (in every markers)")
     args = parser.parse_args()
 
-    perform_filtering(csv_path=args.csv_path, report_name=args.report_name, method=args.cluster_method)
+    perform_filtering(csv_path=args.csv_path, size_min=args.area_min, size_max=args.area_max, 
+                      necrotic_intensity_treshold=args.necrotic_intensity_treshold)
