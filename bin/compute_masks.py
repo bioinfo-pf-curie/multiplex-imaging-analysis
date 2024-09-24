@@ -280,7 +280,7 @@ if __name__ == '__main__':
     store_args = dict(compute=True)
     
     if args.singularity:
-        n_workers = max(int(args.max_mem / args.mem_per_worker), 1) # take some margin
+        n_workers = max(int(args.max_mem * 0.8 / args.mem_per_worker), 1) # take some margin
         store_args.update(dict(max_memory=f"{args.mem_per_worker} GiB", num_workers=n_workers))
         
     da.store(masks_graph, mask_memmap, **store_args)
