@@ -1,26 +1,26 @@
 name: cellpose
 dependencies:
-  - python=3.8.16=h955ad1f_4
-  - wheel=0.41.2=py38h06a4308_0
-  - pytorch=2.0.1=cpu_py38hab5cca8_0
-  - numpy=1.23.5=py38hf838250_0
-  - matplotlib=3.7.1=py38h06a4308_1
-  - numba=0.56.4=py38h417a72b_0
-  - scipy=1.9.1=py38h32ae08f_0
-  - scikit-image=0.20.0=py38h6a678d5_0
-  - scikit-learn=1.2.2=py38h6a678d5_1
-  - pandas=2.0.3=py38h1128e8f_0
-  - tqdm=4.65.0=py38hb070fc8_0
-  - tifffile=2023.4.12=py38h06a4308_0
-  - pip=23.3=py38h06a4308_0
+  - python=3.11.8=h955ad1f_0
+  - wheel=0.44.0=py311h06a4308_0
+  - pytorch=2.2.0=cpu_py311h6d93b4c_0
+  - numpy=1.26.4=py311h08b1b3b_0
+  - matplotlib=3.8.4=py311h06a4308_0
+  - numba=0.59.0=py311ha02d727_0
+  - scipy=1.12.0=py311h08b1b3b_0
+  - scikit-image=0.22.0=py311ha02d727_0
+  - scikit-learn=1.4.2=py311ha02d727_1
+  - pandas=2.0.3=py311ha02d727_0
+  - tqdm=4.66.2=py311h92b7b1e_0
+  - pip=24.0=py311h06a4308_0
   - pip:
-    - natsort==8.3.1
-    - fastremap==1.13.4
+    - tifffile==2024.2.12
+    - natsort==8.4.0
+    - fastremap==1.14.1
     - ome_types==0.4.2
     - zarr==2.16.1
-    - opencv-python-headless==4.7.0.72
+    - opencv-python-headless==4.9.0.80
     - cellpose==3.0.7
-    - psutil==5.9.6
+    - psutil==6.0.0
     - pydantic==2.5.3
     - xsdata==23.8
 
