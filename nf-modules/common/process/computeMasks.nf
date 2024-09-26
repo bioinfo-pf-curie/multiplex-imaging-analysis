@@ -4,7 +4,7 @@ process computeMasks {
   label 'infiniteTime'
   label 'onlyLinux' // only for geniac lint...
 
-  memory 'extraMem'
+  label 'extraMem'
   // memory {params.segmentation.name == 'cellpose'? MemoryUnit.of(Math.max(Math.min(meta.imgSize * 0.6, params.maxMemory.size), params.minMemory.size).toLong()) : Math.min(params.maxMemory.size, (128.GB).getBytes())}
   // take 60% of the size of image input with a minimum of 2GB and a max of 190GB 
 
