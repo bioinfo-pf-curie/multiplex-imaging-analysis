@@ -11,6 +11,8 @@ dependencies:
   - scikit-learn=1.4.2=py311ha02d727_1
   - pandas=2.0.3=py311ha02d727_0
   - tqdm=4.66.2=py311h92b7b1e_0
+  - dask=2024.5.0=py311h06a4308_0
+  - distributed=2024.5.0=py311h06a4308_0
   - pip=24.0=py311h06a4308_0
   - pip:
     - tifffile==2024.2.12
