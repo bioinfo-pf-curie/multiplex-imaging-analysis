@@ -56,15 +56,15 @@ def compute_current_cell_id(block_info, mean_cell_area=300):
 
     block_info: dict of dict
         it is constructed as in : 
-        {0: {'shape': (1000,),
-             'num-chunks': (10,),
-             'chunk-location': (4,),
-             'array-location': [(400, 500)]},
-         None: {'shape': (1000,),
-                'num-chunks': (10,),
-                'chunk-location': (4,),
-                'array-location': [(400, 500)],
-                'chunk-shape': (100,),
+        {0: {'shape': (3, 1000, 1000),
+             'num-chunks': (1, 10, 10),
+             'chunk-location': (0, 4, 5),
+             'array-location': [(:, 400, 500)]},
+         None: {'shape': (3, 1000, 1000),
+                'num-chunks': (1, 10, 10),
+                'chunk-location': (0, 4, 5),
+                'array-location': [(:, 400, 500)],
+                'chunk-shape': (:, 100, 100),
                 'dtype': dtype('float64')}}
         
     mean_cell_area: int

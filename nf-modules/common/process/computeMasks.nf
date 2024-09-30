@@ -20,7 +20,7 @@ process computeMasks {
   script:
     def args = task.ext.args ?: ''
     def script = params.segmentation.name == 'cellpose' ? "compute_masks.py" : "compute_mesmer.py"
-    def availableMem = Math.max(Math.min(meta.imgSize * 0.6, params.maxMemory.size), params.minMemory.size).toLong()
+    def availableMem = Math.max(Math.min(meta.imgSize * 0.6, params.maxMemory.size), params.minMemory.size).toLong() / 1e9
     def specificParms = params.segmentation.name == "cellpose" ? "--mean_cell_diam $meta.diameter --max_mem $availableMem " : ""
     specificParms += task.ext.useSingularity ? "--singularity " : ""
     """
