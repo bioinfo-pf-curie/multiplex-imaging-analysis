@@ -15,7 +15,7 @@ def mask2geojson(mask: np.ndarray, object_type='detection', connectivity: int=4,
                  transform: Affine=None, downsample: float=1.0, include_labels=False,
                  classification=None):
     """
-    Create a GeoJSON FeatureCollection from a labeled image.
+    Create a GeoJSON FeatureCollection from a labeled image. Compatible with QuPath
     """
     features = []
     

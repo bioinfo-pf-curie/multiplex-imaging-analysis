@@ -21,6 +21,25 @@ from shapely import geometry, STRtree, GeometryCollection
 from mask2geojson import mask2geojson
 
 def get_outline_image(gj, height, width):
+    """
+    From a geojson data, reconstruct an outline of every shape into an image
+
+    Parameters
+    ----------
+    
+    gj: geojson data (see spec)
+
+    height: int
+        total height of the image (in pixel)
+
+    width: int
+        total width of the image (in pixel)
+
+    Returns
+    -------
+
+    An image of dimension height x width
+    """
     n = len(gj)
     best_dtype = np.min_scalar_type(n)
     img = np.zeros((height, width), dtype=np.double) # heigth x width
@@ -40,6 +59,25 @@ def get_outline_image(gj, height, width):
     return(img)
 
 def get_mask_image(gj, height, width):
+    """
+    From a geojson data, reconstruct a mask of every shape into an image
+
+    Parameters
+    ----------
+    
+    gj: geojson data (see spec)
+
+    height: int
+        total height of the image (in pixel)
+
+    width: int
+        total width of the image (in pixel)
+
+    Returns
+    -------
+
+    An image of dimension height x width
+    """
     n = len(gj)
     best_dtype = np.min_scalar_type(n)
     img = np.zeros((height, width), dtype=best_dtype) # heigth x width
