@@ -296,4 +296,4 @@ if __name__ == '__main__':
     metadata.dtype = mask_memmap.dtype
 
     imwrite(args.out, mask_memmap, bigtiff=True, shaped=False, **metadata.to_dict(shape=mask_memmap.shape))
-    Path.unlink(".tmp_masks.npy")
+    Path(".tmp_masks.npy").unlink()

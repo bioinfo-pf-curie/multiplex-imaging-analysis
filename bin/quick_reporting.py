@@ -1,7 +1,8 @@
+#!/usr/bin/env python
+
 import argparse
 import scimap as sm
 from pathlib import Path
-import anndata as ad
 
 from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Image
@@ -61,8 +62,8 @@ def main(csv_path, report_name, method):
                  voronoi_line_width = 0.3, 
                  voronoi_alpha = 0.8, 
                  size_max=3000,
-                 overlay_points=None, 
-                 plot_legend=True, saveDir="scimap", fileName="voronoi.jpg",
+                 overlay_points=None,
+                 saveDir="scimap", fileName="voronoi.jpg",
                  legend_size=6)
 
     write_report(report_name)
