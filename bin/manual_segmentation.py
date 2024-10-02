@@ -122,11 +122,25 @@ def make_tile(args):
     out_dir = pathlib.Path(args.out_dir).expanduser()
     
     img, metadata = read_tiff_orion(img_path)
-    position = [(random.choice(range(img.size[0] - args.size)), 
-                 random.choice(range(img.size[1] - args.size))) 
-                 for _ in range(args.nb)] if args.position == "random" else args.position
+    if len(args.position) == 1 and args.position[0] == "random":
+        position = []
+        for _ in range(args.nb or 1):
+            try:
+                rchoice_x = random.choice(range(img.shape[1] - args.size))
+            except IndexError:
+                rchoice_x = 0
+            try:
+                rchoice_y = random.choice(range(img.shape[2] - args.size))
+            except IndexError:
+                rchoice_y = 0
+            position.append((rchoice_x, rchoice_y)) 
+    else: 
+        try:
+            position = [int(t) for t in args.position.split(',')]
+        except:
+            raise ValueError('Wrong format for position args see help')
+
     for tile_pos in position:
-        tile_pos = [int(t) for t in tile_pos.split(',')]
         out_name = out_dir / f"{img_path.stem}_tiled_{tile_pos[0]}_{tile_pos[1]}.tiff"
         with tifffile.TiffWriter(out_name, bigtiff=True, shaped=False) as tiff_out:
             if img.ndim == 3:
@@ -360,13 +374,13 @@ def parse_args(args=None):
     parser_g2o.set_defaults(func=g2o)
     
     parser_tile = subparsers.add_parser('tile')
-    parser_tile.add_argument('--image', type=str,
+    parser_tile.add_argument('--image', type=str, required=True,
                              help='Image to take tile from')
-    parser_tile.add_argument('--size', type=int,
+    parser_tile.add_argument('--size', type=int, required=True,
                              help='tile size will be (size,  size)')
-    parser_tile.add_argument('--position', type=str, nargs="+",
+    parser_tile.add_argument('--position', type=str, nargs="+", default=["random"],
                              help='either "random" or a list of position to take tile from')
-    parser_tile.add_argument('--nb', type=int, help="If position is random, how many tile will be create (otherwise it is len(position))")
+    parser_tile.add_argument('--nb', type=int, default=1, help="If position is random, how many tile will be create (otherwise it is len(position))")
     parser_tile.add_argument('--out_dir', type=str, default=".",
                              help='Output directory name. if not exist, will be created')
     parser_tile.set_defaults(func=make_tile)
