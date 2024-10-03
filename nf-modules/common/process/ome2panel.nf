@@ -14,6 +14,6 @@ process ome2panel {
 
   script:
     """
-    ome2panel.py --image $img --out ${img.getBaseName()}_panel.csv --notSegmented $params.channelNotSegmented
+    ome2panel.py --image $img --out ${img.getBaseName()}.csv --notSegmented $params.channelNotSegmented
     """
 }
