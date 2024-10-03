@@ -136,6 +136,9 @@ def merge_channels(in_path, out_path, nuclei_chan=0, channels_to_merge=None, chu
     if channels_to_merge is None:
         channels_to_merge = list(range(2, img_level.shape[0]))
 
+    supp_args = metadata.to_dict(shape=img_level.shape[1:])
+    supp_args['compression'] = 1
+
     with tifffile.TiffWriter(out_path, bigtiff=True, shaped=False) as tiff_out:
             tiff_out.write(
                 data=tile_generator(img_level, nuclei_chan, channels_to_merge, 
@@ -143,7 +146,7 @@ def merge_channels(in_path, out_path, nuclei_chan=0, channels_to_merge=None, chu
                                     norm_val=norm_val, nbins=nbins, kernel_size=kernel_size, clip_limit=clip_limit),
                 shape=(2, *img_level.shape[1:]),
                 tile=chunk_size,
-                **metadata.to_dict(shape=img_level.shape[1:])
+                **supp_args
             )
 
 def guess_channels_to_merge(img_path):
