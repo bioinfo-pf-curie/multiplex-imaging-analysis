@@ -124,7 +124,7 @@ workflow {
     def modelList = params.segmentation.name == "cellpose" ? params.cellpose.models : [""]
     modelList = modelList instanceof List ? modelList : modelList.tokenize(",")
     // Init Channels
-    imgCh = Channel.fromPath((params.images =~ tiffPattern) ? params.images : "${params.images}/*.q?p?ti{f,ff}")
+    imgCh = Channel.fromPath((params.images =~ tiffPattern) ? params.images : "${params.images}/*ti{f,ff}")
     imgId = imgCh.map{img -> tuple(NFTools.getImageID(img), img)}
 
     if (file("${params.markers}").exists()) {
