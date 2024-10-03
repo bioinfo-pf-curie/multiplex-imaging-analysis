@@ -137,6 +137,7 @@ if __name__ == "__main__":
         required=True,
         help="Input Image Paths"
     )
+    parser.add_argument('--compression', type=str, required=False, help="tifffile compression name possible value are 'none', 'zlib', 'jpeg', ... see doc. Can raise error if its not compatible with other parms")
     parser.add_argument('--out', type=str, required=False, help="Output Image Path")
     args = parser.parse_args()
 
