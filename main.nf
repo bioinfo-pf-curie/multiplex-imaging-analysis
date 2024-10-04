@@ -161,7 +161,13 @@ workflow {
     // PROCESS
     merged = mergeChannels(inputsOriginal)
     mask = segmentation(merged, modelList)
-    outline = displayOutline(mask.join(merged))
+
+    maskJoin = mask.map{
+      meta, m ->
+      tuple(meta.subMap("originalName", "imagePath", "markersPath", "imgSize"), m)
+    }
+
+    outline = displayOutline(maskJoin.join(merged))
     pyramidizeCh = Channel.empty()
     .mix(NFTools.setTag(merged, "merge_channels"))
     .mix(NFTools.setTag(outline, "outlines"))
