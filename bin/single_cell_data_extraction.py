@@ -136,8 +136,10 @@ def PrepareData(image,z, normalization=None, norm_val=None):
     if normalization is not None:
         if (normalization == 'hist') or (normalization == "auto" and norm_val is None): 
             nv = compute_hist(image_loaded_z[None, ...], 0, *image_loaded_z.shape, 256, 256, image_loaded_z.min(), image_loaded_z.max())
-        else:
+        elif norm_val is not None:
             nv = norm_val[z]
+        else:
+            nv = [-1, -1] # do not do normalization (wrong usage of parms) 
         print(f"{nv=}")
         image_loaded_z[image_loaded_z < nv[0]] = int(nv[0]) # for me it should be min_max_norm(image_loaded_z, *nv) but hey idc
 
@@ -304,7 +306,7 @@ def ParseInputDataExtract():
 
    parser = argparse.ArgumentParser()
    parser.add_argument('--masks',nargs='+', required=True)
-   parser.add_argument('--normalize', default=None)
+   parser.add_argument('--normalize', default=None, choices=[None, 'auto', 'hist', 'manual'])
    parser.add_argument('--image', required=True)
    parser.add_argument('--channel_names', required=True)
    parser.add_argument('--output', required=True)
