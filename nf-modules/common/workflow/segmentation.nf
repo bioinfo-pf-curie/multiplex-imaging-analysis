@@ -72,7 +72,7 @@ workflow segmentation {
       partialMasks = computeMasks(flow)
 
       partialMaskCh = partialMasks.map{meta, partial ->
-        tuple(groupKey(meta.subMap("originalName", "imagePath", "markersPath", "imgSize"), modelList.size()), partial, meta["diameter"])
+        tuple(groupKey(meta.subMap("originalName", "imagePath", "markersPath", "imgSize", 'flowSize'), modelList.size()), partial, meta["diameter"])
       }.groupTuple().branch{
         solo : modelList.size() == 1
         multiple : true
