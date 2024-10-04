@@ -3,7 +3,7 @@ process pyramidize {
   label 'minCpu'
   label "highTime"
 
-  memory {MemoryUnit.of(Math.max(Math.min(meta.imgSize * 0.2, params.maxMemory.size), (16.GB).size).toLong()) * task.attempt}
+  memory {MemoryUnit.of(Math.max(Math.min(meta.imgSize * 0.2, params.maxMemory.size), params.minMemory.size * 2).toLong()) * task.attempt}
 
   input:
      tuple val(tag), val(meta), path(image)
