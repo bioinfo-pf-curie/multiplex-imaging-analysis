@@ -15,7 +15,8 @@ process pyramidize {
   task.ext.when == null || task.ext.when
 
   script:
+    def args = task.ext.args ?: ''
     """
-    pyramidize.py --in $image
+    pyramidize.py --in $image $args
     """
 }
