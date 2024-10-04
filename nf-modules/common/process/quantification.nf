@@ -3,7 +3,7 @@ process quantification {
   label "minCpu"
   label "infiniteTime"
 
-  memory {MemoryUnit.of(Math.max(Math.min(meta.imgSize * 0.3, params.maxMemory.size), params.minMemory.size).toLong())}
+  memory {MemoryUnit.of(Math.max(Math.min((mask.size() as Float), params.maxMemory.size), params.minMemory.size).toLong())}
 
   input:
       tuple val(meta), path(mask)

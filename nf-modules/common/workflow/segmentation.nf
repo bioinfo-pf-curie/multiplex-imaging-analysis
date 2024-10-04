@@ -63,7 +63,11 @@ workflow segmentation {
       }.groupTuple().map{groupedkey, old_meta, segmentedImg -> 
         tuple(groupedkey, segmentedImg)
       }
-      flow = stitch(groupSegmented)
+      flow = stitch(groupSegmented).map{
+        meta, fl -> 
+        meta.put('flowSize', fl.size() as Float)
+        tuple(meta, fl)
+      } // imgSize can not be trusted because input image can (and should) be compressed
 
       partialMasks = computeMasks(flow)
 

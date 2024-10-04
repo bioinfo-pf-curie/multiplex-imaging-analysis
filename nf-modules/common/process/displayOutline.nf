@@ -3,7 +3,7 @@ process displayOutline {
   label 'minCpu'
   label 'infiniteTime'
 
-  memory {MemoryUnit.of(Math.max(Math.min(meta.imgSize * 0.4, params.maxMemory.size), params.minMemory.size).toLong())}
+  memory {MemoryUnit.of(Math.max(Math.min((merge.size() as Float) * 0.4, params.maxMemory.size), params.minMemory.size).toLong())}
   
   input:
     tuple val(meta), path(mask), path(merge)
