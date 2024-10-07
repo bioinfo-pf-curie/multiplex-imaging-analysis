@@ -16,7 +16,9 @@ process quantification {
 
   script:
     def args = task.ext.args ?: ''
+    def memo = (mask.size() as Float) * 1.5
     """
+    echo $memo
     single_cell_data_extraction.py --image $meta.imagePath --masks $mask --output . --channel_names $meta.markersPath $args
     """
 }
