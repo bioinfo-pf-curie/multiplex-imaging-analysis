@@ -121,10 +121,7 @@ def write_pyramid(
                 subfiletype=1,
                 dtype=dtype,
                 tile=tile_shape,
-                **{
-                    **dict(compression=compression),
-                    **kwargs_tifffile
-                }
+                **kwargs_tifffile
             )
 
 
@@ -137,7 +134,7 @@ if __name__ == "__main__":
         required=True,
         help="Input Image Paths"
     )
-    parser.add_argument('--compression', type=str, required=False, help="tifffile compression name possible value are 'none', 'zlib', 'jpeg', ... see doc. Can raise error if its not compatible with other parms")
+    parser.add_argument('--compression', type=int, required=False, help="tifffile compression name possible value are 'none', 'zlib', 'jpeg', ... see doc. Can raise error if its not compatible with other parms")
     parser.add_argument('--out', type=str, required=False, help="Output Image Path")
     args = parser.parse_args()
 
@@ -171,4 +168,7 @@ if __name__ == "__main__":
                 **metadata.to_dict()
             )
     else:
-        write_pyramid(mosaics, out_path, downscale_factor=2, kwargs_tifffile=metadata.to_dict(dtype=False))
+        kwargs = metadata.to_dict(dtype=False)
+        if args.compression:
+            kwargs.update(compression=args.compression)
+        write_pyramid(mosaics, out_path, downscale_factor=2, kwargs_tifffile=kwargs)
