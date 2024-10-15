@@ -56,10 +56,12 @@ def tile_generator(arr, nuclei_chan, to_merge_chan, x, y, chunk_x, chunk_y, agg=
             for c in (ci if not isinstance(ci, int) else [ci]):
                 norm_val[c] = compute_hist(arr, c, x, y, chunk_x, chunk_y)
 
-        elif norm == "equalize":
+        # elif norm == "equalize":
+        if ci == nuclei_chan: # perform this norm for nucleus channel
             copied_arr = np.zeros_like(arr)
             for i in range(arr.shape[0]):
                 copied_arr[i] = equalize_adapthist(arr[i], kernel_size=kernel_size, clip_limit=clip_limit, nbins=nbins)
+            arr = copied_arr
         
         for tmp_arr in _tile_generator(arr, ci, x, y, chunk_x, chunk_y):
             if norm == "gaussian":
