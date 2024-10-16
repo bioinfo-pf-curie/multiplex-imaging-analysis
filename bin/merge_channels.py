@@ -62,7 +62,7 @@ def tile_generator(arr, nuclei_chan, to_merge_chan, x, y, chunk_x, chunk_y, agg=
             # for i in range(arr.shape[0]):
             #     copied_arr[i] = equalize_adapthist(arr[i], kernel_size=kernel_size, clip_limit=clip_limit, nbins=nbins)
             # arr = copied_arr
-            arr = equalize_adapthist(arr, kernel_size=kernel_size, clip_limit=clip_limit, nbins=nbins)
+            arr[ci,...] = equalize_adapthist(arr[ci,...], kernel_size=kernel_size, clip_limit=clip_limit, nbins=nbins)
         
         for tmp_arr in _tile_generator(arr, ci, x, y, chunk_x, chunk_y):
             if norm == "gaussian":
