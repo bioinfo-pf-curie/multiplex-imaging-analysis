@@ -50,46 +50,34 @@ def tile_generator(arr, nuclei_chan, to_merge_chan, x, y, chunk_x, chunk_y, agg=
     tile of the nuclei channel untouched and tile merged and normalized for others
 
     """
-    for ci in [nuclei_chan, to_merge_chan]:
-        if norm == 'hist':
-            # first pass for normalisation
-            norm_val = {}
-            for c in (ci if not isinstance(ci, int) else [ci]):
-                norm_val[c] = compute_hist(arr, c, x, y, chunk_x, chunk_y)
+    # for ci in [nuclei_chan, to_merge_chan]:
+    if norm == 'hist':
+        # first pass for normalisation
+        norm_val = {nuclei_chan: compute_hist(arr, nuclei_chan, x, y, chunk_x, chunk_y)}
+        for c in to_merge_chan:
+            norm_val[c] = compute_hist(arr, c, x, y, chunk_x, chunk_y)
 
-        # elif norm == "equalize":
-        if ci == nuclei_chan: # perform this norm for nucleus channel
-            # copied_arr = np.zeros_like(arr)
-            # for i in range(arr.shape[0]):
-            #     copied_arr[i] = equalize_adapthist(arr[i], kernel_size=kernel_size, clip_limit=clip_limit, nbins=nbins)
-            # arr = copied_arr
-            im_da = da.from_zarr(arr)
-            im_da_c_overlap = da.map_overlap(equalize_adapthist, im_da[ci,...],
-                                             kernel_size=kernel_size,
-                                             clip_limit=clip_limit, 
-                                             nbins=nbins,
-                                             depth=50,
-                                             dtype=float).compute()
-            arr[ci,...] = im_da_c_overlap
+    # maybe do other norm before CLAHE ??
+    im_da = da.from_zarr(arr)
+    im_da_c_overlap = da.map_overlap(equalize_adapthist, im_da[nuclei_chan,...],
+                                     kernel_size=kernel_size,
+                                     clip_limit=clip_limit, 
+                                     nbins=nbins,
+                                     depth=50,
+                                     dtype=float).compute()
+    yield from _tile_generator(im_da_c_overlap, None, x, y, chunk_x, chunk_y)
         
-        for tmp_arr in _tile_generator(arr, ci, x, y, chunk_x, chunk_y):
-            if norm == "gaussian":
-                tmp_arr = gaussian_filter(tmp_arr, 1)
-            elif norm_val is not None:
-                tmp_arr = tmp_arr.astype('float')
-                # tmp_arr = gaussian_filter(tmp_arr, 0.2)
-                if not isinstance(ci, int):
-                    for i, c in enumerate(ci):
-                        tmp_arr[i] = min_max_norm(tmp_arr[i], *norm_val[c], output_max=1)
-                else:
-                    tmp_arr = min_max_norm(tmp_arr, *norm_val[ci], output_max=1)
-            else:
-                raise ValueError(f"Unknown normalization method : {norm} with values '{norm_val}'")
+    for tmp_arr in _tile_generator(arr, to_merge_chan, x, y, chunk_x, chunk_y):
+        if norm == "gaussian":
+            tmp_arr = gaussian_filter(tmp_arr, 1)
+        elif norm_val is not None:
+            tmp_arr = tmp_arr.astype('float')
+            for i, c in enumerate(to_merge_chan):
+                tmp_arr[i] = min_max_norm(tmp_arr[i], *norm_val[c], output_max=1)
+        else:
+            raise ValueError(f"Unknown normalization method : {norm} with values '{norm_val}'")
 
-            if ci != to_merge_chan:
-                yield tmp_arr
-            else:
-                yield agg(tmp_arr, axis=0)
+        yield agg(tmp_arr, axis=0)
     tmp_arr = None # don't wait for next iteration to flush this
 
 

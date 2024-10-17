@@ -23,7 +23,10 @@ def _tile_generator(arr, channel, x, y, chunk_x, chunk_y):
     """Generate chunk of arr"""
     for x_cur in range(0, x, chunk_x):
         for y_cur in range(0, y, chunk_y):
-            yield arr[channel, x_cur: x_cur + chunk_x, y_cur: y_cur + chunk_y]
+            if channel is None:
+                yield arr[x_cur: x_cur + chunk_x, y_cur: y_cur + chunk_y]
+            else:
+                yield arr[channel, x_cur: x_cur + chunk_x, y_cur: y_cur + chunk_y]
 
 
 def min_max_norm(a, min_, max_, output_max=(2**16 - 1)):
