@@ -14,7 +14,8 @@ process qc {
 
   script:
     def args = task.ext.args ?: ''
+    def outName = quantif.name - ~/_masks\.csv/
     """
-    quality_control.py --csv_path $quantif --out_path ${quantif - ~/data\.csv/}_filtered_data.csv $args
+    quality_control.py --csv_path $quantif --out_path ${outName}_filtered_data.csv $args
     """
 }

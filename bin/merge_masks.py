@@ -284,5 +284,6 @@ if __name__ == '__main__':
         metadata.add_channel_metadata(channel_name="masks")
         metadata.dtype = mask.dtype
         kwargs.update(metadata.to_dict(shape=mask.shape))
+    kwargs['compression'] = 1
 
     tifffile.imwrite(args.out, mask, bigtiff=True, shaped=False, **kwargs)

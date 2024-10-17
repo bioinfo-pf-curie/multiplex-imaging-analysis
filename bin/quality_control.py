@@ -6,7 +6,7 @@ import pandas as pd
 CELLID = "CellID"
 AREA = "Area"
 
-def perform_filtering(csv, out_name, size_min=None, size_max=None, necrotic_intensity_treshold=0.9):
+def perform_filtering(csv, out_name, size_min=0, size_max=None, necrotic_intensity_treshold=0.9):
     df = pd.read_csv(csv)
 
     form_cols = (
@@ -26,12 +26,14 @@ def perform_filtering(csv, out_name, size_min=None, size_max=None, necrotic_inte
     markers_cols = [c for c in df.columns if (c not in form_cols) and (c != CELLID)]
 
     # size filtering
-    df = df.loc[(size_min or 0) < df[AREA] <= (size_max or df[AREA].max())]
+    if size_max is None:
+        size_max = df[AREA].max()
+    df = df.loc[(size_min < df[AREA]) & (df[AREA] <= size_max)]
 
     # necrotic filtering
     df = df.loc[~(df[markers_cols] > df[markers_cols].quantile(necrotic_intensity_treshold)).all(axis=1)]
 
-    df.to_csv(out_name)
+    df.to_csv(out_name, index=False)
 
 
 if __name__ == "__main__":
@@ -40,11 +42,11 @@ if __name__ == "__main__":
     # parser.add_argument('--mask', type=str, required=True, help="mask path")
     parser.add_argument('--csv_path', type=str, required=True, help="path for csv file of quantification")
     parser.add_argument('--out_path', type=str, required=True, help="output path")
-    parser.add_argument('--area_min', type=int, required=False, help="minimal cell area")
+    parser.add_argument('--area_min', type=int, default=0, required=False, help="minimal cell area")
     parser.add_argument('--area_max', type=int, required=False, help="maximal cell area")
     parser.add_argument('--necrotic_intensity_treshold', type=float, required=False, 
                         help="treshold of intensity (normalized between 0 and 1) "
-                             "for a cell to be considered as necrotic (in every markers)")
+                             "for a cell to be considered as necrotic (in every markers)", default=1)
     args = parser.parse_args()
 
     perform_filtering(csv=args.csv_path, out_name=args.out_path, size_min=args.area_min, size_max=args.area_max, 

@@ -132,9 +132,9 @@ Here are a few examples to set the profile options:
 
 For details about the different profiles available, see [Profiles](docs/profiles.md).
 
-### Markers.csv
+### Panel.csv
 
-A marker file is a csv file that provides additional details on the marker of the image.
+A panel file is a csv file that provides additional details on the marker of the image.
 Here is a simple example:
 
 ```
