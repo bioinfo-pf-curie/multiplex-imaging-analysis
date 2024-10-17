@@ -62,7 +62,14 @@ def tile_generator(arr, nuclei_chan, to_merge_chan, x, y, chunk_x, chunk_y, agg=
             # for i in range(arr.shape[0]):
             #     copied_arr[i] = equalize_adapthist(arr[i], kernel_size=kernel_size, clip_limit=clip_limit, nbins=nbins)
             # arr = copied_arr
-            arr[ci,...] = equalize_adapthist(arr[ci,...], kernel_size=kernel_size, clip_limit=clip_limit, nbins=nbins)
+            im_da = da.from_zarr(arr)
+            im_da_c_overlap = da.map_overlap(equalize_adapthist, im_da[ci,...],
+                                             kernel_size=kernel_size,
+                                             clip_limit=clip_limit, 
+                                             nbins=nbins,
+                                             depth=50,
+                                             dtype=float).compute()
+            arr[ci,...] = im_da_c_overlap
         
         for tmp_arr in _tile_generator(arr, ci, x, y, chunk_x, chunk_y):
             if norm == "gaussian":
