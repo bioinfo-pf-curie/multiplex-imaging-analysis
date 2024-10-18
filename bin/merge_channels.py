@@ -27,8 +27,7 @@ def norm_nuclei_chan(chunk, norm, norm_val, kernel_size, clip_limit, nbins):
     return equalize_adapthist(chunk,
                               kernel_size=kernel_size,
                               clip_limit=clip_limit, 
-                              nbins=nbins,
-                              dtype=float)
+                              nbins=nbins)
 
 
 def tile_generator(arr, nuclei_chan, to_merge_chan, x, y, chunk_x, chunk_y, agg=np.max, norm='hist', norm_val=None, nbins=2**14, kernel_size=64, clip_limit=0.01):
