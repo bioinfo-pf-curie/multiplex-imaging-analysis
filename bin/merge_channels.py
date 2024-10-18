@@ -77,7 +77,7 @@ def tile_generator(arr, nuclei_chan, to_merge_chan, x, y, chunk_x, chunk_y, agg=
                                      norm=norm, norm_val=norm_val[nuclei_chan],
                                      kernel_size=kernel_size,
                                      clip_limit=clip_limit, 
-                                     nbins=nbins, depth=50).compute()
+                                     nbins=nbins, depth=50, dtype=float).compute()
 
     yield from _tile_generator(im_da_c_overlap, None, x, y, chunk_x, chunk_y)
         
