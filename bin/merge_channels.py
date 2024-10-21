@@ -16,6 +16,20 @@ from dask import array as da
 
 from utils import read_tiff_orion, _tile_generator, parse_normalization_values, compute_hist, min_max_norm
 
+def norm_nuclei_chan(chunk, norm, norm_val, kernel_size, clip_limit, nbins):
+    if norm == "gaussian":
+        chunk = gaussian_filter(chunk, 1)
+    elif norm_val is not None:
+        chunk = chunk.astype('float')
+        chunk = min_max_norm(chunk, *norm_val, output_max=1)
+    else:
+        raise ValueError(f"Unknown normalization method : {norm} with values '{norm_val}'")
+    return equalize_adapthist(chunk,
+                              kernel_size=kernel_size,
+                              clip_limit=clip_limit, 
+                              nbins=nbins)
+
+
 def tile_generator(arr, nuclei_chan, to_merge_chan, x, y, chunk_x, chunk_y, agg=np.max, norm='hist', norm_val=None, nbins=2**14, kernel_size=64, clip_limit=0.01):
     """
     generate tile and compute the merge and normalization on the fly
@@ -50,21 +64,20 @@ def tile_generator(arr, nuclei_chan, to_merge_chan, x, y, chunk_x, chunk_y, agg=
     tile of the nuclei channel untouched and tile merged and normalized for others
 
     """
-    # for ci in [nuclei_chan, to_merge_chan]:
     if norm == 'hist':
         # first pass for normalisation
         norm_val = {nuclei_chan: compute_hist(arr, nuclei_chan, x, y, chunk_x, chunk_y)}
         for c in to_merge_chan:
             norm_val[c] = compute_hist(arr, c, x, y, chunk_x, chunk_y)
 
-    # maybe do other norm before CLAHE ??
     im_da = da.from_zarr(arr)
-    im_da_c_overlap = da.map_overlap(equalize_adapthist, im_da[nuclei_chan,...],
+
+    im_da_c_overlap = da.map_overlap(norm_nuclei_chan, im_da[nuclei_chan,...], 
+                                     norm=norm, norm_val=norm_val[nuclei_chan],
                                      kernel_size=kernel_size,
                                      clip_limit=clip_limit, 
-                                     nbins=nbins,
-                                     depth=50,
-                                     dtype=float).compute()
+                                     nbins=nbins, depth=50, dtype=float).compute()
+
     yield from _tile_generator(im_da_c_overlap, None, x, y, chunk_x, chunk_y)
 
     del im_da_c_overlap
