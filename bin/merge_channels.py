@@ -66,7 +66,9 @@ def tile_generator(arr, nuclei_chan, to_merge_chan, x, y, chunk_x, chunk_y, agg=
                                      depth=50,
                                      dtype=float).compute()
     yield from _tile_generator(im_da_c_overlap, None, x, y, chunk_x, chunk_y)
-        
+
+    del im_da_c_overlap
+
     for tmp_arr in _tile_generator(arr, to_merge_chan, x, y, chunk_x, chunk_y):
         if norm == "gaussian":
             tmp_arr = gaussian_filter(tmp_arr, 1)
