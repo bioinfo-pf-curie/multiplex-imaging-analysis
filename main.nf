@@ -159,7 +159,12 @@ workflow {
     )
 
     // PROCESS
-    merged = mergeChannels(inputsOriginal)
+    ipts = inputsOriginal.branch{
+      toMerge: (it[0].markersPath.readLines().size() > 2) & (params.segmentation.name != "instantseg")
+      noMerge: true
+    }
+    merged = mergeChannels(ipts.toMerge).mix(ipts.noMerge.map{meta, img, ch -> tuple(meta, img)})
+
     mask = segmentation(merged, modelList)
 
     maskJoin = mask.map{

@@ -206,6 +206,19 @@ def make_ome_data(size_x, size_y, size_c, dtype="uint16", **kwargs):
         structured_annotations=kwargs.pop('structured_annotations', [])
     )
 
+class wrong_ndim(object):
+    def __init__(self, z):
+        self._z = z
+        self.shape = (1, *self._z.shape)
+        self.ndim = self._z.ndim + 1
+
+    def __getitem__(self, selection):
+        return self._z.__getitem__(selection[1:])
+    
+    def __getattribute__(self, name: str):
+        if name.startswith('_') or name == 'shape' or name == 'ndim':
+            return super().__getattribute__(name)
+        return self._z.__getattribute__(name)
 
 def read_tiff_orion(img_path, idx_serie=0, idx_level=0, *args, **kwargs):
     """
@@ -237,7 +250,10 @@ def read_tiff_orion(img_path, idx_serie=0, idx_level=0, *args, **kwargs):
     zarr_mode = kwargs.pop('zarr_mode', "r") 
     tiff = tifffile.TiffFile(img_path, *args, **kwargs)
     zarray = zarr.open(tiff.series[idx_serie].aszarr(), mode=zarr_mode)
-    return (zarray[idx_level] if idx_level is not None and tiff.series[idx_level].is_pyramidal else zarray), OmeTifffile(tiff.pages[0])
+    zarr_img = (zarray[idx_level] if idx_level is not None and tiff.series[idx_level].is_pyramidal else zarray)
+    if zarr_img.ndim == 2:
+        zarr_img = wrong_ndim(zarr_img)
+    return zarr_img, OmeTifffile(tiff.pages[0])
 
 class OmeTifffile(object):
     """

@@ -151,7 +151,7 @@ def merge_channels(in_path, out_path, nuclei_chan=0, channels_to_merge=None, chu
         channels_to_merge = list(range(2, img_level.shape[0]))
 
     supp_args = metadata.to_dict(shape=img_level.shape[1:])
-    supp_args['compression'] = 1
+    supp_args['compression'] = 1 # force no compression
 
     with tifffile.TiffWriter(out_path, bigtiff=True, shaped=False) as tiff_out:
             tiff_out.write(
