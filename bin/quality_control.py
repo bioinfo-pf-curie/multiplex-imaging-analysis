@@ -5,6 +5,9 @@ import pandas as pd
 
 CELLID = "CellID"
 AREA = "Area"
+SIZE_MIN = "minimal size"
+SIZE_MAX = "maximal size"
+NECROTIC = "Necrotic area"
 
 def perform_filtering(csv, out_name, size_min=0, size_max=None, necrotic_intensity_treshold=0.9):
     df = pd.read_csv(csv)
@@ -28,10 +31,13 @@ def perform_filtering(csv, out_name, size_min=0, size_max=None, necrotic_intensi
     # size filtering
     if size_max is None:
         size_max = df[AREA].max()
-    df = df.loc[(size_min < df[AREA]) & (df[AREA] <= size_max)]
+    df[f'{SIZE_MIN} ({size_min})'] = (size_min < df[AREA]).astype(int)
+    df[f'{SIZE_MAX} ({size_max})'] = (df[AREA] <= size_max).astype(int)
 
     # necrotic filtering
-    df = df.loc[~(df[markers_cols] > df[markers_cols].quantile(necrotic_intensity_treshold)).all(axis=1)]
+    df[f'{NECROTIC} ({necrotic_intensity_treshold}% intensity)'] = ~(
+        df[markers_cols] > df[markers_cols].quantile(necrotic_intensity_treshold)
+    ).all(axis=1).astype(int)
 
     df.to_csv(out_name, index=False)
 
