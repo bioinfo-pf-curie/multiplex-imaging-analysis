@@ -108,7 +108,7 @@ def stich_flow(list_npy, input_img_path, overlap, out_path):
     for i, npy in enumerate(list_npy):
         cur_height = get_current_height(npy)
         flow = load_npy(npy)
-        weight = get_weight(flow[4].shape[1], edge=("f" if not i else "l" if i == len(list_npy) - 1 else None))
+        weight = get_weight(flow[4].shape[1], edge=("f" if not cur_height else "l" if cur_height + flow[4].shape[1] == flow_shape[1] else None))
         dict_weight[f"{cur_height}"] = weight
         weighted_flow = np.ascontiguousarray(np.array(flow[4]) * weight[np.newaxis, :, np.newaxis]) # accelerate writing operation
         tiles_height.append(weighted_flow.shape[1])
@@ -150,3 +150,15 @@ if __name__ == '__main__':
         np.save(args.out, flows)
     else:
         stich_flow(list_npy, args.original, overlap=args.overlap, out_path=args.out)
+
+"""
+x_val = np.array([])
+y_val = np.array([])
+for key, arr in weights.items():
+    if key != 'total':
+        y_val = np.concatenate((y_val, arr))
+        x_val = np.concatenate((x_val, np.arange(int(key), int(key) + len(arr))))
+    else:
+        x_tot = np.arange(len(arr))
+        y_tot = arr
+"""
