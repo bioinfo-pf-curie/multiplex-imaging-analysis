@@ -103,11 +103,13 @@ def stich_flow(list_npy, input_img_path, overlap, out_path):
     total_flow = np.lib.format.open_memmap(out_path, dtype='float32', mode="w+", shape=flow_shape)
 
     tiles_height = []
+    dict_weight = {}
     
     for i, npy in enumerate(list_npy):
         cur_height = get_current_height(npy)
         flow = load_npy(npy)
         weight = get_weight(flow[4].shape[1], edge=("f" if not i else "l" if i == len(list_npy) - 1 else None))
+        dict_weight[cur_height] = weight
         weighted_flow = np.ascontiguousarray(np.array(flow[4]) * weight[np.newaxis, :, np.newaxis]) # accelerate writing operation
         tiles_height.append(weighted_flow.shape[1])
         total_flow[:, cur_height:cur_height+weighted_flow.shape[1], :] += weighted_flow
@@ -121,6 +123,8 @@ def stich_flow(list_npy, input_img_path, overlap, out_path):
     tile_height = int(np.median(tiles_height)) # last one may be cut
     y_weight = sum_of_weight_on_axis(tile_height, overlap, original_tiff.series[0].shape[1])
     chunk_count = 0
+    dict_weight['total'] = y_weight
+    np.savez("all_weigh.npz", **dict_weight)
 
     for chunk in range(0, flow_shape[2], tile_height):
         total_flow[..., chunk:chunk+tile_height] /= y_weight
