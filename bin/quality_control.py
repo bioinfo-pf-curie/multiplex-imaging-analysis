@@ -2,14 +2,34 @@
 
 import argparse
 import pandas as pd
+import geojson
+from shapely import geometry
 
 CELLID = "CellID"
 AREA = "Area"
 SIZE_MIN = "minimal size"
 SIZE_MAX = "maximal size"
 NECROTIC = "Necrotic area"
+AOI = "AOI"
 
-def perform_filtering(csv, out_name, size_min=0, size_max=None, necrotic_intensity_treshold=0.9):
+def position_filter(df, geosjon_path):
+    with open(geosjon_path, 'r') as gjfile:
+        gj = geojson.load(gjfile)
+    aoi = None
+    for roi in gj:
+        shapely_roi = geometry.shape(roi.get('geometry', roi))
+        if aoi is None:
+            aoi = shapely_roi
+        else:
+            if aoi.intersects(shapely_roi): # exclusion
+                aoi = aoi.difference(shapely_roi)
+            else: # union
+                aoi = aoi.union(shapely_roi)
+    df['_point'] = df[['X_centroid', 'Y_centroid']].apply(geometry.Point, axis=1)
+    df[AOI] = df['_point'].apply(aoi.contains)
+    return df.drop('_point', axis=1)
+
+def perform_filtering(csv, out_name, size_min=0, size_max=None, necrotic_intensity_treshold=0.9, roi_path=None):
     df = pd.read_csv(csv)
 
     form_cols = (
@@ -39,6 +59,9 @@ def perform_filtering(csv, out_name, size_min=0, size_max=None, necrotic_intensi
         df[markers_cols] > df[markers_cols].quantile(necrotic_intensity_treshold)
     ).all(axis=1).astype(int)
 
+    if roi_path is not None:
+        df = position_filter(df, roi_path)
+
     df.to_csv(out_name, index=False)
 
 
@@ -53,7 +76,9 @@ if __name__ == "__main__":
     parser.add_argument('--necrotic_intensity_treshold', type=float, required=False, 
                         help="treshold of intensity (normalized between 0 and 1) "
                              "for a cell to be considered as necrotic (in every markers)", default=1)
+    parser.add_argument('--region_of_interest_path', type=str, required=False, 
+                        help="path to a geojson describing a region of interest (can be the contour of a tumor for example)", default=1)
     args = parser.parse_args()
 
     perform_filtering(csv=args.csv_path, out_name=args.out_path, size_min=args.area_min, size_max=args.area_max, 
-                      necrotic_intensity_treshold=args.necrotic_intensity_treshold)
+                      necrotic_intensity_treshold=args.necrotic_intensity_treshold, roi_path=args.region_of_interest)
