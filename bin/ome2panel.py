@@ -18,7 +18,10 @@ def generate(tiff_path, out_path, marker=None, not_seg=None, norm=None):
     nc = len(channels)
     seg = [1] * nc
     for i in (not_seg or []):
-        seg[i] = 0
+        try:
+            seg[i] = 0
+        except IndexError:
+            pass # in case there is non existent channels in not_seg, it will fail
     
     if marker is None:
         marker = [''] * nc

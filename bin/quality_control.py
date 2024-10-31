@@ -3,7 +3,7 @@
 import argparse
 import pandas as pd
 import geojson
-from shapely import geometry
+from shapely import Polygon, make_valid, geometry
 
 CELLID = "CellID"
 AREA = "Area"
@@ -15,16 +15,27 @@ AOI = "AOI"
 def position_filter(df, geosjon_path):
     with open(geosjon_path, 'r') as gjfile:
         gj = geojson.load(gjfile)
-    aoi = None
-    for roi in gj:
-        shapely_roi = geometry.shape(roi.get('geometry', roi))
-        if aoi is None:
-            aoi = shapely_roi
-        else:
-            if aoi.intersects(shapely_roi): # exclusion
-                aoi = aoi.difference(shapely_roi)
-            else: # union
-                aoi = aoi.union(shapely_roi)
+    rois = []
+    for roi in gj['features']:
+        shapely_roi = make_valid(Polygon(roi.get('geometry', roi).get('coordinates')))
+        if not isinstance(shapely_roi, Polygon):
+            max_ = 0
+            for g in shapely_roi.geoms:
+                if max_ < g.area:
+                    res = g
+                    max_ = g.area
+            shapely_roi = res
+        rois.append(shapely_roi)
+    
+    rois = sorted(rois, key=lambda x: x.area, reverse=True) # the biggest one is the main one
+
+    aoi = rois[0]
+    for roi in rois[1:]:
+        if aoi.intersects(roi): # exclusion
+            aoi = aoi.difference(roi)
+        else: # union
+            aoi = aoi.union(roi)
+
     df['_point'] = df[['X_centroid', 'Y_centroid']].apply(geometry.Point, axis=1)
     df[AOI] = df['_point'].apply(aoi.contains)
     return df.drop('_point', axis=1)
@@ -81,4 +92,4 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     perform_filtering(csv=args.csv_path, out_name=args.out_path, size_min=args.area_min, size_max=args.area_max, 
-                      necrotic_intensity_treshold=args.necrotic_intensity_treshold, roi_path=args.region_of_interest)
+                      necrotic_intensity_treshold=args.necrotic_intensity_treshold, roi_path=args.region_of_interest_path)
