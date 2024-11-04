@@ -108,6 +108,13 @@ def stich_flow(list_npy, input_img_path, overlap, out_path):
     for i, npy in enumerate(list_npy):
         cur_height = get_current_height(npy)
         flow = load_npy(npy)
+        if flow.shape[2] != flow_shape[2]:
+            # an upscaling was performed in cellpose
+            from skimage.transform import resize
+            scale_factor = flow_shape[2] / flow.shape[2]
+            original_tile_shape = (3, flow.shape[1] * scale_factor, flow.shape[2] * scale_factor)
+            flow[4] = resize(flow[4], output_shape=original_tile_shape)
+
         weight = get_weight(flow[4].shape[1], edge=("f" if not cur_height else "l" if cur_height + flow[4].shape[1] == flow_shape[1] else None))
         dict_weight[f"{cur_height}"] = weight
         weighted_flow = np.ascontiguousarray(np.array(flow[4]) * weight[np.newaxis, :, np.newaxis]) # accelerate writing operation

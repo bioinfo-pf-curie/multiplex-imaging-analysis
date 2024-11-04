@@ -14,3 +14,4 @@ From: biocontainers/cellpose:3.0.1_cv1
   wget https://www.cellpose.org/models/cyto2_cp3 -P ~/.cellpose/models/
   wget https://www.cellpose.org/models/tissuenet_cp3 -P ~/.cellpose/models/
   wget https://www.cellpose.org/models/denoise_cyto3 -P ~/.cellpose/models/
+  wget https://www.cellpose.org/models/upsample_cyto3 -P ~/.cellpose/models/
