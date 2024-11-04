@@ -2,7 +2,7 @@
 
 import argparse
 import pandas as pd
-import geojson
+import json
 from shapely import Polygon, make_valid, geometry
 
 CELLID = "CellID"
@@ -10,11 +10,11 @@ AREA = "Area"
 SIZE_MIN = "minimal size"
 SIZE_MAX = "maximal size"
 NECROTIC = "Necrotic area"
-AOI = "AOI"
+AOI = "RoI"
 
 def position_filter(df, geosjon_path):
     with open(geosjon_path, 'r') as gjfile:
-        gj = geojson.load(gjfile)
+        gj = json.load(gjfile)
     rois = []
     for roi in gj['features']:
         shapely_roi = make_valid(Polygon(roi.get('geometry', roi).get('coordinates')))
