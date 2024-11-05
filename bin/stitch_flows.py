@@ -78,7 +78,7 @@ def resize_tile(flow, original_shape):
     from skimage.transform import resize
     scale_factor = original_shape[2] / flow.shape[2]
     original_tile_shape = (3, flow.shape[1] * scale_factor, flow.shape[2] * scale_factor)
-    return resize(flow[4], output_shape=original_tile_shape)
+    return resize(flow, output_shape=original_tile_shape)
 
 def stich_flow(list_npy, input_img_path, overlap, out_path):
     """
