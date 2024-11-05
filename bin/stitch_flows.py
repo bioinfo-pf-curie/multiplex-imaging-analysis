@@ -75,6 +75,12 @@ def load_npy(npy_path):
     """Helper to load npy files"""
     return np.load(npy_path, allow_pickle=True).item()['flows']
 
+def resize_tile(flow, original_shape):
+    from skimage.transform import resize
+    scale_factor = original_shape[2] / flow.shape[2]
+    original_tile_shape = (3, flow.shape[1] * scale_factor, flow.shape[2] * scale_factor)
+    return resize(flow[4], output_shape=original_tile_shape)
+
 def stich_flow(list_npy, input_img_path, overlap, out_path):
     """
     Merge a list of flows (in npy format) into a flows for the complete image
@@ -104,16 +110,21 @@ def stich_flow(list_npy, input_img_path, overlap, out_path):
 
     tiles_height = []
     dict_weight = {}
-    
+
+    if len(list_npy) == 1:
+        flows = load_npy(list_npy[0])[4]
+        if flows.shape[2] != flow_shape[2]:
+            # an upscaling was performed in cellpose
+            flows = resize_tile(flows, flow_shape)
+        np.save(out_path, flows)
+        return
+
     for i, npy in enumerate(list_npy):
         cur_height = get_current_height(npy)
         flow = load_npy(npy)
         if flow.shape[2] != flow_shape[2]:
             # an upscaling was performed in cellpose
-            from skimage.transform import resize
-            scale_factor = flow_shape[2] / flow.shape[2]
-            original_tile_shape = (3, flow.shape[1] * scale_factor, flow.shape[2] * scale_factor)
-            flow[4] = resize(flow[4], output_shape=original_tile_shape)
+            flow[4] = resize_tile(flow[4], flow_shape)
 
         weight = get_weight(flow[4].shape[1], edge=("f" if not cur_height else "l" if cur_height + flow[4].shape[1] == flow_shape[1] else None))
         dict_weight[f"{cur_height}"] = weight
@@ -152,11 +163,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     list_npy = vars(args)['in']
-    if len(list_npy) == 1:
-        flows = load_npy(list_npy[0])[4]
-        np.save(args.out, flows)
-    else:
-        stich_flow(list_npy, args.original, overlap=args.overlap, out_path=args.out)
+    stich_flow(list_npy, args.original, overlap=args.overlap, out_path=args.out)
 
 """
 x_val = np.array([])
