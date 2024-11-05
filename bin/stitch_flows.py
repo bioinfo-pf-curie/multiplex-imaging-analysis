@@ -1,9 +1,8 @@
 #!/usr/bin/env python
-from utils import get_current_height
+from utils import get_current_height, read_tiff_orion
 
 import argparse
 import numpy as np
-from tifffile import TiffFile
 
 def get_weight(tile, edge=False):
     """
@@ -103,8 +102,8 @@ def stich_flow(list_npy, input_img_path, overlap, out_path):
     total_flow: np.array
         the flow for complete image
     """
-    original_tiff = TiffFile(input_img_path)
-    flow_shape = (3, *original_tiff.series[0].shape[1:])
+    original_tiff, _ = read_tiff_orion(input_img_path)
+    flow_shape = (3, *original_tiff.shape[1:])
     # init memmap
     total_flow = np.lib.format.open_memmap(out_path, dtype='float32', mode="w+", shape=flow_shape)
 
