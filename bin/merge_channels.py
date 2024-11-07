@@ -70,17 +70,21 @@ def tile_generator(arr, nuclei_chan, to_merge_chan, x, y, chunk_x, chunk_y, agg=
         for c in to_merge_chan:
             norm_val[c] = compute_hist(arr, c, x, y, chunk_x, chunk_y)
 
-    im_da = da.from_zarr(arr)
+    # im_da = da.from_zarr(arr)
 
-    im_da_c_overlap = da.map_overlap(norm_nuclei_chan, im_da[nuclei_chan,...], 
-                                     norm=norm, norm_val=norm_val[nuclei_chan],
-                                     kernel_size=kernel_size,
-                                     clip_limit=clip_limit, 
-                                     nbins=nbins, depth=50, dtype=float).compute()
+    # im_da_c_overlap = da.map_overlap(norm_nuclei_chan, im_da[nuclei_chan,...], 
+    #                                  norm=norm, norm_val=norm_val[nuclei_chan],
+    #                                  kernel_size=kernel_size,
+    #                                  clip_limit=clip_limit, 
+    #                                  nbins=nbins, depth=50, dtype=float).compute()
+    for tile in _tile_generator(arr, nuclei_chan, x, y, chunk_x, chunk_y):
+        yield norm_nuclei_chan(
+            tile, norm=norm, norm_val=norm_val[nuclei_chan],
+            kernel_size=kernel_size, clip_limit=clip_limit, 
+            nbins=nbins
+        )
 
-    yield from _tile_generator(im_da_c_overlap, None, x, y, chunk_x, chunk_y)
-
-    del im_da_c_overlap
+    # del im_da_c_overlap
 
     for tmp_arr in _tile_generator(arr, to_merge_chan, x, y, chunk_x, chunk_y):
         if norm == "gaussian":
