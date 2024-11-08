@@ -121,7 +121,7 @@ def stich_flow(list_npy, input_img_path, overlap, out_path):
     for i, npy in enumerate(list_npy):
         cur_height = get_current_height(npy)
         flow = load_npy(npy)
-        if flow.shape[2] != flow_shape[2]:
+        if flow[4].shape[2] != flow_shape[2]:
             # an upscaling was performed in cellpose
             flow[4] = resize_tile(flow[4], flow_shape)
 
