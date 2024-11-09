@@ -1,7 +1,7 @@
 process mask2geojson {
   label 'img_utils'
   label 'medCpu'
-  label 'highMem'
+  label 'maxMem'
 
   input:
     tuple val(meta), path(image)
