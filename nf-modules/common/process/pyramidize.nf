@@ -1,7 +1,7 @@
 process pyramidize {
   label 'pyramidize'
   label 'minCpu'
-  label "highTime"
+  label "infiniteTime"
 
   memory {MemoryUnit.of(Math.max(Math.min((image.size() as Float) * 0.2, params.maxMemory.size), params.minMemory.size * 2).toLong()) * task.attempt}
 

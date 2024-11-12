@@ -53,6 +53,7 @@ workflow segmentation {
 
       groupSegmented = seg.out[0].map{meta, segmentedImg, models, diameter ->
         meta['model'] = models
+        // get diameter from cellpose output
         meta['diameter'] = (diameter.toString() =~ /using diameter (\d+\.?\d*)/)
         if (meta['diameter']) {
           meta['diameter'] = meta['diameter'][0][1] as Float
