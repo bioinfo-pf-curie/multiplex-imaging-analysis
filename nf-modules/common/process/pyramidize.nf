@@ -1,9 +1,9 @@
 process pyramidize {
   label 'pyramidize'
-  label 'minCpu'
+  label 'lowCpu'
   label "infiniteTime"
 
-  memory {MemoryUnit.of(Math.max(Math.min((image.size() as Float) * 0.4, params.maxMemory.size), params.minMemory.size * 2).toLong()) * task.attempt}
+  memory {MemoryUnit.of(Math.max(Math.min((image.size() as Float) * 0.3, params.maxMemory.size), params.minMemory.size * 2).toLong()) * task.attempt}
 
   input:
      tuple val(tag), val(meta), path(image)
