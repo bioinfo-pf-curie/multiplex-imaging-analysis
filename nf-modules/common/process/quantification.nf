@@ -9,7 +9,7 @@ process quantification {
       tuple val(meta), path(mask)
 
   output:
-    path("*.csv")
+    tuple val(meta), path("*.csv")
 
   when:
     task.ext.when == null || task.ext.when

@@ -7,11 +7,17 @@ import pandas as pd
 import numpy as np
 import cv2
 import tifffile
-
-from reportlab.lib.pagesizes import letter
-from reportlab.platypus import SimpleDocTemplate, Image, Table, Paragraph
 import plotly.express as px
-import plotly.graph_objects as go
+import plotly.io as pio
+
+from utils import min_max_norm
+
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.platypus import SimpleDocTemplate, Image, Table, Paragraph, Spacer, PageBreak
+
+
+pio.templates.default = "plotly_white"
 
 
 class ScimapGraph:
@@ -86,82 +92,126 @@ class GetBasicInfo:
 
         self.marker_cols = [col for col in self.df if col not in self.cn.values()]
 
-        size_dis = self.make_size_distribution()
-        marker_dis = self.make_markers_distribution()
-        coexpr = self.make_co_expression()
+        self.size_dis = self.make_size_distribution(height=650)
+        self.marker_dis = self.make_markers_distribution(height=650)
+        coexpr_size = max(600, 70 * len(self.marker_cols))
+        self.coexpr = self.make_co_expression(height=coexpr_size, width=coexpr_size)
 
         self.tiff = tifffile.TiffFile(img_path)
-        self.get_fraction_segmented()
+        if self.tiff.series[0].is_pyramidal:
+            self.thumbnail = self.tiff.series[0].levels[-1].asarray()
+            i,a = np.quantile(self.thumbnail, [0.01,0.99])
+            self.thumbnail = min_max_norm(self.thumbnail, i, a, output_max=255)
+        else: 
+            self.thumbnail = None
+
+        self.segmented_fraction = self.get_fraction_segmented()
 
     def get_fraction_segmented(self):
+        if self.thumbnail is None:
+            raise ValueError('No thumbnail to compute')
         try:
-            print(len(se))
-            t = self.tiff.series[-1].asarray()
-            flatten_thumbnail = np.apply_along_axis(np.mean, 0, t)
-            print(flatten_thumbnail.shape)
+            flatten_thumbnail = self.thumbnail.mean(axis=0).astype('uint8')
         except:
             raise 
 
         # get original size compare to thumbnail
-        thumbnail_factor = 2 ** (len(self.tiff.series) - 1)
+        thumbnail_factor = 2 ** ((len(self.tiff.series[0].levels) - 1) * 2) # *2 for area
 
         # separate tissue from background
-        mask = np.where(thumbnail > 100, cv2.GC_PR_FGD, cv2.GC_PR_BGD).astype(np.float32)
+        mask = np.where(flatten_thumbnail > 10, cv2.GC_PR_FGD, cv2.GC_PR_BGD).astype('uint8')
+
         bgdModel = np.zeros((1,65),np.float64)
         fgdModel = np.zeros((1,65),np.float64)
-        cv2.grabCut(thumbnail,mask,None,bgdModel,fgdModel,5,cv2.GC_INIT_WITH_MASK)
+        cv2.grabCut(cv2.cvtColor(flatten_thumbnail, cv2.COLOR_GRAY2RGB),mask,None,bgdModel,fgdModel,5,cv2.GC_INIT_WITH_MASK)
 
         # calculate real area size of tissue
-        tissue_area = mask.sum() * thumbnail_factor
-
+        tissue_area = np.where(mask == cv2.GC_PR_FGD, 1, 0).sum() * thumbnail_factor 
+        self.tissue_fraction = tissue_area / (np.multiply(*mask.shape) * thumbnail_factor)
         # sum all cells area
         segmented_area = self.df[self.cn["area"]].sum()
 
-        self.fraction_segmented = segmented_area / tissue_area
-        return self.fraction_segmented
+        return segmented_area / tissue_area
     
-    def make_size_distribution(self, fig_name="size_distribution.png"):
+    def make_size_distribution(self, fig_name="size_distribution.png", *args, **kwargs):
         fig = px.histogram(self.df, x=self.cn["area"])
-        fig.show()
+        fig.write_image(fig_name, *args, **kwargs)
+        return fig_name
 
-    def make_markers_distribution(self, dir_name="markers_distribution", fig_name="{marker}.png"):
+    def make_markers_distribution(self, fig_name="markers_distribution.png", *args, **kwargs):
         fig = px.violin(self.df, x=self.marker_cols)
         fig.update_yaxes(title_text="Markers")
         fig.update_xaxes(title_text="Intensities")
-        fig.show()
+        fig.write_image(fig_name, *args, **kwargs)
+        return fig_name
 
-    def make_co_expression(self, fig_name="scatter_matrix.png"):
+    def make_co_expression(self, fig_name="scatter_matrix.png", *args, **kwargs):
         fig = px.scatter_matrix(self.df, dimensions=self.marker_cols)
         fig.update_traces(diagonal_visible=False, showupperhalf=False)
-        fig.show()
+        fig.update_layout(font_size=6)
+        fig.write_image(fig_name, *args, **kwargs)
+        return fig_name
 
-        
 
 class PDFReport:
-    # header_style = ParagraphStyle('Hed0', fontSize=12, borderWidth=3, textColor="gray")
-    # sub_header_style = ParagraphStyle('Hed3', fontSize=10, textColor="gray")
 
-    def __init__(self, reportpath):
+    def __init__(self, reportpath, pagesize=A4):
+        self.styles = getSampleStyleSheet()
         self.path = reportpath
+        self.doc = SimpleDocTemplate(self.path, pagesize=pagesize)
+        self.doc_width, self.doc_height = pagesize
+        self.parts = []
+
+    def p(self, text, style='BodyText'):
+        self.parts.append(Paragraph(text, style=self.styles[style]))
+
+    def header(self, title):
+        self.p(title, 'h1')
+
+    def spacer(self, height=100, width=None):
+        if width is None:
+            width = self.doc_width
+        self.parts.append(Spacer(width=width, height=height))
+
+    def img(self, src, width, height):
+        self.parts.append(Image(src, width=width, height=height))
+
+    def page_break(self):
+        self.parts.append(PageBreak())
 
     def write_report(self):
-
-        doc = SimpleDocTemplate(self.report_path, pagesize=letter)
-        parts = [
-                Paragraph(title, header_style),
-                Paragraph("Info", sub_header_style),
-                Table(info, colWidths=270, rowHeights=79)
-        ]
         # parts.append(Image("scimap/spatial_interaction.jpg", width=400, height=560))
         # parts.append(Image("scimap/test_colormap.jpg", width=400, height=560))
         # parts.append(Image("scimap/test_interaction.jpg", width=400, height=560))
         # parts.append(Image("scimap/voronoi.jpg", width=400, height=560))
-        doc.build(parts)
+        self.doc.build(self.parts)
         
 
 def main(csv_path, image_path, report_name, method):
+    
+    info = GetBasicInfo(image_path, csv_path)
 
-    GetBasicInfo(image_path, csv_path)
+    mypdf = PDFReport(report_name)
+    
+    mypdf.header(Path(csv_path).stem)
+    mypdf.spacer()
+    mypdf.p('Info', 'h3')
+    mypdf.p(f"""
+- {info.nb_cell} cell{'s' if info.nb_cell > 1 else ''} found<br />
+- Tissue / Background area : {info.tissue_fraction*100:.02f} %<br />
+- Segmented Fraction : {info.segmented_fraction*100:.02f} %<br />
+""")
+    mypdf.page_break()
+    mypdf.p('Size Distribution', 'h3')
+    mypdf.img(info.size_dis, width=mypdf.doc.width, height=400)
+    mypdf.page_break()
+    mypdf.p('Markers Distribution', 'h3')
+    mypdf.img(info.marker_dis, width=mypdf.doc.width, height=400)
+    mypdf.page_break()
+    mypdf.p('Markers Co-Distribution', 'h3')
+    mypdf.img(info.coexpr, width=mypdf.doc.width, height=600)
+
+    mypdf.write_report()
 
 
 if __name__ == "__main__":

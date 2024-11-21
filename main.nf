@@ -185,7 +185,7 @@ workflow {
 
     filtered_quant = qc(quant)
 
-    report = makeReport(filtered_quant.mix(quant))
+    report = makeReport(quant.mix(filtered_quant))
 
     //*******************************************
     // Warnings that will be printed in the mqc report

@@ -4,10 +4,10 @@ process qc {
   label 'lowMem'
 
   input:
-    path(quantif)
+    tuple val(meta), path(quantif)
 
   output:
-    path("*.csv")
+    tuple val(meta), path("*.csv")
 
   when:
     task.ext.when == null || task.ext.when
