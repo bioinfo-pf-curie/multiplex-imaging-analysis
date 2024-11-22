@@ -14,6 +14,7 @@ import numpy as np
 import os
 from skimage.measure._regionprops import PROP_VALS, regionprops_table
 import tifffile
+import time
 
 from pathlib import Path
 
@@ -47,12 +48,18 @@ def MaskChannel(mask_loaded, image_loaded_z, intensity_props=["intensity_mean"])
     # Otherwise look for them in this module
     extra_props = set(intensity_props).difference(PROP_VALS)
     print(mask_loaded.shape)
+
+    t0 = time.process_time()
+    logger.debug(f'Main point : ')
     dat = regionprops_table(
         mask_loaded, image_loaded_z,
         properties = tuple(builtin_props),
         extra_properties = [globals()[n] for n in extra_props],
         cache=False
     )
+
+    t1 = time.process_time()
+    logger.debug(f'finish region props : { t1 - t0}')
     return dat
 
 
@@ -161,9 +168,16 @@ def MaskZstack(masks_loaded,image,channel_names_loaded, mask_props=None, intensi
     #Create empty dictionary to store channel results per mask
     dict_of_chan = {m_name: [] for m_name in mask_names}
     #Get the z channel and the associated channel name from list of channel names
+
+    t0 = time.process_time()
+    logger.debug(f'in M::')
+
     for z in range(len(channel_names_loaded)):
         #Run the data Prep function
         image_loaded_z = PrepareData(image,z, normalization, norm_val)
+
+        t1 = time.process_time()
+        logger.debug(f'M:: load channel {z} : { t1 - t0}')
 
         #Iterate through number of masks to extract single cell data
         for nm in mask_names:
@@ -171,6 +185,8 @@ def MaskZstack(masks_loaded,image,channel_names_loaded, mask_props=None, intensi
             dict_of_chan[nm].append(
                 MaskChannel(masks_loaded[nm],image_loaded_z, intensity_props=intensity_props)
             )
+        t0 = time.process_time()
+        logger.debug(f'M:: perform extract : { t0 - t1}')
         #Print progress
         print("Finished "+str(z))
 
@@ -223,6 +239,7 @@ def ExtractSingleCells(masks,image,channel_names,output, mask_props=None, intens
     #Create pathlib object for output
     output = Path(output)
 
+    t0 = time.process_time()
     #Read csv channel names
     channel_names_loaded = pd.read_csv(channel_names)
     #Check for the presence of `marker_name` column
@@ -238,8 +255,12 @@ def ExtractSingleCells(masks,image,channel_names,output, mask_props=None, intens
         raise Exception('%s must contain the marker_name column'%channel_names)
     
     
+    t1 = time.process_time()
+    logger.debug(f'parse channel name : { t1 - t0}')
     norm_val = parse_normalization_values(channel_names_loaded)
 
+    t2 = time.process_time()
+    logger.debug(f'parse norm val : { t2 - t1 }')
     #Contrast against the number of markers in the image
     if len(channel_names_loaded_list) != n_channels(image):
         raise Exception("The number of channels in %s doesn't match the image"%channel_names)
@@ -263,10 +284,15 @@ def ExtractSingleCells(masks,image,channel_names,output, mask_props=None, intens
         m_name = m_full_name.split('.')[0]
         masks_loaded.update({str(m_name):skimage.io.imread(m,plugin='tifffile')})
 
+    t3 = time.process_time()
+    logger.debug(f'load mask : { t3 - t2}')
+
     scdata_z = MaskZstack(masks_loaded,image,channel_names_loaded_checked, mask_props=mask_props, 
                           intensity_props=intensity_props, normalization=normalization, norm_val=norm_val)
     #Write the singe cell data to a csv file using the image name
 
+    t4 = time.process_time()
+    logger.debug(f'compute for mask : { t4 - t3}')
     # Determine the image name by cutting off its extension
     im_full_name = os.path.basename(image)
     im_tokens = im_full_name.split(os.extsep)
@@ -282,6 +308,9 @@ def ExtractSingleCells(masks,image,channel_names,output, mask_props=None, intens
                             str(im_name+"_{}"+".csv").format(k)))),
                             index=False
                             )
+        
+    t5 = time.process_time()
+    logger.debug(f'export csv : { t5 - t4}')
 
 
 def MultiExtractSingleCells(masks,image,channel_names,output, mask_props=None, intensity_props=["intensity_mean"], normalization=None):
@@ -351,4 +380,8 @@ if __name__ == "__main__":
     args = ParseInputDataExtract()
 
     #Run the MultiExtractSingleCells function
+    import logging
+    logger = logging.getLogger(__name__)
+    logging.basicConfig(filename='log.txt', encoding='utf-8', level=logging.DEBUG)
+    
     MultiExtractSingleCells(**args)
