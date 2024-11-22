@@ -4,7 +4,6 @@ import os
 from ome_types import OME, model
 import copy
 import warnings
-import xml.etree.ElementTree as ET
 import numpy as np
 
 def get_current_height(npy_path):
@@ -103,73 +102,6 @@ def compute_hist(img, channel, x, y, chunk_x, chunk_y, img_min=None, img_max=Non
         res = bins[idx_min], bins[idx_max]
 
     return res
-
-def get_info_qptiff(qptiff):
-    qptiff_data = ET.fromstring(qptiff)
-    version = qptiff_data.find('DescriptionVersion').text
-    if version == "2":
-        return qptiff2ome_v2(qptiff_data.find("ScanProfile")[0])
-    elif version == "4":
-        return qptiff2ome_v4(qptiff_data.find("ScanProfile"))
-
-def qptiff2ome_v2(root):
-    # PX = 0.325, PXU = µm, PY = 0.325, PYU = µm, PZ = 1, PZU=µm, size_c, size_t=1, size_z=1, size_x, size_y, dtype=uint16
-
-    result = dict(
-        PXU = "µm", PYU = "µm", PZU = "µm",
-        PZ = 1, size_t=1, size_z=1,
-        dtype="uint16"
-    )
-
-    for child in root:
-        if "Resolution" in child.tag:
-            result['PX'] = float(child.text)
-            result['PY'] = result['PX']
-            result["PXU"] = result['PYU'] = child.tag.rsplit('_', 1)[1]
-
-    channels = []
-    planes = []
-    current_idx = 0
-    for cycle in root.find('Cycles').findall('Cycle'):
-        for channel in cycle.find('Channels').findall("Channel"):
-            if channel.find('MarkerName').text.lower() not in ('empty', 'blank', ''):
-                if "dapi" in channel.find('MarkerName').text.lower() and cycle.find('Index') != "1":
-                    continue # do not add more than one dapi channel (other are used for alignment)
-                channels.append(model.Channel(id=f"Channel:{current_idx}", name=channel.find('MarkerName').text, 
-                                              samples_per_pixel=1, light_path=model.LightPath()))
-                planes.append(model.Plane(the_c=current_idx, the_t=0, the_z=0))
-                current_idx += 1
-
-    result["size_c"] = len(channels)
-    result['channels'] = channels
-    result["planes"] = planes
-    # when make_annotations is finished one should add "<AnnotationRef ID="Annotation:Stitcher:0"/>" before </Image>
-    return result
-
-def qptiff2ome_v4(root):
-    result = dict(
-        PXU = "µm", PYU = "µm", PZU = "µm",
-        PZ = 1, size_t=1, size_z=1,
-        dtype="uint16"
-    )
-    import json
-    # !!!! Vulnerability !!!!
-    wells = json.loads(root.text)['experimentDescription']['wells'] # new version (WIP)
-    idx = 0
-    channels = {}
-    for well in wells:
-        for item in well['items']:
-            if item['markerName'] not in ('empty', 'blank', '', '--') and item['markerName'] not in channels: # do not add multiple channel with same name
-                channels[item['markerName']] = idx
-                idx += 1
-    planes = [model.Plane(the_c=i, the_t=0, the_z=0) for i in channels.values()]
-    channels = [model.Channel(id=f"Channel:{v}", name=k, samples_per_pixel=1, light_path=model.LightPath()) 
-                for k, v in channels.items()]
-    result["size_c"] = len(channels)
-    result['channels'] = channels
-    result["planes"] = planes
-    # when make_annotations is finished one should add "<AnnotationRef ID="Annotation:Stitcher:0"/>" before </Image>
-    return result
 
 def make_ome_data(size_x, size_y, size_c, dtype="uint16", **kwargs):
     nominal_magnification = kwargs.pop("nominal_magnification", 20.0)
@@ -276,11 +208,7 @@ class OmeTifffile(object):
 
         for tag in tifffile_metadata.tags:
             if tag.name == "ImageDescription":
-                try:
-                    self.ome = OME.from_xml(tag.value, **kwargs)
-                except ValueError:
-                    # qptiff format (from CODEX, WIP)
-                    qptiff_xml = tag.value
+                self.ome = OME.from_xml(tag.value, **kwargs)
 
             elif tag.name in self.direct_props.keys():
                 try:
@@ -304,19 +232,7 @@ class OmeTifffile(object):
         self.dtype = tifffile_metadata.dtype
 
         if self.ome is None:
-            try:
-                default = get_info_qptiff(qptiff_xml)
-            except BaseException:
-                default = {}
-
-            default['size_x'] = self.size[1]
-            default['size_y'] = self.size[0]
-            default['dtype'] = self.dtype
-            default.update(kwargs)
-            if "size_c" not in default:
-                default['size_c'] = 1
-            self.ome = make_ome_data(**default)
-            # self.ome = make_ome_data(1,1,1) # better default ? i don't want to fail when there is 0 metadata
+            raise TypeError('Unrecognized format, need a compatible ome tiff file')
             
         if self.tags.get('planarconfig', None) == 1 and kwargs.get('force_planarconfig', True):
             warnings.warn("Planar Configuration read as 1 (contigue) will be removed from metadata."

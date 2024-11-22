@@ -106,6 +106,8 @@ class GetBasicInfo:
             self.thumbnail = None
 
         self.segmented_fraction = self.get_fraction_segmented()
+        self.th_img = tiff2rgb(self.thumbnail)
+        tifffile.imwrite('test_thumb.tiff', self.thumbnail)
 
     def get_fraction_segmented(self):
         if self.thumbnail is None:
@@ -117,10 +119,9 @@ class GetBasicInfo:
 
         # get original size compare to thumbnail
         thumbnail_factor = 2 ** ((len(self.tiff.series[0].levels) - 1) * 2) # *2 for area
-
         # separate tissue from background
-        mask = np.where(flatten_thumbnail > 10, cv2.GC_PR_FGD, cv2.GC_PR_BGD).astype('uint8')
-
+        mask = np.where(flatten_thumbnail > np.quantile(flatten_thumbnail,0.2), cv2.GC_PR_FGD, cv2.GC_PR_BGD).astype('uint8')
+        print(np.unique(mask, return_counts=True))
         bgdModel = np.zeros((1,65),np.float64)
         fgdModel = np.zeros((1,65),np.float64)
         cv2.grabCut(cv2.cvtColor(flatten_thumbnail, cv2.COLOR_GRAY2RGB),mask,None,bgdModel,fgdModel,5,cv2.GC_INIT_WITH_MASK)
@@ -173,8 +174,10 @@ class PDFReport:
             width = self.doc_width
         self.parts.append(Spacer(width=width, height=height))
 
-    def img(self, src, width, height):
-        self.parts.append(Image(src, width=width, height=height))
+    def img(self, src, width=None, height=None):
+        img = Image(src, width=width, height=height)
+        img.vAlign = "MIDDLE"
+        self.parts.append(img)
 
     def page_break(self):
         self.parts.append(PageBreak())
@@ -185,7 +188,20 @@ class PDFReport:
         # parts.append(Image("scimap/test_interaction.jpg", width=400, height=560))
         # parts.append(Image("scimap/voronoi.jpg", width=400, height=560))
         self.doc.build(self.parts)
-        
+
+def tiff2rgb(img, out_path="thumbnail.png"):
+    color_cycle = [[int(h.strip("#")[i:i+2], 16) / 255 for i in (0, 2, 4)] 
+                   for h in ['#1F77B4', '#FF7F0E', '#2CA02C', '#D62728', '#9467BD', '#8C564B', '#E377C2', '#7F7F7F', '#BCBD22', '#17BECF']]
+    result = np.transpose(np.stack([img[0], img[1], img[2]]), (1,2,0)) # take the first three channels as RGB
+
+    # and merge the rest
+    for channel in range(3, img.shape[0]):
+        tmp_img = np.transpose(np.stack([img[channel]] * 3) * np.array(color_cycle[channel % len(color_cycle)])[:,None,None], (1,2,0))
+        alpha = 1 / (channel + 1)
+        result = cv2.addWeighted(result, 1-alpha, tmp_img, alpha, 0)
+    cv2.imwrite(out_path, result.astype('uint8'))
+    return out_path
+
 
 def main(csv_path, image_path, report_name, method):
     
@@ -194,6 +210,7 @@ def main(csv_path, image_path, report_name, method):
     mypdf = PDFReport(report_name)
     
     mypdf.header(Path(csv_path).stem)
+    mypdf.img(info.th_img)#, width=200, height=200)
     mypdf.spacer()
     mypdf.p('Info', 'h3')
     mypdf.p(f"""
