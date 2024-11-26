@@ -147,7 +147,7 @@ def PrepareData(image,z, normalization=None, norm_val=None):
             nv = norm_val[z]
         else:
             nv = [-1, -1] # do not do normalization (wrong usage of parms) 
-        print(f"{nv=}")
+
         image_loaded_z[image_loaded_z < nv[0]] = int(nv[0]) # for me it should be min_max_norm(image_loaded_z, *nv) but hey idc
 
     #Return the objects
@@ -169,7 +169,7 @@ def MaskZstack(masks_loaded,image,channel_names_loaded, mask_props=None, intensi
     dict_of_chan = {m_name: [] for m_name in mask_names}
     #Get the z channel and the associated channel name from list of channel names
 
-    t0 = time.process_time()
+    t0 = t2 = time.process_time()
     logger.debug(f'in M::')
 
     for z in range(len(channel_names_loaded)):
@@ -177,7 +177,7 @@ def MaskZstack(masks_loaded,image,channel_names_loaded, mask_props=None, intensi
         image_loaded_z = PrepareData(image,z, normalization, norm_val)
 
         t1 = time.process_time()
-        logger.debug(f'M:: load channel {z} : { t1 - t0}')
+        logger.debug(f'M:: load channel {z} : { t1 - t2}')
 
         #Iterate through number of masks to extract single cell data
         for nm in mask_names:
@@ -185,10 +185,11 @@ def MaskZstack(masks_loaded,image,channel_names_loaded, mask_props=None, intensi
             dict_of_chan[nm].append(
                 MaskChannel(masks_loaded[nm],image_loaded_z, intensity_props=intensity_props)
             )
-        t0 = time.process_time()
-        logger.debug(f'M:: perform extract : { t0 - t1}')
+        t2 = time.process_time()
+        logger.debug(f'M:: perform extract : { t2 - t1}')
         #Print progress
         print("Finished "+str(z))
+    logger.debug(f'finished all {z} in {t2 - t0}')
 
     # Column order according to histoCAT convention (Move xy position to end with spatial information)
     last_cols = (
@@ -213,6 +214,7 @@ def MaskZstack(masks_loaded,image,channel_names_loaded, mask_props=None, intensi
             return -1
 
     #Iterate through the masks and format quantifications for each mask and property
+    t3 = t2
     for nm in mask_names:
         mask_dict = {}
         # Mean intensity is default property, stored without suffix
@@ -224,11 +226,16 @@ def MaskZstack(masks_loaded,image,channel_names_loaded, mask_props=None, intensi
             mask_dict.update(
                 zip([f"{n}_{prop_n}" for n in channel_names_loaded], [x[prop_n] for x in dict_of_chan[nm]])
             )
+        t4 = time.process_time()
+        logger.debug(f'{nm} dict creation : { t4 - t3}')
         # Get the cell IDs and mask properties
         mask_properties = pd.DataFrame(MaskIDs(masks_loaded[nm], mask_props=mask_props))
         mask_dict.update(mask_properties)
         dict_of_chan[nm] = pd.DataFrame(mask_dict).reindex(columns=sorted(mask_dict.keys(), key=col_sort))
+        t3 = time.process_time()
+        logger.debug(f'{nm} df creation : { t3 - t4}')
 
+    logger.debug(f'total time data format : { t3 - t2}')
     # Return the dict of dataframes for each mask
     return dict_of_chan
 
@@ -239,7 +246,6 @@ def ExtractSingleCells(masks,image,channel_names,output, mask_props=None, intens
     #Create pathlib object for output
     output = Path(output)
 
-    t0 = time.process_time()
     #Read csv channel names
     channel_names_loaded = pd.read_csv(channel_names)
     #Check for the presence of `marker_name` column
@@ -255,12 +261,8 @@ def ExtractSingleCells(masks,image,channel_names,output, mask_props=None, intens
         raise Exception('%s must contain the marker_name column'%channel_names)
     
     
-    t1 = time.process_time()
-    logger.debug(f'parse channel name : { t1 - t0}')
     norm_val = parse_normalization_values(channel_names_loaded)
 
-    t2 = time.process_time()
-    logger.debug(f'parse norm val : { t2 - t1 }')
     #Contrast against the number of markers in the image
     if len(channel_names_loaded_list) != n_channels(image):
         raise Exception("The number of channels in %s doesn't match the image"%channel_names)
@@ -285,7 +287,6 @@ def ExtractSingleCells(masks,image,channel_names,output, mask_props=None, intens
         masks_loaded.update({str(m_name):skimage.io.imread(m,plugin='tifffile')})
 
     t3 = time.process_time()
-    logger.debug(f'load mask : { t3 - t2}')
 
     scdata_z = MaskZstack(masks_loaded,image,channel_names_loaded_checked, mask_props=mask_props, 
                           intensity_props=intensity_props, normalization=normalization, norm_val=norm_val)
