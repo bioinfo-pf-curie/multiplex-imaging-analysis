@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import os
 import argparse
 # import scimap as sm
 from pathlib import Path
@@ -9,6 +10,8 @@ import cv2
 import tifffile
 import plotly.express as px
 import plotly.io as pio
+from jinja2 import Template
+import json
 
 from utils import min_max_norm
 
@@ -92,10 +95,10 @@ class GetBasicInfo:
 
         self.marker_cols = [col for col in self.df if col not in self.cn.values()]
 
-        self.size_dis = self.make_size_distribution(height=650)
-        self.marker_dis = self.make_markers_distribution(height=650)
-        coexpr_size = max(600, 70 * len(self.marker_cols))
-        self.coexpr = self.make_co_expression(height=coexpr_size, width=coexpr_size)
+        # self.size_dis = self.make_size_distribution(height=650)
+        # self.marker_dis = self.make_markers_distribution(height=650)
+        # coexpr_size = max(600, 70 * len(self.marker_cols))
+        # self.coexpr = self.make_co_expression(height=coexpr_size, width=coexpr_size)
 
         self.tiff = tifffile.TiffFile(img_path)
         if self.tiff.series[0].is_pyramidal:
@@ -103,11 +106,13 @@ class GetBasicInfo:
             i,a = np.quantile(self.thumbnail, [0.01,0.99])
             self.thumbnail = min_max_norm(self.thumbnail, i, a, output_max=255)
         else: 
-            self.thumbnail = None
+            total_size = 1
+            for dim in self.tiff.series[0].shape:
+                total_size *= dim
+            self.thumbnail = self.tiff.series[0].asarray() if total_size * 2 / (1024 * 1024) < 100 else None
 
         self.segmented_fraction = self.get_fraction_segmented()
-        self.th_img = tiff2rgb(self.thumbnail)
-        tifffile.imwrite('test_thumb.tiff', self.thumbnail)
+        # self.th_img = tiff2rgb(self.thumbnail)
 
     def get_fraction_segmented(self):
         if self.thumbnail is None:
@@ -121,7 +126,6 @@ class GetBasicInfo:
         thumbnail_factor = 2 ** ((len(self.tiff.series[0].levels) - 1) * 2) # *2 for area
         # separate tissue from background
         mask = np.where(flatten_thumbnail > np.quantile(flatten_thumbnail,0.2), cv2.GC_PR_FGD, cv2.GC_PR_BGD).astype('uint8')
-        print(np.unique(mask, return_counts=True))
         bgdModel = np.zeros((1,65),np.float64)
         fgdModel = np.zeros((1,65),np.float64)
         cv2.grabCut(cv2.cvtColor(flatten_thumbnail, cv2.COLOR_GRAY2RGB),mask,None,bgdModel,fgdModel,5,cv2.GC_INIT_WITH_MASK)
@@ -152,6 +156,9 @@ class GetBasicInfo:
         fig.update_layout(font_size=6)
         fig.write_image(fig_name, *args, **kwargs)
         return fig_name
+    
+    def heatmap_data_co_expr(self):
+        return self.df[self.marker_cols].corr()
 
 
 class PDFReport:
@@ -198,7 +205,7 @@ def tiff2rgb(img, out_path="thumbnail.png"):
     for channel in range(3, img.shape[0]):
         tmp_img = np.transpose(np.stack([img[channel]] * 3) * np.array(color_cycle[channel % len(color_cycle)])[:,None,None], (1,2,0))
         alpha = 1 / (channel + 1)
-        result = cv2.addWeighted(result, 1-alpha, tmp_img, alpha, 0)
+        result = cv2.addWeighted(result, 1-alpha, tmp_img, alpha, 0, dtype=cv2.CV_8UC1)
     cv2.imwrite(out_path, result.astype('uint8'))
     return out_path
 
@@ -213,11 +220,17 @@ def main(csv_path, image_path, report_name, method):
     mypdf.img(info.th_img)#, width=200, height=200)
     mypdf.spacer()
     mypdf.p('Info', 'h3')
-    mypdf.p(f"""
+    info_p = f"""
 - {info.nb_cell} cell{'s' if info.nb_cell > 1 else ''} found<br />
 - Tissue / Background area : {info.tissue_fraction*100:.02f} %<br />
 - Segmented Fraction : {info.segmented_fraction*100:.02f} %<br />
-""")
+"""
+    if filter_data:
+        info_p += f"""
+- Filter : {filter_data}<br />
+"""
+    mypdf.p(info_p)
+    
     mypdf.page_break()
     mypdf.p('Size Distribution', 'h3')
     mypdf.img(info.size_dis, width=mypdf.doc.width, height=400)
@@ -227,17 +240,53 @@ def main(csv_path, image_path, report_name, method):
     mypdf.page_break()
     mypdf.p('Markers Co-Distribution', 'h3')
     mypdf.img(info.coexpr, width=mypdf.doc.width, height=600)
+    mypdf.p('Materials and Methods', 'h3')
+    mypdf.p("""
+
+""")
 
     mypdf.write_report()
+
+def main2(image_path, csv_path, qcparms, out_dir):
+    df_gen = {}
+    for img, csv in zip(image_path, csv_path):
+        info = GetBasicInfo(img, csv)
+        img_name = Path(img).stem
+        qc = json.loads(qcparms)
+
+        # write gen stat
+        df_gen[img_name] = {'Cell number': info.nb_cell,
+                                  "Tissue / Background area": info.tissue_fraction * 100,
+                                  "Segmented Fraction": info.segmented_fraction * 100, 
+                                  "Minimal Size": qc['areaMin'], "Maximal Size": qc['areaMax'], 
+                                  "Necrotics cells": qc['necroticIntensityTreshold'], 
+                                  "Region of Interest": "yes" if qc['ROIPath'] else "no"}
+        # create thumbnail
+        tiff2rgb(info.thumbnail, out_path= out_dir / f"{img_name}_thumbnail.png")
+        
+        # write heatmap data
+        info.heatmap_data_co_expr().to_csv(out_dir / f'{img_name}_heatmap.csv')
+
+        # write methods
+        with open(Path(os.environ.get('NXF_ASSETS')) / "method_template.html", 'r') as templatef:
+            template = Template(templatef.read())
+
+        with open(out_dir / f'{img_name}_methods.html', 'w') as out:
+            out.write(template.render())
+        
+    df_gen = pd.DataFrame.from_dict(df_gen, orient='index')
+    df_gen.index.name = "Image name"
+    df_gen.to_csv(out_dir / 'report_stats.csv')
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--csv_path', type=str, required=True, help="path for csv file of quantification")
-    parser.add_argument('--img_path', type=str, required=True, help="path for original img")
-    parser.add_argument('--report_name', type=str, required=True, help="Output filepath")
+    parser.add_argument('--csv_path', type=str, nargs="+", required=True, help="path for csv file of quantification")
+    parser.add_argument('--img_path', type=str, nargs="+", required=True, help="path for original img")
+    parser.add_argument('--out_dir', type=str, required=True, help="Output filepath")
+    parser.add_argument('--parms', type=str, required=True, help="parameters used")
     parser.add_argument('--cluster_method', type=str, required=False, default="phenograph", 
                         help="name of the cluster method (currently available : kmeans, phenograph or leiden)")
     args = parser.parse_args()
-
-    main(csv_path=args.csv_path, image_path=args.img_path, report_name=args.report_name, method=args.cluster_method)
+    print(args.parms)
+    main2(csv_path=args.csv_path, image_path=args.img_path, qcparms=args.parms, out_dir=Path(args.out_dir))#, report_name=args.report_name, method=args.cluster_method)

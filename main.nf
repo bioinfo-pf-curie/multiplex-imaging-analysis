@@ -106,7 +106,7 @@ include { mergeMasks } from './nf-modules/common/process/mergeMasks'
 include { segmentation } from './nf-modules/common/workflow/segmentation'
 include { mask2geojson } from './nf-modules/common/process/mask2geojson'
 include { qc } from './nf-modules/common/process/qc'
-include { makeReport } from './nf-modules/common/process/makeReport'
+include { qcFlow } from './nf-modules/common/workflow/qcReport'
 
 /*
 =====================================
@@ -185,7 +185,7 @@ workflow {
 
     filtered_quant = qc(quant)
 
-    report = makeReport(quant.mix(filtered_quant))
+    report = qcFlow(filtered_quant.ifEmpty(quant.collect()).collect(), params)
 
     //*******************************************
     // Warnings that will be printed in the mqc report

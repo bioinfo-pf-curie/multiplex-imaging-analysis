@@ -9,6 +9,8 @@ dependencies:
   - imagecodecs=2023.1.23=py311h8105a5c_0
   - shapely=2.0.1=py311h24a2a10_0
   - dask-core=2023.6.0=py311h06a4308_0
+  - plotly=5.24.1=py311h92b7b1e_0 
+  - bioconda::multiqc=1.25.2=pyhdfd78af_0
   - pip=23.3=py311h06a4308_0
   - pip:
     - scimap==2.1.3
