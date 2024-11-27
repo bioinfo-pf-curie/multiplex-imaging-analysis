@@ -185,7 +185,13 @@ workflow {
 
     filtered_quant = qc(quant)
 
-    report = qcFlow(filtered_quant.ifEmpty(quant.collect()).collect(), params)
+    if (params.qualityControl.any { it.value != null }) {
+      info2Report = filtered_quant.collect()
+    } else {
+      info2Report = quant.collect()
+    }
+
+    report = qcFlow(info2Report, params)
 
     //*******************************************
     // Warnings that will be printed in the mqc report

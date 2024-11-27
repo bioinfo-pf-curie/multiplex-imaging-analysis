@@ -206,7 +206,7 @@ def tiff2rgb(img, out_path="thumbnail.png"):
         tmp_img = np.transpose(np.stack([img[channel]] * 3) * np.array(color_cycle[channel % len(color_cycle)])[:,None,None], (1,2,0))
         alpha = 1 / (channel + 1)
         result = cv2.addWeighted(result, 1-alpha, tmp_img, alpha, 0, dtype=cv2.CV_8UC1)
-    cv2.imwrite(out_path, result.astype('uint8'))
+    cv2.imwrite(str(out_path), result.astype('uint8'))
     return out_path
 
 
