@@ -199,12 +199,15 @@ class OmeTifffile(object):
                     'Compression': "compress", 
                     "Software": "software"}
 
-    def __init__(self, tifffile_metadata, **kwargs):
+    def __init__(self, tifffile_metadata=None, **kwargs):
         self.tags = {"resolution": [None, None, None], "extratags": []}
         self.ome = None
         self.size = [None, None]
-        qptiff_xml = None
         self._dtype = ""
+
+        # allow to create instance without data
+        if tifffile_metadata is None:
+            return
 
         for tag in tifffile_metadata.tags:
             if tag.name == "ImageDescription":
@@ -294,7 +297,10 @@ class OmeTifffile(object):
     def to_dict(self, dtype=True, shape=None):
         """transform this class to a dict of parameters, each of them can be passed to tifffile.write and assimilated"""
         this_dict = self.tags.copy()
-        this_dict['compression'] = this_dict.pop('compress')
+        
+        # args and attr don't have the same name...
+        if 'compress' in this_dict:
+            this_dict['compression'] = this_dict.pop('compress')
 
         if shape is not None:
             self.pix.size_y=shape[0]

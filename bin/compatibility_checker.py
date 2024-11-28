@@ -10,9 +10,9 @@ import argparse
 import tifffile
 from ome_types import OME, model
 import xml.etree.ElementTree as ET
-import PIL
+from PIL import Image
 
-from utils import OmeTifffile, make_ome_data
+from utils import OmeTifffile, make_ome_data, read_tiff_orion
 
 
 def get_info_qptiff(tiff_mtd):
@@ -109,37 +109,32 @@ if __name__ == "__main__":
 
     # open Image
     try:
-        img = tifffile.TiffFile(img_path)
-        tiff = True
+        img, default_mtd = read_tiff_orion(img_path)
     except BaseException:
-        tiff = False
         try:
-            img = PIL.Image.open(img_path)
+            img = Image.open(img_path)
         except BaseException:
             raise TypeError(f'Can not read image {img_path}. Unknown format')
 
-    # read metadata and populate default
-    default_mtd = dict(
-        size_x=img.size[1],
-        size_y=img.size[0],
-        dtype=img.dtype,
-        size_c=1
-    )
-    
-    if tiff:
+        # read metadata and populate default
+        default_mtd = dict(
+            size_x=img.height,
+            size_y=img.width
+        )
+        if img.mode == 'I':
+            default_mtd.update(dict(
+                dtype='int32',
+                size_c=img.n_frames
+            ))
         try:
-            default_mtd = OmeTifffile(img.pages[0]).to_dict()
+            default_mtd = get_info_qptiff(img.pages[0])
         except BaseException:
-            # tiff file but not ome
-            try:
-                default_mtd = get_info_qptiff(img.pages[0])
-            except BaseException:
-                pass
+            pass
 
     # force no compression
     default_mtd['compression'] = 1
-
-    ome = make_ome_data(**default_mtd)
+    mtd = OmeTifffile()
+    mtd.ome = make_ome_data(**default_mtd)
     with tifffile.TiffWriter(args.out, bigtiff=True, shaped=False) as tif:
-        tif.write(img, **ome.to_dict())
+        tif.write(img, **mtd.to_dict())
 
