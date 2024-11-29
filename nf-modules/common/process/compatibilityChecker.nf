@@ -1,7 +1,7 @@
 process compatibilityChecker {
   label 'img_utils'
-  label 'minCpu'
-  label 'lowMem'
+  label 'lowCpu'
+  label 'highMem'
   
   input:
     tuple val(meta), path(img), path(ch)
