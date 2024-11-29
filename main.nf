@@ -98,6 +98,7 @@ workflowSummaryCh = NFTools.summarize(summary, workflow, params)
 include { getSoftwareVersions } from './nf-modules/common/process/utils/getSoftwareVersions'
 include { outputDocumentation } from './nf-modules/common/process/utils/outputDocumentation'
 include { ome2panel } from './nf-modules/common/process/ome2panel'
+include { compatibilityChecker } from './nf-modules/common/process/compatibilityChecker'
 include { mergeChannels } from './nf-modules/common/process/mergeChannels'
 include { displayOutline } from './nf-modules/common/process/displayOutline'
 include { quantification } from './nf-modules/common/process/quantification'
@@ -159,7 +160,9 @@ workflow {
     )
 
     // PROCESS
-    ipts = inputsOriginal.branch{
+    checkedInput = compatibilityChecker(inputsOriginal)
+
+    ipts = checkedInput.branch{
       toMerge: (it[0].markersPath.readLines().size() > 3) & (params.segmentation.name != "instantseg")
       noMerge: true
     }

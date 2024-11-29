@@ -94,47 +94,72 @@ def hyperion2ome():
 def guess_type():
     pass
 
+def open_other_format(img_path):
+    img = Image.open(img_path)
+    # read metadata and populate default
+    default_mtd = dict(
+        size_x=img.height,
+        size_y=img.width
+    )
+    if img.mode == 'I':
+        default_mtd.update(dict(
+            dtype='int32',
+            size_c=img.n_frames
+        ))
+    elif img.mode == "RGB":
+        default_mtd.update(dict(
+            dtype="uint8",
+            size_c=3
+        ))
+        # we need more mode
+    return img, default_mtd
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--image', type=str, required=True, nargs='+', help="Input Image Path")
     parser.add_argument('--out', type=str, required=False, help="Output image Path")
     args = parser.parse_args()
-
     if len(args.image) > 1:
         # merging image 
         # hyperion ?
+        img_path = "" # will be a new one or an in-memory
         pass
     else:
         img_path = args.image[0]
 
     # open Image
-    try:
-        img, default_mtd = read_tiff_orion(img_path)
-    except BaseException:
+    if img_path.endswith("tiff") or img_path.endswith('tif'):
         try:
-            img = Image.open(img_path)
+            img, mtd = read_tiff_orion(img_path)
+            default_mtd = None
+        except BaseException:
+            img = tifffile.TiffFile(img_path)
+            try:
+                default_mtd = get_info_qptiff(img.pages[0])
+            except BaseException:
+                default_mtd = dict(
+                    size_x=img.pages[0].shape[-2],
+                    size_y=img.pages[0].shape[-1],
+                    size_c=img.pages[0].shape[0] if img.pages[0].ndim == 3 else 1,
+                    dtype=img.dtype
+                )
+    else:
+        try:
+            img, default_mtd = open_other_format(img_path)
         except BaseException:
             raise TypeError(f'Can not read image {img_path}. Unknown format')
+        
+    if default_mtd is not None:
+        mtd = OmeTifffile()
+        print(default_mtd)
+        mtd.ome = make_ome_data(**default_mtd)
+        mtd.dtype = default_mtd['dtype']
 
-        # read metadata and populate default
-        default_mtd = dict(
-            size_x=img.height,
-            size_y=img.width
-        )
-        if img.mode == 'I':
-            default_mtd.update(dict(
-                dtype='int32',
-                size_c=img.n_frames
-            ))
-        try:
-            default_mtd = get_info_qptiff(img.pages[0])
-        except BaseException:
-            pass
+    mtd_dict = mtd.to_dict()
 
     # force no compression
-    default_mtd['compression'] = 1
-    mtd = OmeTifffile()
-    mtd.ome = make_ome_data(**default_mtd)
+    mtd_dict['compression'] = 1
+    
     with tifffile.TiffWriter(args.out, bigtiff=True, shaped=False) as tif:
-        tif.write(img, **mtd.to_dict())
+        tif.write(img, **mtd_dict)
 
