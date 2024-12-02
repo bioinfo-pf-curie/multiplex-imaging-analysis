@@ -12,7 +12,7 @@ from ome_types import OME, model
 import xml.etree.ElementTree as ET
 from PIL import Image
 
-from utils import OmeTifffile, make_ome_data, read_tiff_orion
+from utils import OmeTifffile, make_ome_data, read_tiff_orion, _tile_generator
 
 
 def get_info_qptiff(tiff_mtd):
@@ -112,6 +112,11 @@ def open_other_format(img_path):
             size_c=3
         ))
         # we need more mode
+    else:
+        default_mtd.update(dict(
+            size_c=1,
+            dtype="uint16"
+        ))
     return img, default_mtd
 
 if __name__ == "__main__":
@@ -151,7 +156,6 @@ if __name__ == "__main__":
         
     if default_mtd is not None:
         mtd = OmeTifffile()
-        print(default_mtd)
         mtd.ome = make_ome_data(**default_mtd)
         mtd.dtype = default_mtd['dtype']
 
@@ -159,7 +163,11 @@ if __name__ == "__main__":
 
     # force no compression
     mtd_dict['compression'] = 1
+
+    chunk_size = (4096,4096)
+    img_shape = (mtd.pix.size_c, mtd.pix.size_x, mtd.pix.size_y)
     
     with tifffile.TiffWriter(args.out, bigtiff=True, shaped=False) as tif:
-        tif.write(img, **mtd_dict)
+        tif.write(data=_tile_generator(img, [chan for chan in range(mtd.pix.size_c)], mtd.pix.size_x, mtd.pix.size_y, *chunk_size), 
+                    shape=img_shape, tile=[mtd.pix.size_c, *chunk_size], **mtd_dict)
 
