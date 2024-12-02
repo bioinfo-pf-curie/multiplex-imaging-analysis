@@ -165,9 +165,12 @@ if __name__ == "__main__":
     mtd_dict['compression'] = 1
 
     chunk_size = (4096,4096)
-    img_shape = (mtd.pix.size_c, mtd.pix.size_x, mtd.pix.size_y)
-    
+    img_shape = (mtd.pix.size_c, mtd.pix.size_y, mtd.pix.size_x)
+
+    def tile_gen():
+        for chan in range(mtd.pix.size_c):
+            yield from _tile_generator(img, chan, mtd.pix.size_y, mtd.pix.size_x, *chunk_size)
+
     with tifffile.TiffWriter(args.out, bigtiff=True, shaped=False) as tif:
-        tif.write(data=_tile_generator(img, [chan for chan in range(mtd.pix.size_c)], mtd.pix.size_x, mtd.pix.size_y, *chunk_size), 
-                    shape=img_shape, tile=[mtd.pix.size_c, *chunk_size], **mtd_dict)
+        tif.write(data=tile_gen(), shape=img_shape, tile=chunk_size, **mtd_dict)
 

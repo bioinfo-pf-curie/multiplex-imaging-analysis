@@ -294,10 +294,12 @@ class OmeTifffile(object):
             for i in range(c):
                 self.add_channel_metadata(channel_name[i])
 
-    def to_dict(self, dtype=True, shape=None):
+    def to_dict(self, dtype=True, shape=None, tifffile_invalid_extra_tags=False):
         """transform this class to a dict of parameters, each of them can be passed to tifffile.write and assimilated"""
         this_dict = self.tags.copy()
-        
+        if not tifffile_invalid_extra_tags:
+            this_dict['extratags'] = [extratag for extratag in this_dict['extratags'] if extratag[0] not in (256,257,258,273,277,278,279)]
+
         # args and attr don't have the same name...
         if 'compress' in this_dict:
             this_dict['compression'] = this_dict.pop('compress')
