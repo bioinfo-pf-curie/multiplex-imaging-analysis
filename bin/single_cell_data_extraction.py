@@ -304,11 +304,9 @@ def ExtractSingleCells(masks,image,channel_names,output, mask_props=None, intens
     # iterate through each mask and export csv with mask name as suffix
     for k,v in scdata_z.items():
         # export the csv for this mask name
-        scdata_z[k].to_csv(
-                            str(Path(os.path.join(str(output),
-                            str(im_name+"_{}"+".csv").format(k)))),
-                            index=False
-                            )
+        csv_name = im_name + f"_{k}" if im_name != k[:-len('_masks')] else im_name
+        csv_name += "_data.csv"
+        scdata_z[k].to_csv(str(output / csv_name), index=False)
         
     t5 = time.process_time()
     logger.debug(f'export csv : { t5 - t4}')
