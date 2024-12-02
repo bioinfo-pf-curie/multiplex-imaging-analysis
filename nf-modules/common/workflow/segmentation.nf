@@ -10,20 +10,22 @@ process seg {
 
   input:
     tuple val(meta), path(image)
-    each models
+    each model
+    val segmenterConfig
 
   output:
-    tuple val(meta), path(params.segmentation.name == 'cellpose'? '*.npy': '*.tiff'), val(models), stdout
+    tuple val(meta), path(params.segmentation.name == 'cellpose'? '*.npy': '*.tiff'), val(model), stdout
 
   when:
   task.ext.when == null || task.ext.when
 
   script:
-    def cellpose = "cellpose --channel_axis 0 --verbose --savedir . --diameter $params.segmentation.diameter --chan 2 --chan2 1 --image_path $image --pretrained_model $models $params.cellpose.additionalParms"
-    def mesmer = "wrapper_mesmer.py --squeeze --output-directory . --output-name ${meta.splittedName}_masks.tiff --nuclear-image $image --membrane-image $image --membrane-channel 1"
-    def script = params.segmentation.name == 'cellpose' ? cellpose : mesmer
+    def output = "${meta.splittedName}_masks.tiff"
+    def inOut = ['image': image, 'output': output]
+    def cmd = Eval.me("inOut", inOut, segmenterConfig.cmd)
+    def baseParms = Eval.me("model", model, segmenterConfig.baseParms)
     """
-    $script
+    $cmd $baseParms $segmenterConfig.additionalParms
     """
 }
 
@@ -31,11 +33,13 @@ process seg {
 workflow segmentation {
     take:
       metaAndImagesCh
-      modelList
 
     main:
+      def segmenterConfig = new File(params.segmentation.config).withReader{
+        reader -> new ConfigSlurper().parse(reader.text)[params.segmentation.name]
+      }
 
-      splittedImg = splitImage(metaAndImagesCh)
+      splittedImg = splitImage(metaAndImagesCh, segmenterConfig.diameter)
       splittedImgResult = splittedImg.transpose().map{nb, meta, splitted -> 
         def newMeta = [
           originalName: meta.originalName, 
@@ -49,7 +53,10 @@ workflow segmentation {
         tuple(newMeta, splitted)
       }
 
-      seg(splittedImgResult, modelList)
+      def modelList = segmenterConfig.models
+      modelList = modelList instanceof List ? modelList : modelList.tokenize(",")
+
+      seg(splittedImgResult, modelList, segmenterConfig)
 
       groupSegmented = seg.out[0].map{meta, segmentedImg, models, diameter ->
         meta['model'] = models

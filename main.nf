@@ -122,8 +122,7 @@ workflow {
   main:
 
     def tiffPattern = ~/tiff?$/
-    def modelList = params.segmentation.name == "cellpose" ? params.cellpose.models : [""]
-    modelList = modelList instanceof List ? modelList : modelList.tokenize(",")
+
     // Init Channels
     imgCh = Channel.fromPath((params.images =~ tiffPattern) ? params.images : "${params.images}/*ti{f,ff}")
     imgId = imgCh.map{img -> tuple(NFTools.getImageID(img), img)}
@@ -168,7 +167,7 @@ workflow {
     }
     merged = mergeChannels(ipts.toMerge).mix(ipts.noMerge.map{meta, img, ch -> tuple(meta, img)})
 
-    mask = segmentation(merged, modelList)
+    mask = segmentation(merged)
 
     maskJoin = mask.map{
       meta, m ->
