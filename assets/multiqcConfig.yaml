@@ -38,7 +38,7 @@ sp:
    thumbnail:
       fn: '*_thumbnail.png'
    cell_data:
-      fn: '*_masks.csv'
+      fn: '*_data.csv'
    correlation:
       fn: '*_heatmap.csv'
    my_methods:
