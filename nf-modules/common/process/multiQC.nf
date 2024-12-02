@@ -18,7 +18,7 @@ process multiQC {
   script:
 
   """
-  multiqc . -o \${PWD} -c ${multiqcConfig}
+  multiqc figures/ -o \${PWD} -c ${multiqcConfig}
   """    
 }
 
