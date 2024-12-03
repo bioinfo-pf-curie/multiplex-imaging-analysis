@@ -17,7 +17,7 @@ custom_data:
     cell_data:
        file_format: 'csv'
        section_name: 'Markers distribution'
-       description: 'with a TPM value > 1 are considered. The number of expressed genes per sample was splitted into the 5 most abundant classes following the known gene annotations.'
+       description: ''
        plot_type: 'table'
 
     correlation:
@@ -92,3 +92,4 @@ table_columns_visible:
 
 plots_force_interactive: True
 ignore_images: false
+log_filesize_limit: 1000000000

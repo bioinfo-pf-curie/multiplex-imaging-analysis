@@ -86,6 +86,7 @@ class GetBasicInfo:
         "minoraxis": "MinorAxisLength",
         "majoraxis": "MajorAxisLength",
         "orientation": 'Orientation',
+        'roi': 'RoI',
         'id': 'CellID'
     }
 
