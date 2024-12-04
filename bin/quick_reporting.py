@@ -14,6 +14,7 @@ from jinja2 import Template
 import json
 
 from utils import min_max_norm
+from quality_control import SIZE_MAX, SIZE_MIN
 
 # from reportlab.lib.pagesizes import A4
 # from reportlab.lib.styles import getSampleStyleSheet
@@ -95,6 +96,16 @@ class GetBasicInfo:
         self.nb_cell = len(self.df)
 
         self.marker_cols = [col for col in self.df if col not in self.cn.values()]
+        
+        col_mins = [col for col in self.df if SIZE_MIN in col]
+        if col_mins:
+            self.cn['min'] = col_mins[0]
+            self.area_min = self.df[self.cn['min']].count()
+
+        col_maxs = [col for col in self.df if SIZE_MAX in col]
+        if col_maxs:
+            self.cn['max'] = col_maxs[0]
+            self.area_max = self.df[self.cn['max']].count()
 
         # self.size_dis = self.make_size_distribution(height=650)
         # self.marker_dis = self.make_markers_distribution(height=650)
