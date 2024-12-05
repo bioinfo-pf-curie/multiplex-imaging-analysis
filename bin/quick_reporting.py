@@ -14,7 +14,7 @@ from jinja2 import Template
 import json
 
 from utils import min_max_norm
-from quality_control import SIZE_MAX, SIZE_MIN
+from quality_control import SIZE_MAX, SIZE_MIN, NECROTIC, AOI_IN, AOI_OUT
 
 # from reportlab.lib.pagesizes import A4
 # from reportlab.lib.styles import getSampleStyleSheet
@@ -87,25 +87,20 @@ class GetBasicInfo:
         "minoraxis": "MinorAxisLength",
         "majoraxis": "MajorAxisLength",
         "orientation": 'Orientation',
-        'roi': 'RoI',
         'id': 'CellID'
     }
 
     def __init__(self, img_path, csv_path):
         self.df = pd.read_csv(csv_path)
         self.nb_cell = len(self.df)
+        
+        self.area_min = self.get_number_filtered_cells(SIZE_MIN)
+        self.area_max = self.get_number_filtered_cells(SIZE_MAX)
+        self.necro = self.get_number_filtered_cells(NECROTIC)
+        self.roi = self.get_number_filtered_cells(AOI_IN)
+        self.exclu = self.get_number_filtered_cells(AOI_OUT)
 
         self.marker_cols = [col for col in self.df if col not in self.cn.values()]
-        
-        col_mins = [col for col in self.df if SIZE_MIN in col]
-        if col_mins:
-            self.cn['min'] = col_mins[0]
-            self.area_min = self.df[self.cn['min']].count()
-
-        col_maxs = [col for col in self.df if SIZE_MAX in col]
-        if col_maxs:
-            self.cn['max'] = col_maxs[0]
-            self.area_max = self.df[self.cn['max']].count()
 
         # self.size_dis = self.make_size_distribution(height=650)
         # self.marker_dis = self.make_markers_distribution(height=650)
@@ -125,6 +120,13 @@ class GetBasicInfo:
 
         self.segmented_fraction = self.get_fraction_segmented()
         # self.th_img = tiff2rgb(self.thumbnail)
+
+    def get_number_filtered_cells(self, col_name):
+        col_mins = [col for col in self.df if col_name in col]
+        if col_mins:
+            self.cn[col_name] = col_mins[0]
+            return self.df[self.cn[col_name]].count()
+        return 0
 
     def get_fraction_segmented(self):
         if self.thumbnail is None:
@@ -222,57 +224,21 @@ def tiff2rgb(img, out_path="thumbnail.png"):
     return out_path
 
 
-# def main(csv_path, image_path, report_name, method):
-    
-#     info = GetBasicInfo(image_path, csv_path)
-
-#     mypdf = PDFReport(report_name)
-    
-#     mypdf.header(Path(csv_path).stem)
-#     mypdf.img(info.th_img)#, width=200, height=200)
-#     mypdf.spacer()
-#     mypdf.p('Info', 'h3')
-#     info_p = f"""
-# - {info.nb_cell} cell{'s' if info.nb_cell > 1 else ''} found<br />
-# - Tissue / Background area : {info.tissue_fraction*100:.02f} %<br />
-# - Segmented Fraction : {info.segmented_fraction*100:.02f} %<br />
-# """
-#     if filter_data:
-#         info_p += f"""
-# - Filter : {filter_data}<br />
-# """
-#     mypdf.p(info_p)
-    
-#     mypdf.page_break()
-#     mypdf.p('Size Distribution', 'h3')
-#     mypdf.img(info.size_dis, width=mypdf.doc.width, height=400)
-#     mypdf.page_break()
-#     mypdf.p('Markers Distribution', 'h3')
-#     mypdf.img(info.marker_dis, width=mypdf.doc.width, height=400)
-#     mypdf.page_break()
-#     mypdf.p('Markers Co-Distribution', 'h3')
-#     mypdf.img(info.coexpr, width=mypdf.doc.width, height=600)
-#     mypdf.p('Materials and Methods', 'h3')
-#     mypdf.p("""
-
-# """)
-
-#     mypdf.write_report()
-
-def main2(image_path, csv_path, qcparms, out_dir):
+def main(image_path, csv_path, out_dir):
     df_gen = {}
     for img, csv in zip(image_path, csv_path):
         info = GetBasicInfo(img, csv)
         img_name = Path(img).stem
-        qc = json.loads(qcparms)
 
         # write gen stat
         df_gen[img_name] = {'Cell number': info.nb_cell,
-                                  "Tissue / Background area": info.tissue_fraction * 100,
-                                  "Segmented Fraction": info.segmented_fraction * 100, 
-                                  "Minimal Size": qc['areaMin'], "Maximal Size": qc['areaMax'], 
-                                  "Necrotics cells": qc['necroticIntensityTreshold'], 
-                                  "Region of Interest": "yes" if qc['ROIPath'] else "no"}
+                            "Tissue / Background area": info.tissue_fraction * 100,
+                            "Segmented Fraction": info.segmented_fraction * 100, 
+                            "Cells number under minimal size": info.area_min, 
+                            "Cells number over maximal size": info.area_max, 
+                            "Necrotics cells": info.necro, 
+                            "Cells in Region of Interest": info.roi, "Cells in excluded region": info.exclu}
+
         # create thumbnail
         tiff2rgb(info.thumbnail, out_path= out_dir / f"{img_name}_thumbnail.png")
         
@@ -300,5 +266,5 @@ if __name__ == "__main__":
     parser.add_argument('--cluster_method', type=str, required=False, default="phenograph", 
                         help="name of the cluster method (currently available : kmeans, phenograph or leiden)")
     args = parser.parse_args()
-    print(args.parms)
-    main2(csv_path=args.csv_path, image_path=args.img_path, qcparms=args.parms, out_dir=Path(args.out_dir))#, report_name=args.report_name, method=args.cluster_method)
+    main(csv_path=args.csv_path, image_path=args.img_path, 
+         out_dir=Path(args.out_dir))

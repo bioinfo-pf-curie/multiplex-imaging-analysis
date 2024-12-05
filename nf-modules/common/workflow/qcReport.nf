@@ -25,7 +25,6 @@ workflow qcFlow {
             params
         )
         
-        // figCh = Channel.empty()
         multiQC(
             dataQC.out.figures,
             multiqcConfigCh
