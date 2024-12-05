@@ -296,7 +296,6 @@ if __name__ == '__main__':
     metadata.dtype = mask_memmap.dtype
 
     kwargs = metadata.to_dict(shape=mask_memmap.shape)
-    kwargs['compression'] = 1 # force no compression for better estimating RAM needs
 
     imwrite(args.out, mask_memmap, bigtiff=True, shaped=False, **kwargs)
     Path(".tmp_masks.npy").unlink()
