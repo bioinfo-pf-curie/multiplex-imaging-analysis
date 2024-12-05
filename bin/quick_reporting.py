@@ -116,7 +116,7 @@ class GetBasicInfo:
             total_size = 1
             for dim in self.tiff.series[0].shape:
                 total_size *= dim
-            self.thumbnail = self.tiff.series[0].asarray() if total_size * 2 / (1024 * 1024) < 100 else None
+            self.thumbnail = self.tiff.series[0].asarray() if total_size * 2 / (1024 * 1024) < 100 else None # total size < 100 Mo
 
         self.segmented_fraction = self.get_fraction_segmented()
         # self.th_img = tiff2rgb(self.thumbnail)
@@ -262,7 +262,7 @@ if __name__ == "__main__":
     parser.add_argument('--csv_path', type=str, nargs="+", required=True, help="path for csv file of quantification")
     parser.add_argument('--img_path', type=str, nargs="+", required=True, help="path for original img")
     parser.add_argument('--out_dir', type=str, required=True, help="Output filepath")
-    parser.add_argument('--parms', type=str, required=True, help="parameters used")
+    parser.add_argument('--parms', type=str, required=False, help="parameters used")
     parser.add_argument('--cluster_method', type=str, required=False, default="phenograph", 
                         help="name of the cluster method (currently available : kmeans, phenograph or leiden)")
     args = parser.parse_args()

@@ -13,22 +13,29 @@ NECROTIC = "Necrotic area"
 AOI_IN = "RoI"
 AOI_OUT = "Exclusion"
 
-def position_filter(points, geosjon_path):
-    with open(geosjon_path, 'r') as gjfile:
+def position_filter(points, geojson_path):
+    with open(geojson_path, 'r') as gjfile:
         gj = json.load(gjfile)
 
     res = pd.Series(index=points.index, dtype="str")
 
-    for i, roi in enumerate(gj['features'], 1):
-        shapely_roi = make_valid(Polygon(roi.get('geometry', roi).get('coordinates')))
-        if not isinstance(shapely_roi, Polygon):
+    if gj['type'] == "FeatureCollection":
+        features = gj['features']
+    elif gj['type'] == 'Feature':
+        features = [gj]
+    else:
+        raise ValueError(f'Unrecognize type in geojson {geojson_path}')
+
+    for i, roi in enumerate(features, 1):
+        shapely_roi = make_valid(Polygon(roi['geometry']['coordinates']))
+        if not isinstance(shapely_roi, Polygon): # if multipolygon, select the biggest
             max_ = 0
             for g in shapely_roi.geoms:
                 if max_ < g.area:
                     res = g
                     max_ = g.area
             shapely_roi = res
-        roi_name = roi.get('properties', roi).get('classification', {}).get('name', str(i))
+        roi_name = roi['properties'].get('classification', {roi['properties']}).get('name', str(i))
 
         inter = points.apply(shapely_roi.contains) 
 
