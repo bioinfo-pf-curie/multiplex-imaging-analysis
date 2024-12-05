@@ -20,12 +20,18 @@ process seg {
   task.ext.when == null || task.ext.when
 
   script:
-    def output = "${meta.splittedName}_masks.tiff"
-    def inOut = ['image': image, 'output': output]
-    def cmd = Eval.me("inOut", inOut, segmenterConfig.cmd)
-    def baseParms = Eval.me("model", model, segmenterConfig.baseParms)
+    def customParms = ""
+    if (segmenterConfig.containsKey('model')) {
+      customParms += "$segmenterConfig.model $model"
+    }
+    if (segmenterConfig.containsKey('membrane-input')) {
+      customParms += "$segmenterConfig.membraneInput $image"
+    }
+    if (segmenterConfig.containsKey('output')) {
+      customParms += "$segmenterConfig.output ${meta.splittedName}_masks.tiff"
+    }
     """
-    $cmd $baseParms $segmenterConfig.additionalParms
+    $segmenterConfig.cmd $segmenterConfig.input $image $segmenterConfig.baseParms $customParms $segmenterConfig.additionalParms
     """
 }
 
@@ -53,7 +59,7 @@ workflow segmentation {
         tuple(newMeta, splitted)
       }
 
-      def modelList = segmenterConfig.models
+      def modelList = segmenterConfig.modelsList
       modelList = modelList instanceof List ? modelList : modelList.tokenize(",")
 
       seg(splittedImgResult, modelList, segmenterConfig)
