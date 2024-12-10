@@ -163,7 +163,7 @@ workflow {
     checkedInput = compatibilityChecker(inputsOriginal)
 
     ipts = checkedInput.branch{
-      toMerge: (it[0].markersPath.readLines().size() > 3) & (params.segmentation.name != "instantseg")
+      toMerge: (it[0].markersPath.readLines().size() > 3) & (params.segmentation.name != "instanseg")
       noMerge: true
     }
     merged = mergeChannels(ipts.toMerge).mix(ipts.noMerge.map{meta, img, ch -> tuple(meta, img)})

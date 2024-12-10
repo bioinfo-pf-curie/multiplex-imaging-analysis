@@ -10,9 +10,9 @@ from utils import OmeTifffile
 
 
 def main(image_path, out_path):
-    instanseg_brightfield = InstanSeg(image_reader= "tiffslide", verbosity=1)
+    instanseg_fluo = InstanSeg("fluorescence_nuclei_and_cells", image_reader="bioio", verbosity=1)
 
-    labeled_output = instanseg_brightfield.eval(image = image_path,
+    labeled_output = instanseg_fluo.eval(image = image_path,
                                                 save_output = True,
                                                 save_overlay = True)
     # display = instanseg_brightfield.display(image_tensor, labeled_output)
@@ -25,7 +25,7 @@ def main(image_path, out_path):
 
     kwargs = metadata.to_dict(shape=labeled_output.shape)
 
-    imwrite(args.out, labeled_output, bigtiff=True, shaped=False, **kwargs)
+    imwrite(out_path, labeled_output, bigtiff=True, shaped=False, **kwargs)
 
 
 if __name__ == "__main__":

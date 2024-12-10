@@ -1,0 +1,8 @@
+name: instanseg
+channels:
+  - default
+dependencies:
+  - python=3.11.5=h955ad1f_0
+  - pip=23.3=py311h06a4308_0
+  - pip:
+    - instanseg-torch==0.0.6
