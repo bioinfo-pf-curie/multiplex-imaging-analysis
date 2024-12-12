@@ -11,7 +11,7 @@ SIZE_MIN = "minimal size"
 SIZE_MAX = "maximal size"
 NECROTIC = "Necrotic area"
 AOI_IN = "RoI"
-AOI_OUT = "Exclusion"
+AOI_OUT = "Excluded Area"
 
 def position_filter(points, geojson_path):
     with open(geojson_path, 'r') as gjfile:
@@ -27,15 +27,19 @@ def position_filter(points, geojson_path):
         raise ValueError(f'Unrecognize type in geojson {geojson_path}')
 
     for i, roi in enumerate(features, 1):
-        shapely_roi = make_valid(Polygon(roi['geometry']['coordinates']))
+        print(roi['geometry']['coordinates'])
+        coords = roi['geometry']['coordinates']
+        if len(coords) == 1:
+            coords = coords[0]
+        shapely_roi = make_valid(Polygon(coords))
         if not isinstance(shapely_roi, Polygon): # if multipolygon, select the biggest
             max_ = 0
             for g in shapely_roi.geoms:
                 if max_ < g.area:
-                    res = g
+                    inter = g
                     max_ = g.area
-            shapely_roi = res
-        roi_name = roi['properties'].get('classification', {roi['properties']}).get('name', str(i))
+            shapely_roi = inter
+        roi_name = roi['properties'].get('classification', roi['properties']).get('name', str(i))
 
         inter = points.apply(shapely_roi.contains) 
 
@@ -71,7 +75,7 @@ def perform_filtering(csv, out_name, size_min=None, size_max=None,
 
     # necrotic filtering
     if necrotic_intensity_treshold is not None:
-        df[f'{NECROTIC} ({necrotic_intensity_treshold}% intensity)'] = ~(
+        df[f'{NECROTIC} ({necrotic_intensity_treshold*100}% intensity)'] = ~(
             df[markers_cols] > df[markers_cols].quantile(necrotic_intensity_treshold)
         ).all(axis=1).astype(int)
 

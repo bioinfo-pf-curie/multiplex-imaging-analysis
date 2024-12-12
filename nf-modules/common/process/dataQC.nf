@@ -17,11 +17,11 @@ process dataQC {
 
   script:
   def args = task.ext.args ?: ''
-  // def jsonQC = JsonOutput.toJson(params.qualityControl)
+  def jsonQC = JsonOutput.toJson(params.qualityControl)
   """
   mkdir -p figures/
   export NXF_ASSETS=${projectDir}/assets/
-  quick_reporting.py --csv_path $csvs --img_path $imgs.imagePath --out_dir figures/ $args
+  quick_reporting.py --csv_path $csvs --img_path $imgs.imagePath --parms '$jsonQC' --out_dir figures/ $args
   cp $csvs figures/
   """
 }

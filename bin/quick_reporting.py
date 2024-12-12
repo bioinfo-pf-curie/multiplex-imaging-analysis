@@ -90,7 +90,7 @@ class GetBasicInfo:
         'id': 'CellID'
     }
 
-    def __init__(self, img_path, csv_path):
+    def __init__(self, img_path, csv_path, parms):
         self.df = pd.read_csv(csv_path)
         self.nb_cell = len(self.df)
         
@@ -101,6 +101,8 @@ class GetBasicInfo:
         self.exclu = self.get_number_filtered_cells(AOI_OUT)
 
         self.marker_cols = [col for col in self.df if col not in self.cn.values()]
+
+        self.parms = parms
 
         # self.size_dis = self.make_size_distribution(height=650)
         # self.marker_dis = self.make_markers_distribution(height=650)
@@ -118,6 +120,13 @@ class GetBasicInfo:
                 total_size *= dim
             self.thumbnail = self.tiff.series[0].asarray() if total_size * 2 / (1024 * 1024) < 100 else None # total size < 100 Mo
 
+        if self.parms['ROIPath']:
+            import cv2
+            coords = self.read_geojson(self.parms['ROIPath'])
+            mask = np.zeros_like(self.thumbnail)
+            mask = cv2.fillPoly(mask, np.array(coords, dtype=np.int32), color=1)
+            self.thumbnail[mask] = (255,244,79)
+
         self.segmented_fraction = self.get_fraction_segmented()
         # self.th_img = tiff2rgb(self.thumbnail)
 
@@ -127,6 +136,20 @@ class GetBasicInfo:
             self.cn[col_name] = col_mins[0]
             return self.df[self.cn[col_name]].count()
         return 0
+    
+    def read_geojson(self, geojson_path):
+        with open(geojson_path, 'r') as gjfile:
+            gj = json.load(gjfile)
+
+        if gj['type'] == "FeatureCollection":
+            features = gj['features']
+        elif gj['type'] == 'Feature':
+            features = [gj]
+        else:
+            raise ValueError(f'Unrecognize type in geojson {geojson_path}')
+        
+        return [roi['geometry']['coordinates'] for roi in features]
+
 
     def get_fraction_segmented(self):
         if self.thumbnail is None:
@@ -224,10 +247,10 @@ def tiff2rgb(img, out_path="thumbnail.png"):
     return out_path
 
 
-def main(image_path, csv_path, out_dir):
+def main(image_path, csv_path, parms, out_dir):
     df_gen = {}
     for img, csv in zip(image_path, csv_path):
-        info = GetBasicInfo(img, csv)
+        info = GetBasicInfo(img, csv, parms)
         img_name = Path(img).stem
 
         # write gen stat
@@ -262,9 +285,9 @@ if __name__ == "__main__":
     parser.add_argument('--csv_path', type=str, nargs="+", required=True, help="path for csv file of quantification")
     parser.add_argument('--img_path', type=str, nargs="+", required=True, help="path for original img")
     parser.add_argument('--out_dir', type=str, required=True, help="Output filepath")
-    parser.add_argument('--parms', type=str, required=False, help="parameters used")
+    parser.add_argument('--parms', type=json.loads, required=False, help="parameters used")
     parser.add_argument('--cluster_method', type=str, required=False, default="phenograph", 
                         help="name of the cluster method (currently available : kmeans, phenograph or leiden)")
     args = parser.parse_args()
     main(csv_path=args.csv_path, image_path=args.img_path, 
-         out_dir=Path(args.out_dir))
+         out_dir=Path(args.out_dir), parms=args.parms)

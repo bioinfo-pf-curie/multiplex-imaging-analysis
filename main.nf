@@ -67,6 +67,13 @@ outputDocsImagesCh = file("$projectDir/docs/images/", checkIfExists: true)
 if (!params.images){
   exit 1, "Missing input image (use --images to indicate image path directory)" 
 }
+if (params.qualityControl.ROIPath) {
+params.qualityControl.ROIPath = file(params.qualityControl.ROIPath, checkIfExists: true).toAbsolutePath()
+}
+
+if (params.qualityControl.ExcludedPath) {
+params.qualityControl.ExcludedPath = file(params.qualityControl.ExcludedPath, checkIfExists: true).toAbsolutePath()
+} 
 
 /*
 ===========================
