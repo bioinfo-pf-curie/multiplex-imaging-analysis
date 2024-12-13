@@ -124,7 +124,8 @@ class GetBasicInfo:
             import cv2
             coords = self.read_geojson(self.parms['ROIPath'])
             mask = np.zeros_like(self.thumbnail)
-            mask = cv2.fillPoly(mask, np.array(coords, dtype=np.int32), color=1)
+            for poly in coords:
+                mask = cv2.fillPoly(mask, np.array(poly[0], dtype=np.int32), color=1)
             self.thumbnail[mask] = (255,244,79)
 
         self.segmented_fraction = self.get_fraction_segmented()
