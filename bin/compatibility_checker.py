@@ -11,6 +11,7 @@ import tifffile
 from ome_types import OME, model
 import xml.etree.ElementTree as ET
 from PIL import Image
+import zarr
 
 from utils import OmeTifffile, make_ome_data, read_tiff_orion, _tile_generator
 
@@ -139,15 +140,23 @@ if __name__ == "__main__":
             default_mtd = None
         except BaseException:
             img = tifffile.TiffFile(img_path)
+            imgp = img.pages[0]
+            img = zarr.open(img.series[0].aszarr())
             try:
-                default_mtd = get_info_qptiff(img.pages[0])
+                default_mtd = get_info_qptiff(imgp)
             except BaseException:
+                dtype = [val for val in ('int8', 'int16', 'int32', 
+                                         'uint8', 'uint16', 'uint32', 
+                                         'float', 'double', 'complex', 
+                                         'double-complex', 'bit') if val in str(img.dtype)]
                 default_mtd = dict(
-                    size_x=img.pages[0].shape[-2],
-                    size_y=img.pages[0].shape[-1],
-                    size_c=img.pages[0].shape[0] if img.pages[0].ndim == 3 else 1,
-                    dtype=img.dtype
+                    size_x=img.shape[-2],
+                    size_y=img.shape[-1],
+                    size_c=img.shape[0] if img.ndim == 3 else 1,
+                    dtype=dtype[-1]
                 )
+            
+            print(img)
     else:
         try:
             img, default_mtd = open_other_format(img_path)
