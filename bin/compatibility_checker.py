@@ -155,8 +155,7 @@ if __name__ == "__main__":
                     size_c=img.shape[0] if img.ndim == 3 else 1,
                     dtype=dtype[-1]
                 )
-            
-            print(img)
+
     else:
         try:
             img, default_mtd = open_other_format(img_path)

@@ -17,7 +17,15 @@ process dataQC {
 
   script:
   def args = task.ext.args ?: ''
-  def jsonQC = JsonOutput.toJson(params.qualityControl)
+  def convertedMap = params.qualityControl.collectEntries { key, value ->
+          // Vérifier si la valeur est compatible JSON, sinon la convertir en chaîne
+          if (value instanceof String || value instanceof Boolean || value instanceof Number || value == null) {
+              [key, value]  // Valeur compatible avec JSON
+          } else {
+              [key, value.toString()]  // Valeur non compatible avec JSON, convertie en String
+          }
+      }
+  def jsonQC = JsonOutput.toJson(convertedMap)
   """
   mkdir -p figures/
   export NXF_ASSETS=${projectDir}/assets/
