@@ -112,20 +112,27 @@ class GetBasicInfo:
         self.tiff = tifffile.TiffFile(img_path)
         if self.tiff.series[0].is_pyramidal:
             self.thumbnail = self.tiff.series[0].levels[-1].asarray()
-            i,a = np.quantile(self.thumbnail, [0.01,0.99])
-            self.thumbnail = min_max_norm(self.thumbnail, i, a, output_max=255)
         else: 
             total_size = 1
             for dim in self.tiff.series[0].shape:
                 total_size *= dim
-            self.thumbnail = self.tiff.series[0].asarray() if total_size * 2 / (1024 * 1024) < 100 else None # total size < 100 Mo
+            self.thumbnail = self.tiff.series[0].asarray() if total_size * 2 / (1024 * 1024) < 200 else None # total size < 100 Mo
+
+        if self.thumbnail is not None:
+            i,a = np.quantile(self.thumbnail, [0.01,0.99])
+            self.thumbnail = min_max_norm(self.thumbnail, i, a, output_max=255)
+            print("coucou")
 
         if self.parms['ROIPath']:
             import cv2
             coords = self.read_geojson(self.parms['ROIPath'])
-            mask = np.zeros_like(self.thumbnail)
+            mask = np.zeros(self.thumbnail.shape[1:], dtype="int32")
+            print(self.thumbnail.shape)
             for poly in coords:
-                mask = cv2.fillPoly(mask, np.array(poly[0], dtype=np.int32), color=1)
+                aa = np.array(poly[0], dtype=np.int32).reshape(-1,1,2)
+                print(aa.shape)
+                mask = cv2.polylines(mask, aa, 1, 1)
+                print(mask.shape)
             self.thumbnail[mask] = (255,244,79)
 
         self.segmented_fraction = self.get_fraction_segmented()
