@@ -103,6 +103,7 @@ class GetBasicInfo:
         self.marker_cols = [col for col in self.df if col not in self.cn.values()]
 
         self.parms = parms
+        self.mask = None
 
         # self.size_dis = self.make_size_distribution(height=650)
         # self.marker_dis = self.make_markers_distribution(height=650)
@@ -116,27 +117,28 @@ class GetBasicInfo:
             total_size = 1
             for dim in self.tiff.series[0].shape:
                 total_size *= dim
-            self.thumbnail = self.tiff.series[0].asarray() if total_size * 2 / (1024 * 1024) < 200 else None # total size < 100 Mo
+            self.thumbnail = self.tiff.series[0].asarray() if total_size * 2 / (1024 * 1024) < 200 else None # total size < 200 Mo
 
         if self.thumbnail is not None:
             i,a = np.quantile(self.thumbnail, [0.01,0.99])
             self.thumbnail = min_max_norm(self.thumbnail, i, a, output_max=255)
-            print("coucou")
+            self.mask = np.zeros(self.thumbnail.shape[1:], dtype="int32")
 
-        if self.parms['ROIPath']:
-            import cv2
-            coords = self.read_geojson(self.parms['ROIPath'])
-            mask = np.zeros(self.thumbnail.shape[1:], dtype="int32")
-            print(self.thumbnail.shape)
-            for poly in coords:
-                aa = np.array(poly[0], dtype=np.int32).reshape(-1,1,2)
-                print(aa.shape)
-                mask = cv2.polylines(mask, aa, 1, 1)
-                print(mask.shape)
-            self.thumbnail[mask] = (255,244,79)
+        if self.parms.get('ROIPath', False): 
+            self.make_mask(self.parms['ROIPath'], 1)
+        if self.parms.get('excludedPath', False): 
+            self.make_mask(self.parms['excludedPath'], 2)
 
         self.segmented_fraction = self.get_fraction_segmented()
-        # self.th_img = tiff2rgb(self.thumbnail)
+
+    def make_mask(self, geojson, color):
+        import cv2
+        if self.mask is None:
+            return None
+        coords = self.read_geojson(geojson)
+        for poly in coords:
+            aa = np.array(poly[0], dtype=np.int32).reshape(-1,1,2)
+            self.mask = cv2.polylines(self.mask, [aa], 1, color)
 
     def get_number_filtered_cells(self, col_name):
         col_mins = [col for col in self.df if col_name in col]
@@ -241,7 +243,7 @@ class GetBasicInfo:
 #         # parts.append(Image("scimap/voronoi.jpg", width=400, height=560))
 #         self.doc.build(self.parts)
 
-def tiff2rgb(img, out_path="thumbnail.png"):
+def tiff2rgb(img, geom=None, out_path="thumbnail.png"):
     color_cycle = [[int(h.strip("#")[i:i+2], 16) / 255 for i in (0, 2, 4)] 
                    for h in ['#1F77B4', '#FF7F0E', '#2CA02C', '#D62728', '#9467BD', '#8C564B', '#E377C2', '#7F7F7F', '#BCBD22', '#17BECF']]
     result = np.transpose(np.stack([img[0], img[1], img[2]]), (1,2,0)) # take the first three channels as RGB
@@ -251,6 +253,11 @@ def tiff2rgb(img, out_path="thumbnail.png"):
         tmp_img = np.transpose(np.stack([img[channel]] * 3) * np.array(color_cycle[channel % len(color_cycle)])[:,None,None], (1,2,0))
         alpha = 1 / (channel + 1)
         result = cv2.addWeighted(result, 1-alpha, tmp_img, alpha, 0, dtype=cv2.CV_8UC1)
+
+    if geom is not None:
+        result[geom == 1] = (79,244,255) # inclusion in yellow (bgr)
+        result[geom == 2] = (44,30,240) # exclusion in red (bgr)
+
     cv2.imwrite(str(out_path), result.astype('uint8'))
     return out_path
 
@@ -271,7 +278,7 @@ def main(image_path, csv_path, parms, out_dir):
                             "Cells in Region of Interest": info.roi, "Cells in excluded region": info.exclu}
 
         # create thumbnail
-        tiff2rgb(info.thumbnail, out_path= out_dir / f"{img_name}_thumbnail.png")
+        tiff2rgb(info.thumbnail, info.mask, out_path= out_dir / f"{img_name}_thumbnail.png")
         
         # write heatmap data
         info.heatmap_data_co_expr().to_csv(out_dir / f'{img_name}_heatmap.csv')
