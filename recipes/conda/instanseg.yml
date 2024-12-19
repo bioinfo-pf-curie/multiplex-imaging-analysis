@@ -6,3 +6,4 @@ dependencies:
   - pip=23.3=py311h06a4308_0
   - pip:
     - instanseg-torch==0.0.6
+    - bioio-ome-tiff==1.0.1
