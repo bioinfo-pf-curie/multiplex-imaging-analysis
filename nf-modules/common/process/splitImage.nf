@@ -3,7 +3,7 @@ import nextflow.util.MemoryUnit as MemoryUnit
 process splitImage {
   label 'img_utils'
   label 'lowCpu'
-  label 'lowMem'
+  label 'medMem'
 
   input:
     tuple val(meta), path(image)
