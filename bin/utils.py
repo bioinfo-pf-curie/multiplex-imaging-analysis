@@ -252,6 +252,12 @@ class OmeTifffile(object):
     @dtype.setter
     def dtype(self, value):
         self._dtype = str(value) # force numpy dtype into str
+        corr = self._dtype
+        if corr == 'float64':
+            corr = "double"
+        if corr == 'float32':
+            corr = 'float'
+        self.pix.type = corr # need to be updated here also
 
     @classmethod
     def from_path(cls, tiff_path):
@@ -294,7 +300,7 @@ class OmeTifffile(object):
             for i in range(c):
                 self.add_channel_metadata(channel_name[i])
 
-    def to_dict(self, dtype=True, shape=None, tifffile_invalid_extra_tags=False):
+    def to_dict(self, dtype=True, tifffile_invalid_extra_tags=False):
         """transform this class to a dict of parameters, each of them can be passed to tifffile.write and assimilated"""
         this_dict = self.tags.copy()
         if not tifffile_invalid_extra_tags:
@@ -304,9 +310,9 @@ class OmeTifffile(object):
         if 'compress' in this_dict:
             this_dict['compression'] = this_dict.pop('compress')
 
-        if shape is not None:
-            self.pix.size_y=shape[0]
-            self.pix.size_x=shape[1]
+        # if shape is not None:
+        #     self.pix.size_y=shape[0]
+        #     self.pix.size_x=shape[1]
 
         elif self.pix.size_x == 1 or self.pix.size_y == 1:
             raise ValueError(f"About to write an image with shape (x={self.pix.size_x}, y={self.pix.size_y})." 

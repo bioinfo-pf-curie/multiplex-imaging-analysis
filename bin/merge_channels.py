@@ -131,6 +131,7 @@ def merge_channels(in_path, out_path, nuclei_chan=0, channels_to_merge=None, chu
     except IndexError:
         nuclei_chan_metadata = None
 
+    metadata.update_shape(img_level.shape[1:])
     metadata.remove_all_channels()
 
     if nuclei_chan_metadata is not None:
@@ -145,7 +146,7 @@ def merge_channels(in_path, out_path, nuclei_chan=0, channels_to_merge=None, chu
     if channels_to_merge is None:
         channels_to_merge = list(range(2, img_level.shape[0]))
 
-    supp_args = metadata.to_dict(shape=img_level.shape[1:])
+    supp_args = metadata.to_dict()
 
     with tifffile.TiffWriter(out_path, bigtiff=True, shaped=False) as tiff_out:
             tiff_out.write(
