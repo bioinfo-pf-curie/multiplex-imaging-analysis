@@ -31,6 +31,7 @@ process seg {
       customParms += "$segmenterConfig.output ${meta.splittedName}_masks.tiff"
     }
     """
+    export INSTANSEG_BIOIMAGEIO_PATH="${params.condaCacheDir}/bioimageio_models/" 
     $segmenterConfig.cmd $segmenterConfig.input $image $segmenterConfig.baseParms $customParms $segmenterConfig.additionalParms
     """
 }

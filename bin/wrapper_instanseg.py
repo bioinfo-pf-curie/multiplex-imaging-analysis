@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+from pathlib import Path
+import os
 from instanseg import InstanSeg
 import argparse
 from pathlib import Path
@@ -10,8 +12,18 @@ from utils import OmeTifffile
 
 
 
-def main(image_path, out_path):
-    instanseg_fluo = InstanSeg("fluorescence_nuclei_and_cells", image_reader="bioio", verbosity=1)
+def main(image_path, out_path, model_name="fluorescence_nuclei_and_cells"):
+    # take care of model downloading as it is dl for every process otherwise
+
+    model_path = Path(os.environ.get("INSTANSEG_BIOIMAGEIO_PATH")) / model_name / "instanseg.pt"
+    if model_path.exists():
+        model = torch.jit.load(model_path)  
+    else:
+        from instanseg.utils.utils import download_model
+        # it will be recorded in the path defined in env var : INSTANSEG_BIOIMAGEIO_PATH
+        model = download_model(model_name)
+
+    instanseg_fluo = InstanSeg(model, image_reader="bioio", verbosity=1)
 
     labeled_output = instanseg_fluo.eval(image = image_path,
                                          save_overlay = True)
@@ -37,5 +49,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--img_path', type=str, required=True, help="path for original img")
     parser.add_argument('--out_path', type=str, required=True, help="Output filepath")
+    parser.add_argument('--model_name', type=str, default="fluorescence_nuclei_and_cells", help="name of the model used")
     args = parser.parse_args()
-    main(image_path=args.img_path, out_path=Path(args.out_path))
+    main(image_path=args.img_path, out_path=Path(args.out_path), model_name=args.model_name)
