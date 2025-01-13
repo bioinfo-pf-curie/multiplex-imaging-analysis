@@ -6,6 +6,7 @@ from instanseg import InstanSeg
 import argparse
 from pathlib import Path
 import torch
+import numpy as np
 from tifffile import TiffFile, imwrite
 
 from utils import OmeTifffile
