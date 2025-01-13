@@ -75,7 +75,7 @@ def main(image_path, out_path, model_name="fluorescence_nuclei_and_cells", reade
         # it will be recorded in the path defined in env var : INSTANSEG_BIOIMAGEIO_PATH
         model = download_model(model_name)
 
-    instanseg_fluo = InstanSeg(model, image_reader=reader, verbosity=1)
+    instanseg_fluo = CustomReader(model, image_reader=reader, verbosity=1)
 
     labeled_output = instanseg_fluo.eval(image = image_path,
                                          save_overlay = True)
