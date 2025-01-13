@@ -11,7 +11,7 @@ from tifffile import TiffFile, imwrite
 from utils import OmeTifffile
 
 class CustomReader(InstanSeg):
-    def read_image(self, image_str: str) -> Union[Tuple[str, float], Tuple[np.ndarray, float]]:
+    def read_image(self, image_str: str):
         """
         Read an image file from disk. (add a custom reader as I can not make the other work)
         :param image_str: The path to the image.
