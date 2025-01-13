@@ -48,6 +48,10 @@ class CustomReader(InstanSeg):
             image_array, mtd = read_tiff_orion(image_str)
             num_pixels = np.cumprod(image_array.shape)[-1]
             img_pixel_size = mtd.pix.physical_size_x
+            if num_pixels < self.medium_image_threshold:
+                image_array = np.array(image_array).squeeze()
+            else:
+                return image_str, img_pixel_size
             
         else:
             raise NotImplementedError(f"Image reader {self.prefered_image_reader} is not implemented.")
