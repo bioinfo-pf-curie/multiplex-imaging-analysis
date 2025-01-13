@@ -83,7 +83,8 @@ def main(image_path, out_path, model_name="fluorescence_nuclei_and_cells", reade
     instanseg_fluo = CustomReader(model, image_reader=reader, verbosity=1)
 
     labeled_output = instanseg_fluo.eval(image = image_path,
-                                         save_overlay = True)
+                                         save_overlay = True,
+                                         overlap=10) 
     # display = instanseg_brightfield.display(image_tensor, labeled_output)
     if isinstance(labeled_output, torch.Tensor):
             labeled_output = labeled_output.cpu().detach().numpy()
