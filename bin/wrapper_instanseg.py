@@ -44,7 +44,7 @@ class CustomReader(InstanSeg):
                 return image_str, img_pixel_size
         elif self.prefered_image_reader == 'custom-ome-tiff':
             from utils import read_tiff_orion
-            image_array, mtd = read_tiff_orion(image)
+            image_array, mtd = read_tiff_orion(image_str)
             num_pixels = np.cumprod(image_array.shape)[-1]
             img_pixel_size = mtd.pix.physical_size_x
             
