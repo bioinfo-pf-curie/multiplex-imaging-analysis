@@ -149,9 +149,11 @@ if __name__ == "__main__":
     # pixel data is read into RAM lazily, cannot overwrite input file
     assert out_path not in in_paths
 
-    metadata = OmeTifffile.from_path(in_paths[0])
-
     # Detect pixel size in ome-xml
+    try:
+        metadata = OmeTifffile.from_path(in_paths[0])
+    except:
+        metadata = OmeTifffile()
     pixel_size = detect_pixel_size(metadata)
     if pixel_size is None: pixel_size = 1
 

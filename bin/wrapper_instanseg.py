@@ -12,7 +12,7 @@ from utils import OmeTifffile
 
 
 
-def main(image_path, out_path, model_name="fluorescence_nuclei_and_cells", reader="bioio"):
+def main(image_path, out_path, model_name="fluorescence_nuclei_and_cells", reader="bioio", only_cells=True):
     # take care of model downloading as it is dl for every process otherwise
 
     model_path = Path(os.environ.get("INSTANSEG_BIOIMAGEIO_PATH")) / model_name / "instanseg.pt"
@@ -32,9 +32,14 @@ def main(image_path, out_path, model_name="fluorescence_nuclei_and_cells", reade
             labeled_output = labeled_output.cpu().detach().numpy()
     labeled_output = labeled_output.astype('uint16').squeeze()
 
+    # maybe remove this when a proper pipeline for both masks is implemented
+    if only_cells:
+         # only mask for all cell is kept (we get rid of nuclei segmentation, as its not handled by the other jobs, yet...)
+         labeled_output = labeled_output[1,...]
+
     metadata = OmeTifffile(TiffFile(image_path).pages[0])
     metadata.remove_all_channels()
-    metadata.add_channel_metadata(channel_name="nuclei_mask")
+    # metadata.add_channel_metadata(channel_name="nuclei_mask")
     metadata.add_channel_metadata(channel_name="cell_mask")
     metadata.update_shape(labeled_output.shape)
 
