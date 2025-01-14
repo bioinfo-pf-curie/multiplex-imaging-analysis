@@ -53,6 +53,7 @@ class CustomReader(InstanSeg):
             # else:
             #    return image_str, img_pixel_size
             
+            
         else:
             raise NotImplementedError(f"Image reader {self.prefered_image_reader} is not implemented.")
         
