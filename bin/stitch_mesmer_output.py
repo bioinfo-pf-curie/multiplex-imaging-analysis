@@ -92,7 +92,8 @@ def stich_masks(list_mask_chunks, input_img_path, overlap, out_path):
 
     original_tiff = tifffile.TiffFile(input_img_path)
     original_shape = original_tiff.series[0].shape[1:]
-    result = tifffile.memmap(out_path, dtype=float, shape=(2, *original_shape))
+    img = tifffile.imread(list_mask_chunks[0])
+    result = tifffile.memmap(out_path, dtype=img.dtype, shape=(1 + (img.ndim == 3), *original_shape))
 
     # previous_cells = None
     for chunk in list_mask_chunks:
