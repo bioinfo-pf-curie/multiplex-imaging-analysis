@@ -52,7 +52,7 @@ class CustomReader(InstanSeg):
             image_array = np.array(image_array).squeeze()
             # else:
             #    return image_str, img_pixel_size
-            
+
             
         else:
             raise NotImplementedError(f"Image reader {self.prefered_image_reader} is not implemented.")
@@ -67,7 +67,10 @@ class CustomReader(InstanSeg):
                 img_pixel_size = None
 
         return image_array, img_pixel_size
-
+    
+    def eval_small_image(self, *args, **kwargs):
+        kwargs.pop('overlap', None)
+        return super().eval_small_image(*args, **kwargs)
 
 
 def main(image_path, out_path, model_name="fluorescence_nuclei_and_cells", reader="bioio", only_cells=True):
