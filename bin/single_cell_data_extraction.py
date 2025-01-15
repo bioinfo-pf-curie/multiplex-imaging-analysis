@@ -283,7 +283,11 @@ def ExtractSingleCells(masks,image,channel_names,output, mask_props=None, intens
     for m in masks:
         m_full_name = os.path.basename(m)
         m_name = m_full_name.split('.')[0]
-        masks_loaded.update({str(m_name):skimage.io.imread(m,plugin='tifffile')})
+        mask = skimage.io.imread(m,plugin='tifffile')
+        if not np.issubdtype(mask.dtype, np.integer):
+            mask = mask.astype('uint32')
+        masks_loaded.update({str(m_name):mask})
+    del mask
 
     t3 = time.process_time()
 

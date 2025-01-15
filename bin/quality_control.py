@@ -27,7 +27,6 @@ def position_filter(points, geojson_path):
         raise ValueError(f'Unrecognize type in geojson {geojson_path}')
 
     for i, roi in enumerate(features, 1):
-        print(roi['geometry']['coordinates'])
         coords = roi['geometry']['coordinates']
         if len(coords) == 1:
             coords = coords[0]
