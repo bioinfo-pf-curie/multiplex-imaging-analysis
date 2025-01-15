@@ -158,11 +158,12 @@ def make_outline(merged_file, png_file, mask_path, out_path, nuclei_channel=0, c
                 yield np.squeeze(tile).astype(original.dtype)
 
         with tifffile.TiffWriter(out_path, bigtiff=True, shaped=False) as tiff_out:
+            metadata.update_shape([x, y])
             tiff_out.write(
                 data=tile_gen(tiff, outline, c=c, x=x, y=y), 
                 shape=[c+1, x, y], 
                 tile=(256, 256), 
-                **metadata.to_dict(shape=[x, y])
+                **metadata.to_dict()
             )
 
 

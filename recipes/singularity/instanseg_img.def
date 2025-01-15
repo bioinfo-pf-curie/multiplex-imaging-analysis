@@ -1,0 +1,10 @@
+Bootstrap: docker
+From: python:3.11
+
+%post
+  apt-get -y update
+  apt-get install -y python3-opencv g++ python3-dev
+  rm -rf /var/lib/apt/lists/* 
+  python -m pip install --no-cache-dir \
+    instanseg-torch==0.0.6 \
+    bioio-ome-tiff==1.0.1

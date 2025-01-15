@@ -31,6 +31,7 @@ process seg {
       customParms += "$segmenterConfig.output ${meta.splittedName}_masks.tiff"
     }
     """
+    export INSTANSEG_BIOIMAGEIO_PATH="${params.condaCacheDir}/bioimageio_models/" 
     $segmenterConfig.cmd $segmenterConfig.input $image $segmenterConfig.baseParms $customParms $segmenterConfig.additionalParms
     """
 }
@@ -81,9 +82,12 @@ workflow segmentation {
         meta, fl -> 
         meta.put('flowSize', fl.size() as Float)
         tuple(meta, fl)
+      }.branch{
+        toCompute: params.segmentation.name != "instanseg"
+        asIs: true
       } // imgSize can not be trusted because input image can (and should) be compressed
-
-      partialMasks = computeMasks(flow)
+      
+      partialMasks = computeMasks(flow.toCompute).mix(flow.asIs)
 
       partialMaskCh = partialMasks.map{meta, partial ->
         tuple(groupKey(meta.subMap("originalName", "imagePath", "markersPath", "imgSize", 'flowSize'), modelList.size()), partial, meta["diameter"])

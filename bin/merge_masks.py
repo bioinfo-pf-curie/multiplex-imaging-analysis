@@ -280,10 +280,11 @@ if __name__ == '__main__':
     kwargs = {}
     if args.original:
         metadata = OmeTifffile(tifffile.TiffFile(args.original).pages[0])
+        metadata.update_shape(mask.shape)
         metadata.remove_all_channels()
         metadata.add_channel_metadata(channel_name="masks")
         metadata.dtype = mask.dtype
-        kwargs.update(metadata.to_dict(shape=mask.shape))
+        kwargs.update(metadata.to_dict())
     kwargs['compression'] = 1
 
     tifffile.imwrite(args.out, mask, bigtiff=True, shaped=False, **kwargs)

@@ -294,8 +294,9 @@ if __name__ == '__main__':
     metadata.add_channel_metadata(channel_name="masks")
 
     metadata.dtype = mask_memmap.dtype
+    metadata.update_shape(mask_memmap.shape)
 
-    kwargs = metadata.to_dict(shape=mask_memmap.shape)
+    kwargs = metadata.to_dict()
 
     imwrite(args.out, mask_memmap, bigtiff=True, shaped=False, **kwargs)
     Path(".tmp_masks.npy").unlink()
