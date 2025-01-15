@@ -50,6 +50,8 @@ def MaskChannel(mask_loaded, image_loaded_z, intensity_props=["intensity_mean"])
 
     t0 = time.process_time()
     logger.debug(f'Main point : ')
+    print(mask_loaded.shape)
+    print(image_loaded_z.shape)
     dat = regionprops_table(
         mask_loaded, image_loaded_z,
         properties = tuple(builtin_props),
