@@ -237,6 +237,9 @@ def on_chunk(chunk, threshold, block_info=None, transform=None, diameter=30):
 
     return recreate_mask(results, chunk.shape[1:], current_cell_id)
 
+def compute_pad(shape, original_shape):
+    res = [(i != j) and (j - i) for i, j in zip(shape, original_shape)]
+    return [(0, int(k)) for k in res] # add after
 
 def merge_masks(list_of_masks, chunk_size=1024, overlap=120, threshold=0.5, diameter=30):
     """
@@ -262,6 +265,8 @@ def merge_masks(list_of_masks, chunk_size=1024, overlap=120, threshold=0.5, diam
 
     """
     masks = [da.from_zarr(tifffile.TiffFile(mask).series[0].aszarr(), chunks=(chunk_size, chunk_size)) for mask in list_of_masks]
+    mshape0 = np.array([m.shape for m in masks]).max(axis=0)
+    masks = [da.pad(m, compute_pad(m.shape, mshape0)) for m in masks]
     masks = da.stack(masks)
     final_mask = da.map_overlap(on_chunk, masks, dtype=np.uint32, depth={0: 0, 1: overlap, 2: overlap}, drop_axis=0, threshold=threshold, diameter=diameter).compute()
 
