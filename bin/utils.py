@@ -207,6 +207,12 @@ class OmeTifffile(object):
 
         # allow to create instance without data
         if tifffile_metadata is None:
+            try:
+                self.ome = make_ome_data(**kwargs) 
+                # use mandatory arg size_c, size_x, size_y, and default from orion image unless specified
+            except:
+                self.ome = make_ome_data(1,1,1) # purely default value
+                # self need to be adapted to the corresponding image afterward
             return
 
         for tag in tifffile_metadata.tags:
@@ -247,6 +253,8 @@ class OmeTifffile(object):
 
     @property
     def dtype(self):
+        if not self._dtype:
+            self._dtype = self.pix.type
         return self._dtype
     
     @dtype.setter

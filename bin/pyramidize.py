@@ -149,17 +149,19 @@ if __name__ == "__main__":
     # pixel data is read into RAM lazily, cannot overwrite input file
     assert out_path not in in_paths
 
+    # Use palom to pyramidize the input image
+    readers = [palom.reader.OmePyramidReader(in_path) for in_path in in_paths]
+    mosaics = [reader.pyramid[0] for reader in readers]
+
     # Detect pixel size in ome-xml
     try:
         metadata = OmeTifffile.from_path(in_paths[0])
     except:
-        metadata = OmeTifffile()
+        img_shape = mosaics[0].shape
+        metadata = OmeTifffile(size_c=img_shape[0], size_x=img_shape[1], size_y=img_shape[2])
+
     pixel_size = detect_pixel_size(metadata)
     if pixel_size is None: pixel_size = 1
-
-    # Use palom to pyramidize the input image
-    readers = [palom.reader.OmePyramidReader(in_path) for in_path in in_paths]
-    mosaics = [reader.pyramid[0] for reader in readers]
 
     if max(mosaics[0].shape[1:3]) < 1024:
         # image is too small to compute sub resolution level

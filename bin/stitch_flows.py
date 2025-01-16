@@ -3,6 +3,7 @@ from utils import get_current_height, read_tiff_orion
 
 import argparse
 import numpy as np
+from pathlib import Path
 
 def get_weight(tile, edge=False):
     """
@@ -152,13 +153,12 @@ def stich_flow(list_npy, input_img_path, overlap, out_path):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--in', type=str, required=True, nargs='+', help="list of Image Path (cropped) to merge")
-    parser.add_argument('--out', type=str, required=True, help="Output path for resulting image")
     parser.add_argument('--original', type=str, required=True, help="File path of original image (to get metadata from)")
     parser.add_argument('--overlap', type=float, required=False, default=0.1, help="value of overlap used for splitting images")
     args = parser.parse_args()
 
     list_npy = vars(args)['in']
-    stich_flow(list_npy, args.original, overlap=args.overlap, out_path=args.out)
+    stich_flow(list_npy, args.original, overlap=args.overlap, out_path=f"{Path(args.original).stem}.npy")
 
 """
 x_val = np.array([])

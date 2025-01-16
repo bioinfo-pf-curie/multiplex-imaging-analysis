@@ -78,16 +78,13 @@ workflow segmentation {
       }.groupTuple().map{groupedkey, old_meta, segmentedImg -> 
         tuple(groupedkey, segmentedImg)
       }
-      flow = stitch(groupSegmented).map{
+      flow = stitch(groupSegmented, segmenterConfig).map{
         meta, fl -> 
         meta.put('flowSize', fl.size() as Float)
         tuple(meta, fl)
-      }.branch{
-        toCompute: params.segmentation.name != "instanseg"
-        asIs: true
       } // imgSize can not be trusted because input image can (and should) be compressed
       
-      partialMasks = computeMasks(flow.toCompute).mix(flow.asIs)
+      partialMasks = computeMasks(flow, segmenterConfig)
 
       partialMaskCh = partialMasks.map{meta, partial ->
         tuple(groupKey(meta.subMap("originalName", "imagePath", "markersPath", "imgSize", 'flowSize'), modelList.size()), partial, meta["diameter"])

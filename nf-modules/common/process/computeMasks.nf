@@ -10,20 +10,27 @@ process computeMasks {
 
   input:
       tuple val(meta), path(flow)
+      val segmenterConfig
 
   output:
-    tuple val(meta), path('*_masks.tiff')
+    tuple(val(meta), path('*_masks.tiff', includeInputs:true))
+    // when stitch produce directly mask we can omit this process
 
   when:
   task.ext.when == null || task.ext.when
 
   script:
     def args = task.ext.args ?: ''
-    def script = params.segmentation.name == 'cellpose' ? "compute_masks.py" : "compute_mesmer.py"
     def availableMem = Math.max(Math.min(meta.imgSize * 0.6, params.maxMemory.size), params.minMemory.size).toLong() / 1e9
     def specificParms = params.segmentation.name == "cellpose" ? "--mean_cell_diam $meta.diameter --max_mem $availableMem " : ""
     specificParms += task.ext.useSingularity ? "--singularity " : ""
-    """
-    $script --in $flow --out ${meta.originalName}_masks.tiff --original $meta.imagePath $specificParms $args
-    """
+    if (segmenterConfig.compute){
+      """
+      $segmenterConfig.compute --in $flow --out ${meta.originalName}_masks.tiff --original $meta.imagePath $specificParms $args
+      """
+    } else {
+      """
+      echo Not doing anything in this process
+      """
+    }
 }

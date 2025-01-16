@@ -6,6 +6,7 @@ import argparse
 import numpy as np
 import tifffile 
 from scipy.signal import windows
+from pathlib import Path
 
 
 def spline_window(window_size, overlap_left, overlap_right, power=2):
@@ -115,10 +116,9 @@ def stich_masks(list_mask_chunks, input_img_path, overlap, out_path):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--in', type=str, required=True, nargs='+', help="list of Image Path (cropped) to merge")
-    parser.add_argument('--out', type=str, required=True, help="Output path for resulting image")
     parser.add_argument('--original', type=str, required=True, help="File path of original image (to get metadata from)")
     parser.add_argument('--overlap', type=float, required=False, default=0.1, help="value of overlap used for splitting images")
     args = parser.parse_args()
 
     list_chunks = vars(args)['in']
-    stich_masks(list_chunks, args.original, args.overlap, args.out)
+    stich_masks(list_chunks, args.original, args.overlap, f"{Path(args.original).stem}.tiff")

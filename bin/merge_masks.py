@@ -11,6 +11,7 @@ import fastremap
 import warnings
 # from skimage.segmentation import find_boundaries
 import rasterio.features
+from affine import Affine
 
 # import pandas as pd
 
@@ -196,7 +197,7 @@ def recreate_mask(cells, shape, idx_start=1):
     return result
 
 
-def on_chunk(chunk, threshold, block_info=None, diameter=30):
+def on_chunk(chunk, threshold, block_info=None, transform=None, diameter=30):
     """
     Convert each masks into a list of shape (cells), concat these lists, solve intersection and then reconvert it to mask image.
 
@@ -207,6 +208,12 @@ def on_chunk(chunk, threshold, block_info=None, diameter=30):
         array of number_of_masks * image_width * image_height
     threshold: float
         Intersection over union value for which cells are to be merged
+    block_info: 
+        data send by dask to get info on current chunk
+    transform: list of 2-tuple
+        An optionnal list of translation of (xoff, yoff) for the corresponding mask
+    diameter: int
+        Estimated cell size
 
     Return
     ------
@@ -217,7 +224,8 @@ def on_chunk(chunk, threshold, block_info=None, diameter=30):
     cells = []
     for i in range(chunk.shape[0]):
         mask = chunk[i].astype('float32')
-        for cell in rasterio.features.shapes(mask, mask=mask > 0, connectivity=8):
+        t = Affine.identity() if transform is None else Affine.translation(*transform[i])
+        for cell in rasterio.features.shapes(mask, mask=mask > 0, connectivity=8, transform=t):
             if len(cell[0]['coordinates'][0]) > 5:
                 polygon = _ensure_polygon(Polygon(cell[0]['coordinates'][0]))
                 if polygon.area > 10:
@@ -274,7 +282,7 @@ if __name__ == '__main__':
     parser.add_argument('--original', type=str, required=False, help="path to original image (metadata except dtype and channels info will be copied)")
     parser.add_argument('--diameter', type=float, default=30, required=False, help="mean diameter (in pixels) of cells")
     args = parser.parse_args()
-    # merge_masks_wo_dask(args.list_of_mask, args.out, threshold=args.threshold)
+    
     mask = merge_masks(args.list_of_mask, overlap=args.overlap, chunk_size=args.chunk_size, threshold=args.threshold, diameter=args.diameter)
 
     kwargs = {}
