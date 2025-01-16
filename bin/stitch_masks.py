@@ -20,6 +20,6 @@ if __name__ == '__main__':
     original_shape = original_tiff.series[0].shape[1:]
 
     result = tifffile.memmap(f"{Path(args.original).stem}_masks.tiff", dtype="uint32", shape=(1, *original_shape))
-    result[...] = merge_masks(list_npy, overlap=args.overlap, chunk_size=8192, threshold=args.threshold)
+    result[...] = merge_masks(list_npy, overlap=args.overlap, chunk_size=8192)
 
     
