@@ -264,7 +264,7 @@ def merge_masks(list_of_masks, chunk_size=1024, overlap=120, threshold=0.5, diam
     None
 
     """
-    masks = [da.from_zarr(tifffile.TiffFile(mask).series[0].aszarr(), chunks=(chunk_size, chunk_size)) for mask in list_of_masks]
+    masks = [da.from_zarr(tifffile.TiffFile(mask).series[0].aszarr(), chunks=(chunk_size, chunk_size)) if isinstance(mask, str) else da.from_array(mask, chunks=(chunk_size, chunk_size)) for mask in list_of_masks]
     mshape0 = np.array([m.shape for m in masks]).max(axis=0)
     masks = [da.pad(m, compute_pad(m.shape, mshape0)) for m in masks]
     masks = da.stack(masks)
