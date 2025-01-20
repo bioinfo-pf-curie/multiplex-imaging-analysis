@@ -20,17 +20,17 @@ if __name__ == '__main__':
     original_tiff = tifffile.TiffFile(args.original)
     original_shape = original_tiff.series[0].shape[1:]
     out_path = f"{Path(args.original).stem}_masks.tiff"
-    result = tifffile.memmap(out_path, dtype="uint32", shape=(1, *original_shape), mode='w+')
+    result = tifffile.memmap(out_path, dtype="uint32", shape=original_shape, mode='w+')
     
     for i, tile in enumerate(list_npy):
         cur_height = get_current_height(tile)
         img = tifffile.imread(tile)
-        result[0,cur_height:cur_height + img.shape[0], :] = merge_masks([result[0,cur_height:cur_height + img.shape[0], :], img], chunk_size=8192) 
+        result[cur_height:cur_height + img.shape[0], :] = merge_masks([result[cur_height:cur_height + img.shape[0], :], img], chunk_size=8192) 
 
         if not i % 10: # flush every ten file (~10GB)
             result.flush()
             # reload memmap each time else it will accumulate in memory
-            result = tifffile.memmap(out_path, dtype="uint32", shape=(1, *original_shape), mode="r+")
+            result = tifffile.memmap(out_path, dtype="uint32", shape=original_shape, mode="r+")
     result.flush()
     # result[...] = merge_masks(list_npy, overlap=args.overlap, chunk_size=8192)
 
