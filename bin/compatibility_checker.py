@@ -155,7 +155,9 @@ if __name__ == "__main__":
                     size_c=img.shape[0] if img.ndim == 3 else 1,
                     dtype=dtype[-1]
                 )
-
+    elif img_path.endswith('.mcd'): # Hyperion
+        img, default_mtd = mcd2ometiff(img_path)
+    
     else:
         try:
             img, default_mtd = open_other_format(img_path)
