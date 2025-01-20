@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 from readimc import MCDFile
+import numpy as np
 
 # MCD file are organized in Slides Panoramas and Acquisitions, 
 # Not sure what are they exactly but slide and panoramas seems to be in RGB and acquisition with the correct channels numbers but not complete ??
@@ -54,3 +55,13 @@ def read_acquisition(f, acquisition):
 def mcd2ometiff(image_path):
     with MCDFile(image_path) as f:
         pass
+
+
+"""
+from orion.MIA.bin.Hyperion_converter import read_acquisition 
+from readimc import MCDFile
+f = MCDFile("orion/fichier_test/hyperion/mcd_test.mcd")
+f.open()
+rt = read_acquisition(f, f.slides[0].acquisitions[1])
+
+"""
