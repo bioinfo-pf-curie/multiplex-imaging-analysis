@@ -24,8 +24,8 @@ if __name__ == '__main__':
     
     for i, tile in enumerate(list_npy):
         cur_height = get_current_height(tile)
-        shape = tifffile.TiffFile(mask).series[0].shape
-        result[:,cur_height:cur_height + shape[1], :] = merge_masks([result[:,cur_height:cur_height + shape[1], :], mask], chunk_size=8192) 
+        shape = tifffile.TiffFile(tile).series[0].shape
+        result[:,cur_height:cur_height + shape[1], :] = merge_masks([result[:,cur_height:cur_height + shape[1], :], tile], chunk_size=8192) 
 
         if not i % 10: # flush every ten file (~10GB)
             result.flush()
