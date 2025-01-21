@@ -228,9 +228,14 @@ def MaskZstack(masks_loaded,image,channel_names_loaded, mask_props=None, intensi
         t4 = time.process_time()
         logger.debug(f'{nm} dict creation : { t4 - t3}')
         # Get the cell IDs and mask properties
-        mask_properties = pd.DataFrame(MaskIDs(masks_loaded[nm], mask_props=mask_props))
+        mask_properties = MaskIDs(masks_loaded[nm], mask_props=mask_props)
+        t35 = time.process_time()
+        logger.debug(f"time after maskid {t35-t4}")
         mask_dict.update(mask_properties)
-        dict_of_chan[nm] = pd.DataFrame(mask_dict).reindex(columns=sorted(mask_dict.keys(), key=col_sort))
+        col_sorted = sorted(mask_dict.keys(), key=col_sort)
+        t36 = time.process_time()
+        logger.debug(f'time after sorting (and updating dict) {t36-t35}')
+        dict_of_chan[nm] = pd.DataFrame(mask_dict).reindex(columns=col_sorted)
         t3 = time.process_time()
         logger.debug(f'{nm} df creation : { t3 - t4}')
 
