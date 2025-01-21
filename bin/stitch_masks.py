@@ -23,9 +23,13 @@ if __name__ == '__main__':
     result = tifffile.memmap(out_path, dtype="uint32", shape=original_shape, mode='w+')
     
     for i, tile in enumerate(list_npy):
+        print(f"in tile : '{tile}'")
         cur_height = get_current_height(tile)
         img = tifffile.imread(tile)
-        result[cur_height:cur_height + img.shape[0], :] = merge_masks([result[cur_height:cur_height + img.shape[0], :], img], chunk_size=8192) 
+        print(cur_height:cur_height + img.shape[0])
+        r = merge_masks([result[cur_height:cur_height + img.shape[0], :], img], chunk_size=8192)
+        print(r.max())
+        result[cur_height:cur_height + img.shape[0], :] = r
 
         if not i % 10: # flush every ten file (~10GB)
             result.flush()
@@ -33,5 +37,3 @@ if __name__ == '__main__':
             result = tifffile.memmap(out_path, dtype="uint32", shape=original_shape, mode="r+")
     result.flush()
     # result[...] = merge_masks(list_npy, overlap=args.overlap, chunk_size=8192)
-
-    
