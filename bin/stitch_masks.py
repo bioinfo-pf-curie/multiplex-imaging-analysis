@@ -26,7 +26,7 @@ if __name__ == '__main__':
         print(f"in tile : '{tile}'")
         cur_height = get_current_height(tile)
         img = tifffile.imread(tile)
-        print(cur_height:cur_height + img.shape[0])
+        print((cur_height, cur_height + img.shape[0]))
         r = merge_masks([result[cur_height:cur_height + img.shape[0], :], img], chunk_size=8192)
         print(r.max())
         result[cur_height:cur_height + img.shape[0], :] = r
