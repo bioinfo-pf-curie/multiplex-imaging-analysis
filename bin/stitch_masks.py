@@ -31,9 +31,9 @@ if __name__ == '__main__':
         print(r.max())
         result[cur_height:cur_height + img.shape[0], :] = r
 
-        if not i % 10: # flush every ten file (~10GB)
-            result.flush()
-            # reload memmap each time else it will accumulate in memory
-            result = tifffile.memmap(out_path, dtype="uint32", shape=original_shape, mode="r+")
-    result.flush()
+    #     if not i % 10: # flush every ten file (~10GB)
+    #         result.flush()
+    #         # reload memmap each time else it will accumulate in memory
+    #         result = tifffile.memmap(out_path, dtype="uint32", shape=original_shape, mode="r+")
+    # result.flush()
     # result[...] = merge_masks(list_npy, overlap=args.overlap, chunk_size=8192)
