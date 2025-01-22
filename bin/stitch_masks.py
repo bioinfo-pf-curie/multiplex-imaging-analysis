@@ -35,5 +35,5 @@ if __name__ == '__main__':
     #         result.flush()
     #         # reload memmap each time else it will accumulate in memory
     #         result = tifffile.memmap(out_path, dtype="uint32", shape=original_shape, mode="r+")
-    # result.flush()
+    result.flush()
     # result[...] = merge_masks(list_npy, overlap=args.overlap, chunk_size=8192)
