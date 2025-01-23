@@ -245,6 +245,22 @@ def compare(args):
             ap_common.append(ap)
             iou_mean.append(iou)
 
+        # filename | ground truth cell count | cell count | false cells | cells not found | avg precision | cellpose avg precision | IoU mean | true positive (pixel) | true negative (pixel) | false positive (pixel) | false negative (pixel) | F1 score (pixel)
+        result = {
+            "filename": pathlib.Path(gj_files).stem,
+            "ground truth cell count": gt_cells_nb,
+            "cell count": len(nb_cell),
+            "false cells": len(not_cells),
+            "cells not found": len(not_found),
+            "avg precision": sum(ap_common) / len(ap_common) if len(ap_common) else 0,
+            "cellpose avg precision": tpcp / (tpcp + fpcp + fncp) if (tpcp + fpcp + fncp) else 0,
+            "IoU mean": sum(iou_mean) / len(iou_mean) if len(iou_mean) else 0,
+            "true positive (pixel)": tp,
+            "true negative (pixel)": tn,
+            "false positive (pixel)": fp,
+            "false negative (pixel)": fn,
+            "F1 score (pixel)": 2*tp / (2*tp + fp + fn)
+        }
             
         print(f"{pathlib.Path(gj_files).stem}\n")
         print(f"\tfound {nb_cell} (with {len(not_cells)} false cells and {len(not_found)} cells not found) cells out of {gt_cells_nb} in ground truth\n")

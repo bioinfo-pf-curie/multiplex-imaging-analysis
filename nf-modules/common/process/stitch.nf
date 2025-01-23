@@ -1,7 +1,7 @@
 process stitch {
   label 'img_utils'
   label 'minCpu'
-  label 'highMem'
+  label 'extraMem'
   
   input:
       tuple val(meta), path(images)
