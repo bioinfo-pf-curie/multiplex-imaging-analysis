@@ -33,12 +33,12 @@ if __name__ == '__main__':
         img = tifffile.imread(tile)
 
         starting_point = max(cur_height - px_overlap, 0)
-        ending_point = starting_point + img.shape[0] + px_overlap
+        ending_point = min(cur_height + img.shape[0] + px_overlap, original_shape[0])
 
         print((starting_point, ending_point))
-        print(f"value before : {result[starting_point: ending_point, :].max()}")
-        print(f"img before : {img.astype('uint32').max()}")
-        augmented_img = np.pad(img.astype('uint32'), ((px_overlap, px_overlap), (0,0)))
+        print(f"value before : {result[starting_point: ending_point, :].shape}")
+        augmented_img = np.pad(img.astype('uint32'), ((starting_point and px_overlap, (ending_point != original_shape[0]) and px_overlap), (0,0)))
+        print(f"img before : {augmented_img.shape}")
         r = merge_masks([result[starting_point:ending_point, :], augmented_img], chunk_size=8192, remap=False) # , transform=[(0,0), (0, starting_point and px_overlap)]
 
         print(r.max())
