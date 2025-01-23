@@ -26,7 +26,8 @@ if __name__ == '__main__':
     # result = np.lib.format.open_memmap(tmp_path, mode='w+', dtype=np.uint32, shape=original_shape)
     # result = tifffile.memmap(out_path, dtype="uint32", shape=original_shape, mode='w+')
     # px_overlap = int(original_shape[0] * args.overlap)
-    result = merge_masks(list_npy, chunk_size=8192, transform=[(0, get_current_height(tile)) for tile in list_npy])
+    resulting_shape = np.zeros(original_shape)
+    result = merge_masks([resulting_shape] + list_npy, chunk_size=4096, transform=[(0, get_current_height(tile)) for tile in list_npy])
     # for i, tile in enumerate(list_npy):
     #     print(f"in tile : '{tile}'")
     #     cur_height = get_current_height(tile)
