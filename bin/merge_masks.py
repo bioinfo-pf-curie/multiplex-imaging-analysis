@@ -241,7 +241,7 @@ def compute_pad(shape, original_shape):
     res = [(i != j) and (j - i) for i, j in zip(shape, original_shape)]
     return [(0, int(k)) for k in res] # add after
 
-def merge_masks(list_of_masks, chunk_size=1024, overlap=120, threshold=0.5, diameter=30):
+def merge_masks(list_of_masks, chunk_size=1024, overlap=120, threshold=0.5, diameter=30, transform=None, remap=True):
     """
     Merge a list of masks (cells labels images) into one, based on a threshold of percentage of intersection
     (see SOPA for a more detailed implementation of solve conflict)
@@ -268,11 +268,12 @@ def merge_masks(list_of_masks, chunk_size=1024, overlap=120, threshold=0.5, diam
     mshape0 = np.array([m.shape for m in masks]).max(axis=0)
     masks = [da.pad(m, compute_pad(m.shape, mshape0)) for m in masks]
     masks = da.stack(masks)
-    final_mask = da.map_overlap(on_chunk, masks, dtype=np.uint32, depth={0: 0, 1: overlap, 2: overlap}, drop_axis=0, threshold=threshold, diameter=diameter).compute()
+    final_mask = da.map_overlap(on_chunk, masks, dtype=np.uint32, depth={0: 0, 1: overlap, 2: overlap}, transform=transform, drop_axis=0, threshold=threshold, diameter=diameter).compute()
 
     correct_edges_inplace(final_mask, chunks_size=(chunk_size, chunk_size))
 
-    fastremap.renumber(final_mask, in_place=True) #convenient to guarantee non-skipped labels
+    if remap:
+        fastremap.renumber(final_mask, in_place=True) #convenient to guarantee non-skipped labels
 
     return final_mask.astype('uint32')
     

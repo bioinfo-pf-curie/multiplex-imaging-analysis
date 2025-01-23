@@ -25,17 +25,24 @@ if __name__ == '__main__':
     tmp_path = ".tmp_masks.npy"
     result = np.lib.format.open_memmap(tmp_path, mode='w+', dtype=np.uint32, shape=original_shape)
     # result = tifffile.memmap(out_path, dtype="uint32", shape=original_shape, mode='w+')
+    px_overlap = int(original_shape[0] * args.overlap)
     
     for i, tile in enumerate(list_npy):
         print(f"in tile : '{tile}'")
         cur_height = get_current_height(tile)
         img = tifffile.imread(tile)
-        print((cur_height, cur_height + img.shape[0]))
-        print(f"value before : {result[cur_height:cur_height + img.shape[0], :].max()}")
+
+        starting_point = max(cur_height - px_overlap, 0)
+        ending_point = starting_point + img.shape[0] + px_overlap
+
+        print((starting_point, ending_point))
+        print(f"value before : {result[starting_point: ending_point, :].max()}")
         print(f"img before : {img.astype('uint32').max()}")
-        r = merge_masks([result[cur_height:cur_height + img.shape[0], :], img.astype('uint32')], chunk_size=8192)
+
+        r = merge_masks([result[starting_point:ending_point, :], img.astype('uint32')], chunk_size=8192, transform=[(0,0), (0, px_overlap)], remap=False)
+
         print(r.max())
-        result[cur_height:cur_height + img.shape[0], :] = r
+        result[starting_point:ending_point, :] = r
 
         if not i % 10: # flush every ten file (~10GB)
             result.flush()
@@ -54,5 +61,5 @@ if __name__ == '__main__':
 
     kwargs = metadata.to_dict()
 
-    tifffile.imwrite(args.out, result, bigtiff=True, shaped=False, **kwargs)
+    tifffile.imwrite(out_path, result, bigtiff=True, shaped=False, **kwargs)
     Path(tmp_path).unlink()
