@@ -38,8 +38,8 @@ if __name__ == '__main__':
         print((starting_point, ending_point))
         print(f"value before : {result[starting_point: ending_point, :].max()}")
         print(f"img before : {img.astype('uint32').max()}")
-
-        r = merge_masks([result[starting_point:ending_point, :], img.astype('uint32')], chunk_size=8192, transform=[(0,0), (0, px_overlap)], remap=False)
+        augmented_img = np.pad(img.astype('uint32'), ((px_overlap, px_overlap), (0,0)))
+        r = merge_masks([result[starting_point:ending_point, :], augmented_img], chunk_size=8192, remap=False) # , transform=[(0,0), (0, starting_point and px_overlap)]
 
         print(r.max())
         result[starting_point:ending_point, :] = r
