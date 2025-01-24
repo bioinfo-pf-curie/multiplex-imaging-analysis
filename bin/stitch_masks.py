@@ -26,32 +26,38 @@ if __name__ == '__main__':
     # result = np.lib.format.open_memmap(tmp_path, mode='w+', dtype=np.uint32, shape=original_shape)
     # result = tifffile.memmap(out_path, dtype="uint32", shape=original_shape, mode='w+')
     # px_overlap = int(original_shape[0] * args.overlap)
-    resulting_shape = np.zeros(original_shape)
-    result = merge_masks([resulting_shape] + list_npy, transform=[(0,0)] + [(0, get_current_height(tile)) for tile in list_npy])
-    # for i, tile in enumerate(list_npy):
-    #     print(f"in tile : '{tile}'")
-    #     cur_height = get_current_height(tile)
-    #     img = tifffile.imread(tile)
+    result = np.zeros(original_shape)
 
-    #     starting_point = max(cur_height - px_overlap, 0)
-    #     ending_point = min(cur_height + img.shape[0] + px_overlap, original_shape[0])
+    # resulting_shape = np.zeros(original_shape)
+    # result = merge_masks([resulting_shape] + list_npy, transform=[(0,0)] + [(0, get_current_height(tile)) for tile in list_npy])
 
-    #     print((starting_point, ending_point))
-    #     print(f"value before : {result[starting_point: ending_point, :].shape}")
-    #     augmented_img = np.pad(img.astype('uint32'), ((starting_point and px_overlap, (ending_point != original_shape[0]) and px_overlap), (0,0)))
-    #     print(f"img before : {augmented_img.shape}")
-    #     r = merge_masks([result[starting_point:ending_point, :], augmented_img], chunk_size=8192, remap=False) # , transform=[(0,0), (0, starting_point and px_overlap)]
+    for i, tile in enumerate(list_npy):
+        print(f"in tile : '{tile}'")
+        cur_height = get_current_height(tile)
+        img = tifffile.imread(tile)
 
-    #     print(r.max())
-    #     result[starting_point:ending_point, :] = r
+        # starting_point = max(cur_height - px_overlap, 0)
+        # ending_point = min(cur_height + img.shape[0] + px_overlap, original_shape[0])
 
-    #     if not i % 10: # flush every ten file (~10GB)
-    #         result.flush()
-    #         # reload memmap each time else it will accumulate in memory
-    #         result = np.lib.format.open_memmap(tmp_path, mode="r+")
-    # result.flush()
+        # print((starting_point, ending_point))
+        # print(f"value before : {result[starting_point: ending_point, :].shape}")
 
-    # fastremap.renumber(result, in_place=True)
+        # augmented_img = np.pad(img.astype('uint32'), ((starting_point and px_overlap, (ending_point != original_shape[0]) and px_overlap), (0,0)))
+        # print(f"img before : {augmented_img.shape}")
+
+        # r = merge_masks([result[starting_point:ending_point, :], augmented_img], chunk_size=8192, remap=False) # , transform=[(0,0), (0, starting_point and px_overlap)]
+        result = merge_masks([result, img], chunk_size=8192, transform=[(0,0), (0, cur_height)], remap=False) # 
+
+        print(result.max())
+        # result[starting_point:ending_point, :] = r
+
+        if not i % 10: # flush every ten file (~10GB)
+            result.flush()
+            # reload memmap each time else it will accumulate in memory
+            result = np.lib.format.open_memmap(tmp_path, mode="r+")
+    result.flush()
+
+    fastremap.renumber(result, in_place=True)
 
     metadata = OmeTifffile(original_tiff.pages[0])
     metadata.remove_all_channels()
