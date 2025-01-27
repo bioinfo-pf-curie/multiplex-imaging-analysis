@@ -46,18 +46,18 @@ if __name__ == '__main__':
         # print(f"img before : {augmented_img.shape}")
 
         # r = merge_masks([result[starting_point:ending_point, :], augmented_img], chunk_size=8192, remap=False) # , transform=[(0,0), (0, starting_point and px_overlap)]
-        result = merge_masks([result, img], chunk_size=8192, transform=[(0,0), (0, cur_height)], remap=False) # 
+        result = merge_masks([result, img], chunk_size=8192, transform=[(0,0), (0, cur_height)], remap=False) 
 
         print(result.max())
         # result[starting_point:ending_point, :] = r
 
-        if not i % 10: # flush every ten file (~10GB)
-            result.flush()
-            # reload memmap each time else it will accumulate in memory
-            result = np.lib.format.open_memmap(tmp_path, mode="r+")
-    result.flush()
+        # if not i % 10: # flush every ten file (~10GB)
+        #     result.flush()
+        #     # reload memmap each time else it will accumulate in memory
+        #     result = np.lib.format.open_memmap(tmp_path, mode="r+")
+    # result.flush()
 
-    fastremap.renumber(result, in_place=True)
+    # astremap.renumber(result, in_place=True)
 
     metadata = OmeTifffile(original_tiff.pages[0])
     metadata.remove_all_channels()
@@ -70,3 +70,17 @@ if __name__ == '__main__':
 
     tifffile.imwrite(out_path, result, bigtiff=True, shaped=False, **kwargs)
     # Path(tmp_path).unlink()
+
+
+""" #test to debug...
+import tifffile
+from merge_masks import merge_masks
+import numpy as np
+
+test_path = "orion/fichier_test/instanseg_test/"
+list_npy = [tifffile.imread(test_path + f"img{i}.tiff") for i in range(5)]
+
+result = np.zeros((1024,1024))
+a = merge_masks([result, list_npy[0]], chunk_size=2048, transform=[(0,0),(0,0)], remap=False)
+
+"""
