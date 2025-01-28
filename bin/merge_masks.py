@@ -237,11 +237,16 @@ def on_chunk(chunk, threshold, block_info=None, transform=None, diameter=30):
 
     return recreate_mask(results, chunk.shape[1:], current_cell_id)
 
-def compute_pad(shape, original_shape):
-    res = [(i != j) and (j - i) for i, j in zip(shape, original_shape)]
-    return [(0, int(k)) for k in res] # add after
+def compute_pad(shape, original_shape, transform=None):
+    # original_shape must be greater then shape and transform must be lower than the difference between them
+    res = [j - i for i, j in zip(shape, original_shape)]
+    
+    if any([r < 0 for r in res]) or any([(r - t) < 0 for r, t in zip(res, transform)]):
+        raise ValueError('Wrong dpad parameters')
 
-def merge_masks(list_of_masks, chunk_size=1024, overlap=120, threshold=0.5, diameter=30, transform=None, remap=True):
+    return [(transform[i], (int(k) - transform[i])) for i, k in enumerate(res)] # add after
+
+def merge_masks(list_of_masks, chunk_size=1024, overlap=120, threshold=0.5, diameter=30, transform=None):
     """
     Merge a list of masks (cells labels images) into one, based on a threshold of percentage of intersection
     (see SOPA for a more detailed implementation of solve conflict)
@@ -266,14 +271,15 @@ def merge_masks(list_of_masks, chunk_size=1024, overlap=120, threshold=0.5, diam
     """
     masks = [da.from_zarr(tifffile.TiffFile(mask).series[0].aszarr(), chunks=(chunk_size, chunk_size)) if isinstance(mask, str) else da.from_array(mask, chunks=(chunk_size, chunk_size)) for mask in list_of_masks]
     mshape0 = np.array([m.shape for m in masks]).max(axis=0)
-    masks = [da.pad(m, compute_pad(m.shape, mshape0)) for m in masks]
+    if transform is None:
+        transform = [(0, 0)] * len(masks)
+    masks = [da.pad(m, compute_pad(m.shape, mshape0, transform[i])) for i, m in enumerate(masks)]
     masks = da.stack(masks)
-    final_mask = da.map_overlap(on_chunk, masks, dtype=np.uint32, depth={0: 0, 1: overlap, 2: overlap}, transform=transform, drop_axis=0, threshold=threshold, diameter=diameter).compute()
+    final_mask = da.map_overlap(on_chunk, masks, dtype=np.uint32, depth={0: 0, 1: overlap, 2: overlap}, drop_axis=0, threshold=threshold, diameter=diameter).compute()
 
     correct_edges_inplace(final_mask, chunks_size=(chunk_size, chunk_size))
 
-    if remap:
-        fastremap.renumber(final_mask, in_place=True) #convenient to guarantee non-skipped labels
+    fastremap.renumber(final_mask, in_place=True) #convenient to guarantee non-skipped labels
 
     return final_mask.astype('uint32')
     
