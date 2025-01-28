@@ -193,7 +193,7 @@ def recreate_mask(cells, shape, idx_start=1):
     """
     result = np.zeros(shape=shape)
     for i, cell in enumerate(cells, idx_start):
-        result = cv2.fillConvexPoly(result, np.rint(cell.exterior.xy).astype("int32").T, color=i)
+        result = cv2.fillConvexPoly(result, np.rint(cell.exterior.xy).astype("uint32").T, color=i)
     return result
 
 
@@ -230,12 +230,14 @@ def on_chunk(chunk, threshold, block_info=None, transform=None, diameter=30):
                 polygon = _ensure_polygon(Polygon(cell[0]['coordinates'][0]))
                 if polygon.area > 10:
                     cells.append(polygon)
-
+    del mask
+    chunk_shape = chunk.shape[1:]
+    del chunk
     results = solve_conflicts(cells, threshold=threshold)
-
+    del cells
     current_cell_id = compute_current_cell_id(block_info, mean_cell_area=np.pi * (diameter / 2) ** 2)
 
-    return recreate_mask(results, chunk.shape[1:], current_cell_id)
+    return recreate_mask(results, chunk_shape, current_cell_id)
 
 def compute_pad(shape, original_shape, transform=None):
     # original_shape must be greater then shape and transform must be lower than the difference between them
