@@ -46,7 +46,7 @@ if __name__ == '__main__':
         # print(f"img before : {augmented_img.shape}")
 
         # r = merge_masks([result[starting_point:ending_point, :], augmented_img], chunk_size=8192, remap=False) # , transform=[(0,0), (0, starting_point and px_overlap)]
-    result[:] = merge_masks([result] + list_npy, transform=[(0,0)] + [(get_current_height(tile), 0) for tile in list_npy] chunk_size=8192, threshold=0.1) 
+    result[:] = merge_masks([result] + list_npy, transform=[(0,0)] + [(get_current_height(tile), 0) for tile in list_npy], chunk_size=8192, threshold=0.1) 
 
         # print(result.max())
         # result[starting_point:ending_point, :] = r
