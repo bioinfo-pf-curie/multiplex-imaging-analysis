@@ -193,7 +193,7 @@ def recreate_mask(cells, shape, idx_start=1):
     """
     result = np.zeros(shape=shape)
     for i, cell in enumerate(cells, idx_start):
-        result = cv2.fillConvexPoly(result, np.rint(cell.exterior.xy).astype("uint32").T, color=i)
+        result = cv2.fillConvexPoly(result, np.rint(cell.exterior.xy).astype("int32").T, color=i)
     return result
 
 
