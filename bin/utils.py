@@ -1,14 +1,14 @@
 import tifffile
 import zarr
-import os
 from ome_types import OME, model
 import copy
 import warnings
 import numpy as np
+import pathlib
 
 def get_current_height(npy_path):
     """Helper to parse filename to get position in height for the corresponding tile"""
-    npy_name = os.path.basename(npy_path)
+    npy_name = pathlib.Path(npy_path).stem
     while True:
         npy_name, height = npy_name.rsplit('_', 1)
         try:

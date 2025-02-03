@@ -20,7 +20,7 @@ from utils import OmeTifffile
 
 # optimized from SOPA https://github.com/gustaveroussy/sopa/blob/master/sopa/segmentation/shapes.py
 
-def _ensure_polygon(cell: Polygon | MultiPolygon | GeometryCollection) -> Polygon:
+def ensure_polygon(cell: Polygon | MultiPolygon | GeometryCollection) -> Polygon:
     """Ensures that the provided cell becomes a Polygon
 
     Args:
@@ -59,7 +59,7 @@ def _ensure_polygon(cell: Polygon | MultiPolygon | GeometryCollection) -> Polygo
 #     """
 #     cell = cell.buffer(-smooth_radius).buffer(2 * smooth_radius).buffer(-smooth_radius)
 #     cell = cell.simplify(tolerance)
-#     return None if cell.is_empty else _ensure_polygon(cell)
+#     return None if cell.is_empty else ensure_polygon(cell)
 
 
 # def _default_tolerance(mean_radius: float) -> float:
@@ -157,7 +157,7 @@ def solve_conflicts(
 
         intersection = cell1.intersection(cell2).area
         if intersection >= threshold * min(cell1.area, cell2.area):
-            cell = _ensure_polygon(cell1.union(cell2))
+            cell = ensure_polygon(cell1.union(cell2))
 
             resolved_indices[np.isin(resolved_indices, [resolved_i1, resolved_i2])] = len(cells)
             cells.append(cell)
@@ -196,6 +196,18 @@ def recreate_mask(cells, shape, idx_start=1):
         result = cv2.fillConvexPoly(result, np.rint(cell.exterior.xy).astype("int32").T, color=i)
     return result
 
+def extract_cell_geoms(mask, transform=None, connectivity=8, min_points=5, min_area=10):
+    """"""
+    mask = mask.astype('float32')
+    t = Affine.identity() if transform is None else Affine.translation(*transform)
+    cells = []
+    for cell in rasterio.features.shapes(mask, mask=mask > 0, connectivity=connectivity, transform=t):
+        if len(cell[0]['coordinates'][0]) > min_points:
+            polygon = ensure_polygon(Polygon(cell[0]['coordinates'][0]))
+            if polygon.area > min_area:
+                cells.append(polygon)
+    return cells
+
 
 def on_chunk(chunk, threshold, block_info=None, transform=None, diameter=30):
     """
@@ -223,14 +235,15 @@ def on_chunk(chunk, threshold, block_info=None, transform=None, diameter=30):
     """
     cells = []
     for i in range(chunk.shape[0]):
-        mask = chunk[i].astype('float32')
-        t = Affine.identity() if transform is None else Affine.translation(*transform[i])
-        for cell in rasterio.features.shapes(mask, mask=mask > 0, connectivity=8, transform=t):
-            if len(cell[0]['coordinates'][0]) > 5:
-                polygon = _ensure_polygon(Polygon(cell[0]['coordinates'][0]))
-                if polygon.area > 10:
-                    cells.append(polygon)
-    del mask
+        # mask = chunk[i].astype('float32')
+        # t = Affine.identity() if transform is None else Affine.translation(*transform[i])
+        # for cell in rasterio.features.shapes(mask, mask=mask > 0, connectivity=8, transform=t):
+        #     if len(cell[0]['coordinates'][0]) > 5:
+        #         polygon = ensure_polygon(Polygon(cell[0]['coordinates'][0]))
+        #         if polygon.area > 10:
+        #             cells.append(polygon)
+        cells += extract_cell_geoms(chunk[i], transform=transform)
+    # del mask
     chunk_shape = chunk.shape[1:]
     del chunk
     results = solve_conflicts(cells, threshold=threshold)
