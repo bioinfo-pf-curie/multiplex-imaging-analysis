@@ -18,6 +18,6 @@ process qc {
     def roi = params.qualityControl.ROIPath ? "--region_of_interest_geojson_path $params.qualityControl.ROIPath": ""
     def excl = params.qualityControl.excludedPath ? "--excluded_region_geojson_path $params.qualityControl.excludedPath": ""
     """
-    quality_control.py --csv_path $quantif --out_path ${outName}_filtered_data.csv $roi $excl $args
+    quality_control.py --csv_path $quantif --out_path "${outName}_filtered_data.csv" $roi $excl $args
     """
 }

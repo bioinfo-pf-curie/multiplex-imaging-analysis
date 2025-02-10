@@ -26,7 +26,7 @@ process computeMasks {
     specificParms += task.ext.useSingularity ? "--singularity " : ""
     if (segmenterConfig.compute){
       """
-      $segmenterConfig.compute --in $flow --out ${meta.originalName}_masks.tiff --original $meta.imagePath $specificParms $args
+      $segmenterConfig.compute --in $flow --out "${meta.originalName}_masks.tiff" --original "$meta.imagePath" $specificParms $args
       """
     } else {
       """

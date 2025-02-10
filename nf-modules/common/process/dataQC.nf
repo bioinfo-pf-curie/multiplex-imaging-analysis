@@ -29,7 +29,7 @@ process dataQC {
   """
   mkdir -p figures/
   export NXF_ASSETS=${projectDir}/assets/
-  quick_reporting.py --csv_path $csvs --img_path $imgs.imagePath --parms '$jsonQC' --out_dir figures/ $args
-  cp $csvs figures/
+  quick_reporting.py --csv_path "$csvs" --img_path "$imgs.imagePath" --parms '$jsonQC' --out_dir figures/ $args
+  cp "$csvs" figures/
   """
 }

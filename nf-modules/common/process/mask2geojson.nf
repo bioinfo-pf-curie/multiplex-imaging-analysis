@@ -14,6 +14,6 @@ process mask2geojson {
 
   script:
     """
-    mask2geojson.py --mask $image --out ${meta.originalName}.geojson
+    mask2geojson.py --mask $image --out "${meta.originalName}.geojson"
     """
 }

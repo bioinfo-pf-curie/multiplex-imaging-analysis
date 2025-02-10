@@ -12,6 +12,8 @@ from ome_types import OME, model
 import xml.etree.ElementTree as ET
 from PIL import Image
 import zarr
+import numpy as np
+import re
 
 from utils import OmeTifffile, make_ome_data, read_tiff_orion, _tile_generator
 
@@ -91,9 +93,44 @@ def qptiff2ome_v4(root):
 
 def hyperion2ome():
     pass
+    
+def get_info_tiff_tags(img, mtd):
+    result = {}
+    for tag in mtd.tags:
+        match tag.code:
+            case 256:
+                result['size_x'] = tag.value
+            case 257:
+                result['size_y'] = tag.value
+            case 258:
+                result['dtype'] = {8: 'uint8', 16: 'uint16'}.get(tag.value, img.dtype)
+            case 282:
+                if 'resolution' not in result:
+                    result['resolution'] = [0,0,0]
+                result['resolution'][0] = tag.value
+            case 283:
+                if 'resolution' not in result:
+                    result['resolution'] = [0,0,0]
+                result['resolution'][1] = tag.value
+            case 296:
+                if 'resolution' not in result:
+                    result['resolution'] = [0,0,0]
+                result['resolution'][2] = tag.value
+            case 270:
+                if 'ImageJ' in tag.value:
+                    result['size_c'] = 1
+                    channel = re.search('(?<=channels=)\d+', tag.value)
+                    if channel:
+                        result['size_c'] = int(channel.group(0))
+                    frame = re.search('(?<=frames=)\d+', tag.value)
+                    if frame:
+                        result['size_c'] *= int(frame.group(0))
+                        if int(frame.group(0)) > 1:
+                            img = np.concatenate([i for i in img])
+            case _:
+                print(f"{tag.code}, {tag.value}")
+    return img, result
 
-def guess_type():
-    pass
 
 def open_other_format(img_path):
     img = Image.open(img_path)
@@ -134,17 +171,21 @@ if __name__ == "__main__":
         img_path = args.image[0]
 
     # open Image
-    if img_path.endswith("tiff") or img_path.endswith('tif'):
+    if img_path.endswith("qptiff") or img_path.endswith('qptif'):
+        img = tifffile.TiffFile(img_path)
+        default_mtd = get_info_qptiff(img.pages[0])
+        img = zarr.open(img.series[0].aszarr())
+    elif img_path.endswith("tiff") or img_path.endswith('tif'):
         try:
             img, mtd = read_tiff_orion(img_path)
             default_mtd = None
         except BaseException:
-            img = tifffile.TiffFile(img_path)
-            imgp = img.pages[0]
-            img = zarr.open(img.series[0].aszarr())
+            tiff_img = tifffile.TiffFile(img_path)
+            img = zarr.open(tiff_img.series[0].aszarr())
             try:
-                default_mtd = get_info_qptiff(imgp)
+                img, default_mtd = get_info_tiff_tags(img, tiff_img.pages[0]) # imageJ compatible
             except BaseException:
+                raise
                 dtype = [val for val in ('int8', 'int16', 'int32', 
                                          'uint8', 'uint16', 'uint32', 
                                          'float', 'double', 'complex', 
@@ -152,9 +193,10 @@ if __name__ == "__main__":
                 default_mtd = dict(
                     size_x=img.shape[-2],
                     size_y=img.shape[-1],
-                    size_c=img.shape[0] if img.ndim == 3 else 1,
+                    size_c=img.shape[0] if img.ndim == 3 else 1 if img.ndim == 2 else img.shape[-3],
                     dtype=dtype[-1]
                 )
+
     elif img_path.endswith('.mcd'): # Hyperion
         img, default_mtd = mcd2ometiff(img_path)
     
@@ -174,13 +216,15 @@ if __name__ == "__main__":
     # force no compression
     mtd_dict['compression'] = 1
 
-    chunk_size = (4096,4096)
     img_shape = (mtd.pix.size_c, mtd.pix.size_y, mtd.pix.size_x)
+    chunk_size = (min(4096, img_shape[1]), min(4096, img_shape[2]))
 
     def tile_gen():
         for chan in range(mtd.pix.size_c):
             yield from _tile_generator(img, chan, mtd.pix.size_y, mtd.pix.size_x, *chunk_size)
 
     with tifffile.TiffWriter(args.out, bigtiff=True, shaped=False) as tif:
+        print(f"{img_shape}, {chunk_size}, {mtd_dict}")
+        print(img.dtype)
         tif.write(data=tile_gen(), shape=img_shape, tile=chunk_size, **mtd_dict)
 

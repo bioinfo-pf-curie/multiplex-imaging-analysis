@@ -17,6 +17,6 @@ process quantification {
   script:
     def args = task.ext.args ?: ''
     """
-    single_cell_data_extraction.py --image $meta.imagePath --masks $mask --output . --channel_names $meta.markersPath $args
+    single_cell_data_extraction.py --image "$meta.imagePath" --masks $mask --output . --channel_names "$meta.markersPath" $args
     """
 }

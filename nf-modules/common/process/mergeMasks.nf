@@ -16,6 +16,6 @@ process mergeMasks {
     def args = task.ext.args ?: ''
     def meanCellDiam = diameters.sum() / diameters.size()
     """
-    merge_masks.py --list_of_mask $partialMask --out ${meta.originalName}_masks.tiff --diameter $meanCellDiam --original $meta.imagePath $args
+    merge_masks.py --list_of_mask $partialMask --out "${meta.originalName}_masks.tiff" --diameter $meanCellDiam --original "$meta.imagePath" $args
     """
 }

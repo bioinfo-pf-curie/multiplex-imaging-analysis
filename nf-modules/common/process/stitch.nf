@@ -16,6 +16,6 @@ process stitch {
   script:
     def args = task.ext.args ?: ''
     """
-    $segmenterConfig.stitch --in $images --original $meta.imagePath $args
+    $segmenterConfig.stitch --in $images --original "$meta.imagePath" $args
     """
 }
