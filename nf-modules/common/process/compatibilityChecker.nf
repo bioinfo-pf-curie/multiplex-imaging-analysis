@@ -4,10 +4,10 @@ process compatibilityChecker {
   label 'highMem'
   
   input:
-    tuple val(meta), path(img), path(ch)
+    path(img)
 
   output:
-    tuple val(meta), path("*.tiff"), path(ch)
+    path("*.tiff")
 
   when:
     task.ext.when == null || task.ext.when
@@ -15,6 +15,6 @@ process compatibilityChecker {
   script:
     def args = task.ext.args ?: ''
     """
-    compatibility_checker.py --image $img --out ${meta.originalName}_checked.ome.tiff
+    compatibility_checker.py --image $img --out "${img.getBaseName()}_checked.ome.tiff"
     """
 }

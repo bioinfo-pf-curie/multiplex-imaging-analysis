@@ -133,13 +133,15 @@ workflow {
 
     // Init Channels
     imgCh = Channel.fromPath((params.images =~ tiffPattern) ? params.images : "${params.images}/*ti{f,ff}")
-    imgId = imgCh.map{img -> tuple(NFTools.getImageID(img), img)}
+    checkedImg = compatibilityChecker(imgCh)
+
+    imgId = checkedImg.map{img -> tuple(NFTools.getImageID(img), img)}
 
     if (file("${params.markers}").exists()) {
       markersCh = Channel.fromPath("${params.markers}".endsWith(".csv") ? "${params.markers}" : "${params.markers}/*.csv")
     }
     else {
-      markersCh = ome2panel(imgCh)
+      markersCh = ome2panel(checkedImg)
     } 
 
     mrkId = markersCh.map{img -> tuple(NFTools.getImageID(img), img)}
@@ -167,9 +169,8 @@ workflow {
     )
 
     // PROCESS
-    checkedInput = compatibilityChecker(inputsOriginal)
-
-    ipts = checkedInput.branch{
+    
+    ipts = inputsOriginal.branch{
       toMerge: (it[0].markersPath.readLines().size() > 3) & (params.segmentation.name != "instanseg")
       noMerge: true
     }
