@@ -1,7 +1,8 @@
 process mask2geojson {
   label 'img_utils'
   label 'medCpu'
-  label 'maxMem'
+
+  memory {MemoryUnit.of(Math.max(Math.min(meta.imgSize * 1.2, params.maxMemory.size), params.minMemory.size).toLong())}
 
   input:
     tuple val(meta), path(image)
