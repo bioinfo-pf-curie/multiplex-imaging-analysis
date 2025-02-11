@@ -8,6 +8,7 @@ import sys
 import pathlib
 import argparse
 import numpy as np
+import pandas as pd
 import geojson
 from collections import namedtuple
 import io
@@ -181,6 +182,8 @@ def compare(args):
 
     total = GeometryCollection(gt_cells).bounds
     total = total[2] * total[3]
+    
+    result = []
 
     for gj_files in args.images:
         if not gj_files.endswith('.geojson'):
@@ -246,21 +249,7 @@ def compare(args):
             iou_mean.append(iou)
 
         # filename | ground truth cell count | cell count | false cells | cells not found | avg precision | cellpose avg precision | IoU mean | true positive (pixel) | true negative (pixel) | false positive (pixel) | false negative (pixel) | F1 score (pixel)
-        result = {
-            "filename": pathlib.Path(gj_files).stem,
-            "ground truth cell count": gt_cells_nb,
-            "cell count": len(nb_cell),
-            "false cells": len(not_cells),
-            "cells not found": len(not_found),
-            "avg precision": sum(ap_common) / len(ap_common) if len(ap_common) else 0,
-            "cellpose avg precision": tpcp / (tpcp + fpcp + fncp) if (tpcp + fpcp + fncp) else 0,
-            "IoU mean": sum(iou_mean) / len(iou_mean) if len(iou_mean) else 0,
-            "true positive (pixel)": tp,
-            "true negative (pixel)": tn,
-            "false positive (pixel)": fp,
-            "false negative (pixel)": fn,
-            "F1 score (pixel)": 2*tp / (2*tp + fp + fn)
-        }
+        
             
         print(f"{pathlib.Path(gj_files).stem}\n")
         print(f"\tfound {nb_cell} (with {len(not_cells)} false cells and {len(not_found)} cells not found) cells out of {gt_cells_nb} in ground truth\n")
@@ -281,6 +270,24 @@ def compare(args):
         print(f"\t| FALSE  | {fp:.02f} | {fn:.02f} |")
         print("\t+--------+------+------+")
         print(f'\n\t F1 score = {2*tp / (2*tp + fp + fn):.02f}\n\n')
+
+        result.append({
+            "filename": pathlib.Path(gj_files).stem,
+            "ground truth cell count": gt_cells_nb,
+            "cell count": nb_cell,
+            "false cells": len(not_cells),
+            "cells not found": len(not_found),
+            "avg precision": sum(ap_common) / len(ap_common) if len(ap_common) else 0,
+            "cellpose avg precision": tpcp / (tpcp + fpcp + fncp) if (tpcp + fpcp + fncp) else 0,
+            "IoU mean": sum(iou_mean) / len(iou_mean) if len(iou_mean) else 0,
+            "true positive (pixel)": tp,
+            "true negative (pixel)": tn,
+            "false positive (pixel)": fp,
+            "false negative (pixel)": fn,
+            "F1 score (pixel)": 2*tp / (2*tp + fp + fn)
+        })
+    pd.DataFrame(result).to_csv(args.out)
+    return result
             
 
 def compare_img(args):
@@ -406,6 +413,8 @@ def parse_args(args=None):
                              help='Ground truth file (geojson or mask)')
     parser_compare.add_argument('--images', type=str, nargs="+",
                              help='list of image (or geojson) to compare to gt')
+    parser_compare.add_argument('--outpath', type=str, defautl="result_compare.csv",
+                             help='file path for output in csv format')
     parser_compare.set_defaults(func=compare)
 
     parser_m2g = subparsers.add_parser('m2g')
