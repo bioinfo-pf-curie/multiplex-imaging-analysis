@@ -93,6 +93,12 @@ def qptiff2ome_v4(root):
 
 def hyperion2ome():
     pass
+
+def valid_dtype(dtype_):
+    return [val for val in ('int8', 'int16', 'int32', 
+                            'uint8', 'uint16', 'uint32', 
+                            'float', 'double', 'complex', 
+                            'double-complex', 'bit') if val in str(dtype_)][-1]
     
 def get_info_tiff_tags(img, mtd):
     result = {}
@@ -103,7 +109,7 @@ def get_info_tiff_tags(img, mtd):
             case 257:
                 result['size_y'] = tag.value
             case 258:
-                result['dtype'] = {8: 'uint8', 16: 'uint16'}.get(tag.value, img.dtype)
+                result['dtype'] = {8: 'uint8', 16: 'uint16'}.get(tag.value, valid_dtype(img.dtype))
             case 282:
                 if 'resolution' not in result:
                     result['resolution'] = [0,0,0]
@@ -185,11 +191,7 @@ if __name__ == "__main__":
             try:
                 img, default_mtd = get_info_tiff_tags(img, tiff_img.pages[0]) # imageJ compatible
             except BaseException:
-                raise
-                dtype = [val for val in ('int8', 'int16', 'int32', 
-                                         'uint8', 'uint16', 'uint32', 
-                                         'float', 'double', 'complex', 
-                                         'double-complex', 'bit') if val in str(img.dtype)]
+                dtype = valid_dtype(img.dtype)
                 default_mtd = dict(
                     size_x=img.shape[-2],
                     size_y=img.shape[-1],
@@ -217,14 +219,17 @@ if __name__ == "__main__":
     mtd_dict['compression'] = 1
 
     img_shape = (mtd.pix.size_c, mtd.pix.size_y, mtd.pix.size_x)
-    chunk_size = (min(4096, img_shape[1]), min(4096, img_shape[2]))
 
-    def tile_gen():
-        for chan in range(mtd.pix.size_c):
-            yield from _tile_generator(img, chan, mtd.pix.size_y, mtd.pix.size_x, *chunk_size)
+    if img_shape[1] < 4096 or img_shape[2] < 4096:
+        def tile_gen():
+            return img
+        chunk_size = None
+    else:
+        chunk_size = (4096, 4096)
+        def tile_gen():
+            for chan in range(mtd.pix.size_c):
+                yield from _tile_generator(img, chan, mtd.pix.size_y, mtd.pix.size_x, *chunk_size)
 
     with tifffile.TiffWriter(args.out, bigtiff=True, shaped=False) as tif:
-        print(f"{img_shape}, {chunk_size}, {mtd_dict}")
-        print(img.dtype)
         tif.write(data=tile_gen(), shape=img_shape, tile=chunk_size, **mtd_dict)
 
