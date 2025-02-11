@@ -218,6 +218,9 @@ if __name__ == "__main__":
     # force no compression
     mtd_dict['compression'] = 1
 
+    if mtd_dict['dtype'] == 'float': # float32 doesnt work...
+        img = img.astype(float)
+
     img_shape = (mtd.pix.size_c, mtd.pix.size_y, mtd.pix.size_x)
 
     if img_shape[1] < 4096 or img_shape[2] < 4096:
