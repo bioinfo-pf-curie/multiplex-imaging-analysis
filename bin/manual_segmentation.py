@@ -170,7 +170,13 @@ def geojson2shapely(geojson):
     return result
 
 def compare_dataset(args):
-    pass
+    result = []
+    for gt, geo in zip(args.ground_truth, args.geojson):
+        current_args = namedtuple('args', ['ground_truth', 'images', 'outpath', 'verbose'])
+        result.append(compare(current_args(gt, [geo], None, False)))
+    result = pd.DataFrame.from_records(result)
+    print(result.describe())
+    result.to_csv(args.outpath)
 
 def compare(args):
     gt = args.ground_truth
@@ -259,14 +265,18 @@ def compare(args):
             print(f"\tfound {nb_cell} (with {len(not_cells)} false cells and {len(not_found)} cells not found) cells out of {gt_cells_nb} in ground truth\n")
             if len(ap_common):
                 print(f"\tavg prec = {sum(ap_common) / len(ap_common):.4f}\n")
-            if (tpcp + fpcp + fncp):
-                ap_cellpose = tpcp / (tpcp + fpcp + fncp)
+        if (tpcp + fpcp + fncp):
+            ap_cellpose = tpcp / (tpcp + fpcp + fncp)
+            if args.verbose:
                 print(f"\tcellpose avg prec = {ap_cellpose:.4f}\n")
-            print(f"\tiou mean = {sum(iou_mean) / len(iou_mean)}\n")
-            tn = (total - (tp + fp + fn)) / total
-            tp /= total
-            fp /= total
-            fn /= total
+                print(f"\tiou mean = {sum(iou_mean) / len(iou_mean)}\n")
+
+        tn = (total - (tp + fp + fn)) / total
+        tp /= total
+        fp /= total
+        fn /= total
+
+        if args.verbose:
             print(f"\ttotal pixel classification = \n")
             print("\t+--------+------+------+")
             print("\t|        |  POS |  NEG |")
@@ -290,7 +300,8 @@ def compare(args):
             "false negative (pixel)": fn,
             "F1 score (pixel)": 2*tp / (2*tp + fp + fn)
         })
-    pd.DataFrame(result).to_csv(args.out)
+    if args.outpath:
+        pd.DataFrame(result).to_csv(args.outpath)
     return result
             
 
@@ -442,12 +453,10 @@ def parse_args(args=None):
     parser_compare_dataset = subparsers.add_parser('compare_dataset')
     parser_compare_dataset.add_argument('-gt', '--ground_truth', type=str, nargs="+",
                              help='Ground truth file geojson')
-    parser_compare_dataset.add_argument('--images', type=str, nargs="+",
+    parser_compare_dataset.add_argument('--geojson', type=str, nargs="+",
                              help='list of geojson to compare to gt')
     parser_compare_dataset.add_argument('--outpath', type=str, default="result_compare.csv",
                              help='file path for output in csv format')
-    parser_compare_dataset.add_argument('--verbose', type=bool, default=True,
-                             help='will output result in stdout')
     parser_compare_dataset.set_defaults(func=compare_dataset)
 
     return parser.parse_args(args)
