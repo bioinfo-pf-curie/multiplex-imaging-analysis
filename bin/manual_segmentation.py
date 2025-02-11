@@ -18,6 +18,7 @@ from skimage.draw import polygon, polygon_perimeter
 from skimage.io import imsave
 import tifffile
 from shapely import geometry, STRtree, GeometryCollection
+from PIL import Image
 
 from mask2geojson import mask2geojson
 
@@ -168,6 +169,9 @@ def geojson2shapely(geojson):
         raise ValueError("Unkwown type for geojson file")
     return result
 
+def compare_dataset(args):
+    pass
+
 def compare(args):
     gt = args.ground_truth
 
@@ -250,26 +254,26 @@ def compare(args):
 
         # filename | ground truth cell count | cell count | false cells | cells not found | avg precision | cellpose avg precision | IoU mean | true positive (pixel) | true negative (pixel) | false positive (pixel) | false negative (pixel) | F1 score (pixel)
         
-            
-        print(f"{pathlib.Path(gj_files).stem}\n")
-        print(f"\tfound {nb_cell} (with {len(not_cells)} false cells and {len(not_found)} cells not found) cells out of {gt_cells_nb} in ground truth\n")
-        if len(ap_common):
-            print(f"\tavg prec = {sum(ap_common) / len(ap_common):.4f}\n")
-        if (tpcp + fpcp + fncp):
-            ap_cellpose = tpcp / (tpcp + fpcp + fncp)
-            print(f"\tcellpose avg prec = {ap_cellpose:.4f}\n")
-        print(f"\tiou mean = {sum(iou_mean) / len(iou_mean)}\n")
-        tn = (total - (tp + fp + fn)) / total
-        tp /= total
-        fp /= total
-        fn /= total
-        print(f"\ttotal pixel classification = \n")
-        print("\t+--------+------+------+")
-        print("\t|        |  POS |  NEG |")
-        print(f"\t| TRUE   | {tp:.02f} | {tn:.02f} |")
-        print(f"\t| FALSE  | {fp:.02f} | {fn:.02f} |")
-        print("\t+--------+------+------+")
-        print(f'\n\t F1 score = {2*tp / (2*tp + fp + fn):.02f}\n\n')
+        if args.verbose:
+            print(f"{pathlib.Path(gj_files).stem}\n")
+            print(f"\tfound {nb_cell} (with {len(not_cells)} false cells and {len(not_found)} cells not found) cells out of {gt_cells_nb} in ground truth\n")
+            if len(ap_common):
+                print(f"\tavg prec = {sum(ap_common) / len(ap_common):.4f}\n")
+            if (tpcp + fpcp + fncp):
+                ap_cellpose = tpcp / (tpcp + fpcp + fncp)
+                print(f"\tcellpose avg prec = {ap_cellpose:.4f}\n")
+            print(f"\tiou mean = {sum(iou_mean) / len(iou_mean)}\n")
+            tn = (total - (tp + fp + fn)) / total
+            tp /= total
+            fp /= total
+            fn /= total
+            print(f"\ttotal pixel classification = \n")
+            print("\t+--------+------+------+")
+            print("\t|        |  POS |  NEG |")
+            print(f"\t| TRUE   | {tp:.02f} | {tn:.02f} |")
+            print(f"\t| FALSE  | {fp:.02f} | {fn:.02f} |")
+            print("\t+--------+------+------+")
+            print(f'\n\t F1 score = {2*tp / (2*tp + fp + fn):.02f}\n\n')
 
         result.append({
             "filename": pathlib.Path(gj_files).stem,
@@ -356,7 +360,12 @@ def compare_img(args):
         print(f"\tiou mean = {sum(iou_mean.values()) / len(iou_mean)}\n")
 
 def m2g(args):
-    gjson = mask2geojson(mask=tifffile.imread(args.mask), object_type=args.object_type, 
+    if args.mask.endswith('tiff'):
+        mask = tifffile.imread(args.mask)
+    else:
+        mask = np.array(Image.open(args.mask))
+    mask = mask.astype('float32')
+    gjson = mask2geojson(mask=mask, object_type=args.object_type, 
                            connectivity=args.connectivity, transform=args.transform,
                            downsample=args.downsample, include_labels=args.include_labels,
                            classification=args.classification)
@@ -413,8 +422,10 @@ def parse_args(args=None):
                              help='Ground truth file (geojson or mask)')
     parser_compare.add_argument('--images', type=str, nargs="+",
                              help='list of image (or geojson) to compare to gt')
-    parser_compare.add_argument('--outpath', type=str, defautl="result_compare.csv",
+    parser_compare.add_argument('--outpath', type=str, default="result_compare.csv",
                              help='file path for output in csv format')
+    parser_compare.add_argument('--verbose', type=bool, default=True,
+                             help='will output result in stdout')
     parser_compare.set_defaults(func=compare)
 
     parser_m2g = subparsers.add_parser('m2g')
@@ -427,6 +438,18 @@ def parse_args(args=None):
     parser_m2g.add_argument("--classification", type=str, default=None)
     parser_m2g.add_argument('-o', "--out", type=str, default=None, help="path for geojson file")
     parser_m2g.set_defaults(func=m2g)
+
+    parser_compare_dataset = subparsers.add_parser('compare_dataset')
+    parser_compare_dataset.add_argument('-gt', '--ground_truth', type=str, nargs="+",
+                             help='Ground truth file geojson')
+    parser_compare_dataset.add_argument('--images', type=str, nargs="+",
+                             help='list of geojson to compare to gt')
+    parser_compare_dataset.add_argument('--outpath', type=str, default="result_compare.csv",
+                             help='file path for output in csv format')
+    parser_compare_dataset.add_argument('--verbose', type=bool, default=True,
+                             help='will output result in stdout')
+    parser_compare_dataset.set_defaults(func=compare_dataset)
+
     return parser.parse_args(args)
 
 # ==================== #
