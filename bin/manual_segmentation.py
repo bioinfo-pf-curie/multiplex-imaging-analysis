@@ -21,6 +21,7 @@ from shapely import geometry, STRtree, GeometryCollection
 from PIL import Image
 
 from mask2geojson import mask2geojson
+from single_cell_data_extraction import MultiExtractSingleCells
 
 def get_outline_image(gj, height, width):
     """
@@ -42,19 +43,20 @@ def get_outline_image(gj, height, width):
 
     An image of dimension height x width
     """
-    n = len(gj)
+    n = len(gj['features'])
     best_dtype = np.min_scalar_type(n)
-    img = np.zeros((height, width), dtype=np.double) # heigth x width
-    for idx, roi in enumerate(gj):
+    img = np.zeros((height, width), dtype=best_dtype) # heigth x width
+    for idx, roi in enumerate(gj['features']):
         if (idx in [0, 1]):
             pass
             # print(roi)
         try:
-            poly = np.array(roi["geometry"]["coordinates"])
-            a, b, c = poly.shape
-            poly = np.reshape(poly, (b, c))
-            rr, cc = polygon_perimeter(poly[:, 0], poly[:, 1])
-            img[cc, rr] = 255
+            # poly = np.array(roi["geometry"]["coordinates"])
+            # a, b, c = poly.shape
+            # poly = np.reshape(poly, (b, c))
+            # rr, cc = polygon_perimeter(poly[:, 0], poly[:, 1])
+            # img[cc, rr] = 255
+            draw_cell(np.array(roi["geometry"]["coordinates"]), img, 255)
         except:
             pass
 
@@ -80,20 +82,26 @@ def get_mask_image(gj, height, width):
 
     An image of dimension height x width
     """
-    n = len(gj)
+    n = len(gj['features'])
     best_dtype = np.min_scalar_type(n)
     img = np.zeros((height, width), dtype=best_dtype) # heigth x width
     for idx, roi in enumerate(gj['features']):
         try:
-            poly = np.array(roi["geometry"]["coordinates"])
-            a, b, c = poly.shape
-            poly = np.reshape(poly, (b, c))
-            rr, cc = polygon(poly[:, 0], poly[:, 1], img.shape)
-            img[cc, rr] = idx
+            # poly = np.array(roi["geometry"]["coordinates"])
+            # a, b, c = poly.shape
+            # poly = np.reshape(poly, (b, c))
+            # rr, cc = polygon(poly[:, 0], poly[:, 1], img.shape)
+            # img[cc, rr] = idx
+            draw_cell(np.array(roi["geometry"]["coordinates"]), img, idx)
         except:
            pass
-
     return(img)
+
+def draw_cell(cell_coord, arr, color):
+    a, b, c = cell_coord.shape
+    poly = np.reshape(cell_coord, (b, c))
+    rr, cc = polygon(poly[:, 0], poly[:, 1], arr.shape)
+    arr[cc, rr] = color
 
 def g2o(args):
     gj_path = pathlib.Path(args.gjfile).expanduser()
@@ -178,6 +186,17 @@ def compare_dataset(args):
     print(result.describe())
     result.to_csv(args.outpath)
 
+# def compare_quantif(original, mask_gt, mask, markers_filepath):
+#     quantif = MultiExtractSingleCells(
+#         masks=[mask_gt, mask], image=original,
+#         intensity_props=["intensity_mean"], 
+#         channel_names=markers_filepath, output=None)
+#     gtdf = quantif[[k for k in quantif.keys() if k in mask_gt][0]]
+#     df = quantif[[k for k in quantif.keys() if k in mask][0]]
+
+#     return quantif
+    
+
 def compare(args):
     gt = args.ground_truth
 
@@ -234,10 +253,19 @@ def compare(args):
         tpcp = 0
         fpcp = len(not_cells)
         fncp = len(not_found)
+        if do_quantif:
+            gt_mask_name = ".gt_mask.tmp.tif"
+            other_mask_name = ".other_mask.tmp.tif"
+            gt_mask = np.array((height, width), dtype=np.min_scalar_type(len(common.T)))
+            other_mask = np.array((height, width), dtype=np.min_scalar_type(len(common.T)))
         
         for paired_cells in common.T:
             gtc = gt_cells[paired_cells[1]]
             oc = other_cells[paired_cells[0]]
+
+            if do_quantif:
+                draw_cell(gtc.exterior.xy, gt_mask, paired_cells[1])
+                draw_cell(gtc.exterior.xy, other_mask, paired_cells[0])
 
             intersect = gtc.intersection(oc).area
             too_much = oc.difference(gtc).area
@@ -257,6 +285,14 @@ def compare(args):
                 fncp += 1
             ap_common.append(ap)
             iou_mean.append(iou)
+
+        if do_quantif:
+            pass
+            # record arr into file
+            # launch single_cell_data_extraction on it
+            # get resulting csv
+            # compare correlation marker by marker 
+            # other ???
 
         # filename | ground truth cell count | cell count | false cells | cells not found | avg precision | cellpose avg precision | IoU mean | true positive (pixel) | true negative (pixel) | false positive (pixel) | false negative (pixel) | F1 score (pixel)
         
@@ -384,6 +420,29 @@ def m2g(args):
         args.out = pathlib.Path(args.mask).stem + ".geojson"
     with open(args.out, "w") as out:
        geojson.dump(gjson, out)
+
+def sumarize(df):
+    cols_name = [
+        "filename", gtcc := "ground truth cell count", cc := "cell count",
+        fc := "false cells", nfc := "cells not found", avg := "avg precision", cpavg := "cellpose avg precision",
+        iou := "IoU mean", tp := "true positive (pixel)", tn := "true negative (pixel)",
+        fp := "false positive (pixel)", fn := "false negative (pixel)", f1 := "F1 score (pixel)"
+    ]
+    result = {
+        "mean cell count by images": df[gtcc].mean(),
+        "mean correct cell percentage found": ((df[cc] - df[fc]) / df[gtcc]).mean(),
+        "mean false cell percentage": (df[fc] / df[gtcc]).mean(),
+        "avg precision": df[avg].mean(),
+        "cellpose avg precision": df[cpavg].mean(),
+        "IoU": df[iou].mean(),
+        tp: df[tp].mean(),
+        tn: df[tn].mean(),
+        fp: df[fp].mean(),
+        fn: df[fn].mean(),
+        f1: df[f1].mean()
+    }
+    print(result)
+    return result
     
 
 # ==========
@@ -472,3 +531,12 @@ def main(args=None):
 
 if __name__ == '__main__':
     sys.exit(main())
+
+"""
+# transform a geojson into a mask
+python orion/MIA/bin/manual_segmentation.py g2m --gjfile compare_segmentation/gt/autre_tile_manual_final.geojson --height 1024 --width 1024 -o compare_segmentation/gt/autre_tile_manual.tif
+
+
+from orion.MIA.bin.manual_segmentation import compare_quantif
+compare_quantif("test-orion/test-mcmicro/registration/autre_tile.ome.tif", "compare_segmentation/gt/autre_tile_manual.tif", "compare_segmentation/instanseg/autre_tile_mask.tif", "test-orion/test-mcmicro/markers_autre_tile.csv")
+"""

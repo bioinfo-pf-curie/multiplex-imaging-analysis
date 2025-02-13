@@ -248,7 +248,8 @@ def ExtractSingleCells(masks,image,channel_names,output, mask_props=None, intens
     path containing single-cell masks, z_stack path, and channel_names path."""
 
     #Create pathlib object for output
-    output = Path(output)
+    if output is not None:
+        output = Path(output)
 
     #Read csv channel names
     channel_names_loaded = pd.read_csv(channel_names)
@@ -309,6 +310,9 @@ def ExtractSingleCells(masks,image,channel_names,output, mask_props=None, intens
     elif im_tokens[-2] == "ome": im_name = os.extsep.join(im_tokens[0:-2])
     else: im_name = os.extsep.join(im_tokens[0:-1])
 
+    if output is None:
+        return scdata_z
+
     # iterate through each mask and export csv with mask name as suffix
     for k,v in scdata_z.items():
         # export the csv for this mask name
@@ -323,16 +327,17 @@ def ExtractSingleCells(masks,image,channel_names,output, mask_props=None, intens
 def MultiExtractSingleCells(masks,image,channel_names,output, mask_props=None, intensity_props=["intensity_mean"], normalization=None):
     """Function for iterating over a list of z_stacks and output locations to
     export single-cell data from image masks"""
-
+    
     print("Extracting single-cell data for "+str(image)+'...')
 
     #Run the ExtractSingleCells function for this image
-    ExtractSingleCells(masks,image,channel_names,output, mask_props=mask_props, intensity_props=intensity_props, normalization=normalization)
+    res = ExtractSingleCells(masks,image,channel_names,output, mask_props=mask_props, intensity_props=intensity_props, normalization=normalization)
 
     #Print update
     im_full_name = os.path.basename(image)
     im_name = im_full_name.split('.')[0]
     print("Finished "+str(im_name))
+    return res
 
 
 #Functions for parsing command line arguments for ome ilastik prep
@@ -380,6 +385,10 @@ def ParseInputDataExtract():
    #Return the dictionary
    return dict
 
+import logging
+logger = logging.getLogger(__name__)
+logging.basicConfig(filename='log.txt', encoding='utf-8', level=logging.DEBUG)
+
 
 if __name__ == "__main__":
     #Parse the command line arguments
@@ -387,8 +396,6 @@ if __name__ == "__main__":
     args = ParseInputDataExtract()
 
     #Run the MultiExtractSingleCells function
-    import logging
-    logger = logging.getLogger(__name__)
-    logging.basicConfig(filename='log.txt', encoding='utf-8', level=logging.DEBUG)
+    
     
     MultiExtractSingleCells(**args)
