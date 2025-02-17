@@ -105,6 +105,8 @@ class GetBasicInfo:
         self.parms = parms
         self.mask = None
 
+        self.tissue_fraction = np.nan
+
         # self.size_dis = self.make_size_distribution(height=650)
         # self.marker_dis = self.make_markers_distribution(height=650)
         # coexpr_size = max(600, 70 * len(self.marker_cols))

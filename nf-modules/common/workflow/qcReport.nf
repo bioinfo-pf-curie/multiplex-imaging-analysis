@@ -12,12 +12,13 @@ workflow qcFlow {
         params
 
     main:
-
+        quantificationData.view()
         multiqcConfigCh = Channel.fromPath(params.multiqcConfig)
         dataCh = quantificationData.multiMap{
             quant -> 
-                csvs: quant[1]
-                imgs: quant[0]
+                meta: quant[0]
+                imgs: quant[1]
+                csvs: quant[2]
         }
         dataQC(
             dataCh.csvs,

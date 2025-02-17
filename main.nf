@@ -188,19 +188,27 @@ workflow {
     .mix(NFTools.setTag(merged, "merge_channels"))
     .mix(NFTools.setTag(outline, "outlines"))
     
-    pyramidize(pyramidizeCh)
+    finalImage = pyramidize(pyramidizeCh)
 
     geojson = mask2geojson(mask)
   
     quant = quantification(mask)
 
     filtered_quant = qc(quant)
-
-    if (params.qualityControl.any { it.value != null }) {
-      info2Report = filtered_quant.collect()
-    } else {
-      info2Report = quant.collect()
+    
+    finalImage = finalImage.filter{ it -> it[0] == 'outlines' }.map{
+      tag, meta, i ->
+      tuple(meta, i)
     }
+    
+    if (params.qualityControl.any { it.value != null }) {
+      data2Report = filtered_quant
+    } else {
+      data2Report = quant
+    }
+    info2Report = finalImage.combine(data2Report.map{
+      meta, csv -> tuple(meta.subMap("originalName", "imagePath", "markersPath", "imgSize"), csv)
+    }, by: 0).collect()
 
     report = qcFlow(info2Report, params)
 

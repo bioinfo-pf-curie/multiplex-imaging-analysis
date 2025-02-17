@@ -9,7 +9,7 @@ process pyramidize {
      tuple val(tag), val(meta), path(image)
 
   output:
-    path("*.ome.tif")
+    tuple val(tag), val(meta), path("*.ome.tif")
 
   when:
   task.ext.when == null || task.ext.when
