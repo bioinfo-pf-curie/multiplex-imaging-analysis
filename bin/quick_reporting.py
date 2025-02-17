@@ -128,8 +128,10 @@ class GetBasicInfo:
             self.make_mask(self.parms['ROIPath'], 1)
         if self.parms.get('excludedPath', False): 
             self.make_mask(self.parms['excludedPath'], 2)
-
-        self.segmented_fraction = self.get_fraction_segmented()
+        try:
+            self.segmented_fraction = self.get_fraction_segmented()
+        except ValueError:
+            self.segmented_fraction = np.nan
 
     def make_mask(self, geojson, color):
         import cv2
