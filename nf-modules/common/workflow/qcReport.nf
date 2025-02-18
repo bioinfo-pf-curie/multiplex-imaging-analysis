@@ -12,7 +12,6 @@ workflow qcFlow {
         params
 
     main:
-        quantificationData.view()
         multiqcConfigCh = Channel.fromPath(params.multiqcConfig)
         dataCh = quantificationData.multiMap{
             quant -> 

@@ -18,7 +18,7 @@ custom_data:
        file_format: 'csv'
        section_name: 'Markers distribution'
        description: ''
-       plot_type: 'table'
+       plot_type: 'violin'
 
     correlation:
        file_format: 'csv'
