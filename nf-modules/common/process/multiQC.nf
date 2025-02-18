@@ -5,7 +5,7 @@
 process multiQC {
   label 'img_utils'
   label 'minCpu'
-  label 'lowMem'
+  label 'medMem'
 
   input:
   path ('figures/*')
