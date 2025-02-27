@@ -10,6 +10,8 @@ import cv2
 import tifffile
 import plotly.express as px
 import plotly.io as pio
+from plotly.subplots import make_subplots
+import plotly.graph_objects as go
 from jinja2 import Template
 import json
 
@@ -265,6 +267,51 @@ def tiff2rgb(img, geom=None, out_path="thumbnail.png"):
     cv2.imwrite(str(out_path), result.astype('uint8'))
     return out_path
 
+def plot_violin(data):
+    ignored_cols = ['CellID', "X_centroid", "Y_centroid"]
+    cols = [col for col in data.columns if col not in ignored_cols]
+    fig = make_subplots(rows=len(cols), cols=1, vertical_spacing=0)
+    for i, col in enumerate(cols, 1):
+        fig.add_trace(go.Violin(
+            x=data[col], orientation="h", name=col
+        ), row=i, col=1)
+    fig.update_layout(height=100 * len(cols), template="plotly_white")
+    return fig
+
+def plot_box(data):
+    colors = ['#636EFA', '#EF553B', '#00CC96', '#AB63FA', '#FFA15A', '#19D3F3', '#FF6692', '#B6E880', '#FF97FF', '#FECB52']
+    ignored_cols = ['CellID', "X_centroid", "Y_centroid"]
+    cols = [col for col in data.columns if col not in ignored_cols]
+    box_parms = data[cols].quantile([.25,.5,.75]).T
+    iqr = (box_parms[.75] - box_parms[.25]) * 1.5
+    box_parms['lf'], box_parms['uf'] = box_parms[.25] - iqr, box_parms[.75] + iqr
+    fig = make_subplots(rows=len(cols), cols=1, vertical_spacing=0)
+    for i, col in enumerate(cols, 1):
+        p = box_parms.loc[col]
+        lf = data[col] - p['lf']
+        lf.loc[lf < 0] = np.nan
+        try:
+            lf = data.iloc[lf.idxmin()][col]
+        except:
+            lf = p[.25]
+        uf = data[col] - p['uf']
+        uf.loc[uf > 0] = np.nan
+        try:
+            uf = data.iloc[uf.idxmax()][col]
+        except:
+            uf = p[.75]
+        fig.add_trace(go.Box(
+            q1=[p[.25]], median=[p[.5]], q3=[p[.75]], lowerfence=[lf], upperfence=[uf], orientation="h", name=col, marker_color=colors[i%len(colors)],
+            y0=col
+        ), row=i, col=1)
+        fig.add_trace(go.Box(
+            x=data.loc[(data[col] < lf) | (data[col] > uf), col], 
+            boxpoints="all", fillcolor='rgba(255,255,255,0)', line={'color': 'rgba(255,255,255,0)'}, marker_color=colors[i%len(colors)],
+            showlegend=False, hoveron='points', pointpos=0, hovertemplate='x=%{x}<extra></extra>', y0=col
+        ), row=i, col=1)
+    fig.update_layout(height=100 * len(cols), template="plotly_white")
+    return fig
+
 
 def main(image_path, csv_path, parms, out_dir):
     df_gen = {}
@@ -280,6 +327,10 @@ def main(image_path, csv_path, parms, out_dir):
                             "Cells number over maximal size": info.area_max, 
                             "Necrotics cells": info.necro, 
                             "Cells in Region of Interest": info.roi, "Cells in excluded region": info.exclu}
+
+        # create violin plot
+        fig = plot_box(info.df)
+        fig.write_html(out_dir / f"{img_name}_box.html", full_html=False, include_plotlyjs=False)
 
         # create thumbnail
         tiff2rgb(info.thumbnail, info.mask, out_path= out_dir / f"{img_name}_thumbnail.png")
