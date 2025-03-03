@@ -14,7 +14,8 @@ process compatibilityChecker {
 
   script:
     def args = task.ext.args ?: ''
+    def outName = img.getBaseName() - ~/\.ome$/
     """
-    compatibility_checker.py --image $img --out "${img.getBaseName()}_checked.ome.tiff"
+    compatibility_checker.py --image $img --out "${outName}_checked.ome.tiff"
     """
 }

@@ -156,7 +156,7 @@ workflow {
       imgId.join(mrkId)
     )).map{count, name, ipath, mpath -> 
       tuple([
-        originalName: name, 
+        originalName: name - ~/_checked$/, 
         imagePath: ipath, 
         markersPath: mpath,
         imgSize: ipath.size() as Float
