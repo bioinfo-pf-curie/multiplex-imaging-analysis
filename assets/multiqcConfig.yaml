@@ -11,14 +11,13 @@ custom_data:
         section_name: 'General Metrics'
         description: ''
         plot_type: 'table'
+        
     thumbnail:
        section_name: "Thumbnail"
 
     cell_data:
-       file_format: 'csv'
        section_name: 'Markers distribution'
        description: ''
-       plot_type: 'violin'
 
     correlation:
        file_format: 'csv'
@@ -28,9 +27,9 @@ custom_data:
        pconfig:
           min: -1
           max: 1
+
     my_methods:
       section_name: "Methods"
-      plot_type: 'html'
 
 sp:
    my_stats:
@@ -38,7 +37,7 @@ sp:
    thumbnail:
       fn: '*_thumbnail.png'
    cell_data:
-      fn: '*_data.csv'
+      fn: '*box.html'
    correlation:
       fn: '*_heatmap.csv'
    my_methods:
@@ -85,11 +84,11 @@ custom_table_header_config:
 #############################
 ## Display
 
-table_columns_visible:
-    cell_data:
-      X_centroid: false
-      Y_centroid: false
+# table_columns_visible:
+#     cell_data:
+#       X_centroid: false
+#       Y_centroid: false
 
-plots_force_interactive: True
+# plots_force_interactive: True
 ignore_images: false
 log_filesize_limit: 1000000000

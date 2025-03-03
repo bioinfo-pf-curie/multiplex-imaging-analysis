@@ -330,7 +330,7 @@ def main(image_path, csv_path, parms, out_dir):
 
         # create violin plot
         fig = plot_box(info.df)
-        fig.write_html(out_dir / f"{img_name}_box.html", full_html=False, include_plotlyjs=False)
+        fig.write_html(out_dir / f"{img_name}_markers_distribution_mqc.html", full_html=False, include_plotlyjs=False)
 
         # create thumbnail
         tiff2rgb(info.thumbnail, info.mask, out_path= out_dir / f"{img_name}_thumbnail.png")
@@ -342,7 +342,7 @@ def main(image_path, csv_path, parms, out_dir):
         with open(Path(os.environ.get('NXF_ASSETS')) / "method_template.html", 'r') as templatef:
             template = Template(templatef.read())
 
-        with open(out_dir / f'{img_name}_methods.html', 'w') as out:
+        with open(out_dir / f'{img_name}_methods_mqc.html', 'w') as out:
             out.write(template.render())
         
     df_gen = pd.DataFrame.from_dict(df_gen, orient='index')

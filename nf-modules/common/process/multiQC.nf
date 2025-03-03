@@ -13,7 +13,7 @@ process multiQC {
 
   output:
   path "*_report.html", emit: report
-  path "*_data", emit: data
+  path "*_data", emit: data, optional: true
 
   script:
 
