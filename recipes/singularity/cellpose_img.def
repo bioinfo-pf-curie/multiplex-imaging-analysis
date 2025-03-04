@@ -9,8 +9,10 @@ From: biocontainers/cellpose:3.0.1_cv1
     pydantic==2.5.3 \
     xsdata==23.8 \
     cellpose==3.0.7 \
-    dask==2024.4.1 \
-    distributed==2024.4.1
+    dask==2024.5.0 \
+    distributed==2024.5.0 \
+    fastremap==1.14.1 \
+    psutil==6.0.0
   wget https://www.cellpose.org/models/cyto2_cp3 -P ~/.cellpose/models/
   wget https://www.cellpose.org/models/tissuenet_cp3 -P ~/.cellpose/models/
   wget https://www.cellpose.org/models/denoise_cyto3 -P ~/.cellpose/models/

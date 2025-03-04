@@ -5,6 +5,7 @@
 # ==================== #
 
 import sys
+import os
 import pathlib
 import argparse
 import numpy as np
@@ -14,7 +15,7 @@ from collections import namedtuple
 import io
 import fastremap
 import random
-from skimage.draw import polygon, polygon_perimeter
+from skimage.draw import polygon
 from skimage.io import imsave
 import tifffile
 from shapely import geometry, STRtree, GeometryCollection
@@ -22,6 +23,8 @@ from PIL import Image
 
 from mask2geojson import mask2geojson
 from single_cell_data_extraction import MultiExtractSingleCells
+from ome2panel import generate
+from compatibility_checker import convert2ometiff
 
 def get_outline_image(gj, height, width):
     """
@@ -49,13 +52,7 @@ def get_outline_image(gj, height, width):
     for idx, roi in enumerate(gj['features']):
         if (idx in [0, 1]):
             pass
-            # print(roi)
         try:
-            # poly = np.array(roi["geometry"]["coordinates"])
-            # a, b, c = poly.shape
-            # poly = np.reshape(poly, (b, c))
-            # rr, cc = polygon_perimeter(poly[:, 0], poly[:, 1])
-            # img[cc, rr] = 255
             draw_cell(np.array(roi["geometry"]["coordinates"]), img, 255)
         except:
             pass
@@ -87,11 +84,6 @@ def get_mask_image(gj, height, width):
     img = np.zeros((height, width), dtype=best_dtype) # heigth x width
     for idx, roi in enumerate(gj['features']):
         try:
-            # poly = np.array(roi["geometry"]["coordinates"])
-            # a, b, c = poly.shape
-            # poly = np.reshape(poly, (b, c))
-            # rr, cc = polygon(poly[:, 0], poly[:, 1], img.shape)
-            # img[cc, rr] = idx
             draw_cell(np.array(roi["geometry"]["coordinates"]), img, idx)
         except:
            pass
@@ -179,23 +171,13 @@ def geojson2shapely(geojson):
 
 def compare_dataset(args):
     result = []
-    for gt, geo in zip(args.ground_truth, args.geojson):
-        current_args = namedtuple('args', ['ground_truth', 'images', 'outpath', 'verbose'])
-        result.append(compare(current_args(gt, [geo], None, False)))
+    list_img = [None] * len(args.geojson) if args.original_image is None else args.original_image
+    for gt, geo, img in zip(args.ground_truth, args.geojson, list_img):
+        current_args = namedtuple('args', ['ground_truth', 'images', 'outpath', 'verbose', 'do_quantif', 'original_image'])
+        result.append(compare(current_args(gt, [geo], None, False, True, img)))
     result = pd.DataFrame.from_records(result)
     print(result.describe())
     result.to_csv(args.outpath)
-
-# def compare_quantif(original, mask_gt, mask, markers_filepath):
-#     quantif = MultiExtractSingleCells(
-#         masks=[mask_gt, mask], image=original,
-#         intensity_props=["intensity_mean"], 
-#         channel_names=markers_filepath, output=None)
-#     gtdf = quantif[[k for k in quantif.keys() if k in mask_gt][0]]
-#     df = quantif[[k for k in quantif.keys() if k in mask][0]]
-
-#     return quantif
-    
 
 def compare(args):
     gt = args.ground_truth
@@ -208,6 +190,20 @@ def compare(args):
     gt_cells = geojson2shapely(gjson)
     gt_tree = STRtree(gt_cells)
     gt_cells_nb = len(gt_cells)
+
+    if args.do_quantif:
+        img = tifffile.TiffFile(args.original_image)
+        height, width = img.pages[0].shape[-2:]
+        markers_filepath = ".markers_panel.tmp.csv"
+        try:
+            generate(tiff_path=args.original_image, out_path=markers_filepath)
+            ometiff_name = None
+        except ValueError:
+            img, mtd = convert2ometiff(args.original_image)
+            ometiff_name = ".converted.tmp.ome.tiff"
+            with tifffile.TiffWriter(ometiff_name, bigtiff=True, shaped=False) as tif:
+                tif.write(data=img, shape=img.shape, **mtd.to_dict())
+            generate(tiff_path=ometiff_name, out_path=markers_filepath)
 
     total = GeometryCollection(gt_cells).bounds
     total = total[2] * total[3]
@@ -253,19 +249,17 @@ def compare(args):
         tpcp = 0
         fpcp = len(not_cells)
         fncp = len(not_found)
-        if do_quantif:
-            gt_mask_name = ".gt_mask.tmp.tif"
-            other_mask_name = ".other_mask.tmp.tif"
-            gt_mask = np.array((height, width), dtype=np.min_scalar_type(len(common.T)))
-            other_mask = np.array((height, width), dtype=np.min_scalar_type(len(common.T)))
+        if args.do_quantif:
+            gt_mask = np.zeros((height, width), dtype=np.min_scalar_type(len(common.T)))
+            other_mask = np.zeros((height, width), dtype=np.min_scalar_type(len(common.T)))
         
-        for paired_cells in common.T:
+        for i, paired_cells in enumerate(common.T, 1):
             gtc = gt_cells[paired_cells[1]]
             oc = other_cells[paired_cells[0]]
 
-            if do_quantif:
-                draw_cell(gtc.exterior.xy, gt_mask, paired_cells[1])
-                draw_cell(gtc.exterior.xy, other_mask, paired_cells[0])
+            if args.do_quantif:
+                draw_cell(np.transpose(np.array([gtc.exterior.xy]), (0,2,1)), gt_mask, i)
+                draw_cell(np.transpose(np.array([oc.exterior.xy]), (0,2,1)), other_mask, i)
 
             intersect = gtc.intersection(oc).area
             too_much = oc.difference(gtc).area
@@ -286,13 +280,31 @@ def compare(args):
             ap_common.append(ap)
             iou_mean.append(iou)
 
-        if do_quantif:
-            pass
+        if args.do_quantif:        
+            gt_mask_name = "gt_mask.tmp.tif"
+            other_mask_name = "other_mask.tmp.tif"
+            correlation = []
             # record arr into file
-            # launch single_cell_data_extraction on it
-            # get resulting csv
-            # compare correlation marker by marker 
-            # other ???
+            tifffile.imwrite(other_mask_name, other_mask)
+            tifffile.imwrite(gt_mask_name, gt_mask)
+
+            # launch single_cell_data_extraction on it    
+            print(args.original_image)        
+            quantif = MultiExtractSingleCells(
+                image=args.original_image, 
+                masks=[gt_mask_name, other_mask_name], channel_names=markers_filepath,
+                output=None,
+            ) # do on gt every time cause we want same ID for same cell
+            ignored_columns = ["CellID", "X_centroid", "Y_centroid", "Area", 
+                                "MajorAxisLength", "MinorAxisLength", "Eccentricity", 
+                                "Solidity", "Extent", "Orientation"]
+            mask_name = list(quantif.keys())
+            for col in quantif[mask_name[0]].columns:
+                if col not in ignored_columns:
+                    correlation.append(quantif[mask_name[0]][col].corr(quantif[mask_name[1]][col]))
+            correlation = sum(correlation) / len(correlation)
+        else:
+            correlation = None
 
         # filename | ground truth cell count | cell count | false cells | cells not found | avg precision | cellpose avg precision | IoU mean | true positive (pixel) | true negative (pixel) | false positive (pixel) | false negative (pixel) | F1 score (pixel)
         
@@ -319,7 +331,8 @@ def compare(args):
             print(f"\t| TRUE   | {tp:.02f} | {tn:.02f} |")
             print(f"\t| FALSE  | {fp:.02f} | {fn:.02f} |")
             print("\t+--------+------+------+")
-            print(f'\n\t F1 score = {2*tp / (2*tp + fp + fn):.02f}\n\n')
+            print(f'\n\t F1 score = {2*tp / (2*tp + fp + fn):.02f}\n')
+            print(f"\tAveraged correlation by marker = {correlation:.02f}\n\n")
 
         result.append({
             "filename": pathlib.Path(gj_files).stem,
@@ -334,10 +347,19 @@ def compare(args):
             "true negative (pixel)": tn,
             "false positive (pixel)": fp,
             "false negative (pixel)": fn,
-            "F1 score (pixel)": 2*tp / (2*tp + fp + fn)
+            "F1 score (pixel)": 2*tp / (2*tp + fp + fn),
+            "Averaged correlation by marker": correlation
         })
     if args.outpath:
         pd.DataFrame(result).to_csv(args.outpath)
+
+    if args.do_quantif:
+        os.unlink(gt_mask_name)
+        os.unlink(other_mask_name)
+        os.unlink(markers_filepath)
+        if ometiff_name:
+            os.unlink(ometiff_name)
+
     return result
             
 
@@ -494,6 +516,10 @@ def parse_args(args=None):
                              help='list of image (or geojson) to compare to gt')
     parser_compare.add_argument('--outpath', type=str, default="result_compare.csv",
                              help='file path for output in csv format')
+    parser_compare.add_argument('--do_quantif', type=bool, default=False,
+                             help='perform quantification on both masks and compare results')
+    parser_compare.add_argument('--original_image', type=str,
+                             help='original image to perform quantification on (based on both masks)')
     parser_compare.add_argument('--verbose', type=bool, default=True,
                              help='will output result in stdout')
     parser_compare.set_defaults(func=compare)
@@ -516,6 +542,8 @@ def parse_args(args=None):
                              help='list of geojson to compare to gt')
     parser_compare_dataset.add_argument('--outpath', type=str, default="result_compare.csv",
                              help='file path for output in csv format')
+    parser_compare_dataset.add_argument('--original_image', type=str, nargs="+",
+                             help='original image to perform quantification on (based on both masks)')
     parser_compare_dataset.set_defaults(func=compare_dataset)
 
     return parser.parse_args(args)

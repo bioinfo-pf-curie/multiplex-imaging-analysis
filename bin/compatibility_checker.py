@@ -163,19 +163,7 @@ def open_other_format(img_path):
         ))
     return img, default_mtd
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--image', type=str, required=True, nargs='+', help="Input Image Path")
-    parser.add_argument('--out', type=str, required=False, help="Output image Path")
-    args = parser.parse_args()
-    if len(args.image) > 1:
-        # merging image 
-        # hyperion ?
-        img_path = "" # will be a new one or an in-memory
-        pass
-    else:
-        img_path = args.image[0]
-
+def convert2ometiff(img_path):
     # open Image
     if img_path.endswith("qptiff") or img_path.endswith('qptif'):
         img = tifffile.TiffFile(img_path)
@@ -213,13 +201,31 @@ if __name__ == "__main__":
         mtd.ome = make_ome_data(**default_mtd)
         mtd.dtype = default_mtd['dtype']
 
+    if mtd.dtype == 'float': # float32 doesnt work...
+        img = img.astype(float)
+
+    return img, mtd
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--image', type=str, required=True, nargs='+', help="Input Image Path")
+    parser.add_argument('--out', type=str, required=False, help="Output image Path")
+    args = parser.parse_args()
+    if len(args.image) > 1:
+        # merging image 
+        # hyperion ?
+        img_path = "" # will be a new one or an in-memory
+        pass
+    else:
+        img_path = args.image[0]
+
+    img, mtd = convert2ometiff(img_path)
+
     mtd_dict = mtd.to_dict()
 
     # force no compression
     mtd_dict['compression'] = 1
-
-    if mtd_dict['dtype'] == 'float': # float32 doesnt work...
-        img = img.astype(float)
 
     img_shape = (mtd.pix.size_c, mtd.pix.size_y, mtd.pix.size_x)
 
