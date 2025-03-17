@@ -8,10 +8,10 @@ import os
 import cv2
 from PIL import Image, UnidentifiedImageError
 from scipy.ndimage import find_objects
-import zarr
+import dask.array as da
 from pandas import read_csv
 
-from utils import OmeTifffile, _tile_generator, read_tiff_orion
+from utils import _tile_generator, read_tiff_orion
 
 # ===! VULNERABILITY !===
 Image.MAX_IMAGE_PIXELS = None # raise DOSbombing error when too many pixels
@@ -121,11 +121,14 @@ def make_outline(merged_file, png_file, mask_path, out_path, nuclei_channel=0, c
         outline = np.zeros_like(png[..., 0])
         outline[(png[..., 0] == 255) & np.all(png[..., [1,2]] == 0, axis=2)] = 255
     else:
-        try:
-            mask = np.array(Image.open(mask_path))
-        except UnidentifiedImageError:
-            mask = tifffile.imread(mask_path)
-        outline = create_outline_mask(mask)
+        mask = da.from_zarr(tifffile.TiffFile(mask_path).series[0].aszarr(), chunks=(4096, 4096))
+        outline = da.map_overlap(create_outline_mask, mask, depth=128, boundary=0, dtype='uint8').compute()
+        # try:
+        #     mask = np.array(Image.open(mask_path))
+        # except UnidentifiedImageError:
+        #     mask = tifffile.imread(mask_path)
+        # 
+        # outline = create_outline_mask(mask)
 
     tiff, metadata = read_tiff_orion(merged_file)
 
