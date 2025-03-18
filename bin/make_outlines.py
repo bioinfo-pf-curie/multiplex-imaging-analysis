@@ -122,7 +122,7 @@ def make_outline(merged_file, png_file, mask_path, out_path, nuclei_channel=0, c
         outline[(png[..., 0] == 255) & np.all(png[..., [1,2]] == 0, axis=2)] = 255
     else:
         mask = da.from_zarr(tifffile.TiffFile(mask_path).series[0].aszarr(), chunks=(4096, 4096))
-        outline = da.map_overlap(create_outline_mask, mask, depth=128, boundary=0, dtype='uint8').compute()
+        outline = da.map_overlap(create_outline_mask, mask, depth=min(min(mask.shape), 128), boundary=0, dtype='uint8').compute()
         # try:
         #     mask = np.array(Image.open(mask_path))
         # except UnidentifiedImageError:

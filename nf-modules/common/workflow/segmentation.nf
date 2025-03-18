@@ -31,6 +31,7 @@ process seg {
       customParms += "$segmenterConfig.output \"${meta.splittedName}_masks.tiff\""
     }
     """
+    export diameter="$segmenterConfig.diameter" # there is maybe a better way....
     export INSTANSEG_BIOIMAGEIO_PATH="${params.condaCacheDir}/bioimageio_models/" 
     $segmenterConfig.cmd $segmenterConfig.input $image $segmenterConfig.baseParms $customParms $segmenterConfig.additionalParms
     """
@@ -44,7 +45,14 @@ workflow segmentation {
     main:
       def segmenterConfig = new File(params.segmentation.config).withReader{
         reader -> new ConfigSlurper().parse(reader.text)[params.segmentation.name]
+      }      
+      
+      println(segmenterConfig)
+      // Update segmenterConfig with values from params.segmentation
+      params.segmentation.each { key, value ->
+        segmenterConfig[key] = value
       }
+      println(segmenterConfig)
 
       splittedImg = splitImage(metaAndImagesCh, segmenterConfig.diameter)
       splittedImgResult = splittedImg.transpose().map{nb, meta, splitted -> 
