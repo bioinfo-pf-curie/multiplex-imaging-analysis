@@ -47,12 +47,10 @@ workflow segmentation {
         reader -> new ConfigSlurper().parse(reader.text)[params.segmentation.name]
       }      
       
-      println(segmenterConfig)
       // Update segmenterConfig with values from params.segmentation
       params.segmentation.each { key, value ->
         segmenterConfig[key] = value
       }
-      println(segmenterConfig)
 
       splittedImg = splitImage(metaAndImagesCh, segmenterConfig.diameter)
       splittedImgResult = splittedImg.transpose().map{nb, meta, splitted -> 
