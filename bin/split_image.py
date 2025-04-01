@@ -16,6 +16,8 @@ def split_img(img_path, out_dir, height=224, overlap=0.1, memory=0, scaling=1):
         out_dir = os.path.dirname(img_path)
     ch, total_height, total_width = img_zarr.shape
 
+    print(f"memory: {memory}, {height=} shape={img_zarr.shape}")
+
     if memory or not height:
         computed_max_height = int(int(memory) * scaling / (img_zarr.dtype.itemsize * 8 * total_width * (ch+2)))
         print(f"Computed max height: {computed_max_height} ({memory=}, {scaling=} {img_zarr.dtype.itemsize=}, {total_width=}, {ch=})")
@@ -46,5 +48,6 @@ if __name__ == "__main__":
     parser.add_argument('--memory', type=float, required=False, default=0, help="memory size available for each crop")
     parser.add_argument('--scaling', type=float, required=False, default=1, help="scaling of image before seg (with another diameter than 30, image is rescaled beforehand)")
     args = parser.parse_args()
-
+    rtyu = dict(img_path=args.file_in, out_dir=args.out, height=args.height, overlap=args.overlap, memory=args.memory, scaling=args.scaling)
+    print(rtyu)
     split_img(img_path=args.file_in, out_dir=args.out, height=args.height, overlap=args.overlap, memory=args.memory, scaling=args.scaling)
