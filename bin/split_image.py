@@ -10,7 +10,7 @@ from utils import read_tiff_orion
 def split_img(img_path, out_dir, height=224, overlap=0.1, memory=0, scaling=1):
     """Will split an image into height x image_width crop (with some overlap) to get a better memory footprint """
     img_name, ext = os.path.splitext(os.path.basename(img_path))
-    img_zarr, metadata = read_tiff_orion(img_path, zarr_mode='a', mode='r+b')
+    img_zarr, metadata = read_tiff_orion(img_path)
 
     if out_dir is None:
         out_dir = os.path.dirname(img_path)
@@ -36,6 +36,8 @@ def split_img(img_path, out_dir, height=224, overlap=0.1, memory=0, scaling=1):
                 shape=tmp_arr.shape,
                 **metadata.to_dict()
             )
+        with open(f'log_log_{i}.txt', 'a') as log:
+            log.write(locals())
     print(i) # needed for nextflow to be aware of the number of file
 
 
