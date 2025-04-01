@@ -37,7 +37,7 @@ def split_img(img_path, out_dir, height=224, overlap=0.1, memory=0, scaling=1):
                 **metadata.to_dict()
             )
         with open(f'log_log_{i}.txt', 'a') as log:
-            log.write(locals())
+            log.write(f"{locals()}")
     print(i) # needed for nextflow to be aware of the number of file
 
 
