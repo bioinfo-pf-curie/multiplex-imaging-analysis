@@ -5,6 +5,7 @@ from tifffile import TiffWriter
 import argparse
 
 from utils import read_tiff_orion
+import psutil
 
 
 def split_img(img_path, out_dir, height=224, overlap=0.1, memory=0, scaling=1):
@@ -34,7 +35,17 @@ def split_img(img_path, out_dir, height=224, overlap=0.1, memory=0, scaling=1):
                 **metadata.to_dict()
             )
         if not (i % 10):
+            with open(f'log_{i}.txt', 'a') as out:
+                out.write("\nbefore : \n")
+                out.write(str(psutil.virtual_memory()))
+                out.write(f"\n{locals()}\n\n{img_zarr.info}")
+            del tmp_arr
             img_zarr, metadata = read_tiff_orion(img_path) # need this to clear memory usage (I hope)
+
+            with open(f'log_{i}.txt', 'a') as out:
+                out.write("\nafter : \n")
+                out.write(str(psutil.virtual_memory()))
+                out.write(f"\n{locals()}\n\n{img_zarr.info}")
     print(i) # needed for nextflow to be aware of the number of file
 
 
