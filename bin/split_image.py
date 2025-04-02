@@ -20,11 +20,8 @@ def split_img(img_path, out_dir, height=224, overlap=0.1, memory=0, scaling=1):
 
     if memory or not height:
         computed_max_height = int(int(memory) * scaling / (img_zarr.dtype.itemsize * 8 * total_width * (ch+2)))
-        print(f"Computed max height: {computed_max_height} ({memory=}, {scaling=} {img_zarr.dtype.itemsize=}, {total_width=}, {ch=})")
         #                     memory_per_cpu * re-scaling of the image / (size_of_pixel_in_bytes * nb_bit_per_byte * width * channel + 2 to get some margin)
         height = min(height, computed_max_height) if height else computed_max_height
-        print(f'height: {height}')
-        print(f"Total height: {total_height}")
 
     for i, cur_height in enumerate(range(0, total_height, int(height * (1 - overlap))), 1):
         out_path = os.path.join(out_dir, img_name + f"_{cur_height}" + ext)
@@ -36,8 +33,8 @@ def split_img(img_path, out_dir, height=224, overlap=0.1, memory=0, scaling=1):
                 shape=tmp_arr.shape,
                 **metadata.to_dict()
             )
-        with open(f'log_log_{i}.txt', 'a') as log:
-            log.write(f"{locals()}")
+        if not (i % 10):
+            img_zarr, metadata = read_tiff_orion(img_path) # need this to clear memory usage (I hope)
     print(i) # needed for nextflow to be aware of the number of file
 
 
