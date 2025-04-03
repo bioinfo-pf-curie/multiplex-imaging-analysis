@@ -30,7 +30,7 @@ def split_img(img_path, out_dir, height=224, overlap=0.1, memory=0, scaling=1):
         #                     memory_per_cpu * re-scaling of the image / (size_of_pixel_in_bytes * nb_bit_per_byte * width * channel + 2 to get some margin)
         height = min(height, computed_max_height) if height else computed_max_height
 
-    strip_shape = img_zarr.shape
+    strip_shape = list(img_zarr.shape)
 
     for i, cur_height in enumerate(range(0, total_height, int(height * (1 - overlap))), 1):
         out_path = os.path.join(out_dir, img_name + f"_{cur_height}" + ext)
