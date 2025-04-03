@@ -175,7 +175,7 @@ def compare_dataset(args):
     for gt, geo, img in zip(args.ground_truth, args.geojson, list_img):
         current_args = namedtuple('args', ['ground_truth', 'images', 'outpath', 'verbose', 'do_quantif', 'original_image'])
         result.append(compare(current_args(gt, [geo], None, False, True, img)))
-    result = pd.DataFrame.from_records(result)
+    result = pd.DataFrame(result)
     print(result.describe())
     result.to_csv(args.outpath)
 
@@ -289,7 +289,6 @@ def compare(args):
             tifffile.imwrite(gt_mask_name, gt_mask)
 
             # launch single_cell_data_extraction on it    
-            print(args.original_image)        
             quantif = MultiExtractSingleCells(
                 image=args.original_image, 
                 masks=[gt_mask_name, other_mask_name], channel_names=markers_filepath,
@@ -567,4 +566,8 @@ python orion/MIA/bin/manual_segmentation.py g2m --gjfile compare_segmentation/gt
 
 from orion.MIA.bin.manual_segmentation import compare_quantif
 compare_quantif("test-orion/test-mcmicro/registration/autre_tile.ome.tif", "compare_segmentation/gt/autre_tile_manual.tif", "compare_segmentation/instanseg/autre_tile_mask.tif", "test-orion/test-mcmicro/markers_autre_tile.csv")
+
+compare datasets
+python orion/MIA/bin/manual_segmentation.py compare_dataset -gt orion/CPDMI23/dataset/geojson/* --geojson orion/CPDMI23/result/Instanseg/* --original_image orion/CPDMI23/dataset/crop/*
+
 """
