@@ -27,3 +27,4 @@ dependencies:
     - fastremap==1.13.4
     - rasterio==1.3.10
     - readimc==0.8.0
+    - numcodecs==0.15.0
