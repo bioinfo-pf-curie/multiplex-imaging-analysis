@@ -179,11 +179,12 @@ def read_tiff_orion(img_path, idx_serie=0, idx_level=0, *args, **kwargs):
     metadata: OmeTifffile
         metadata from ome tiff arranged in a pythonnic way (see OmeTifffile)
     """
-    zarr_mode = kwargs.pop('zarr_mode', "r") 
+    zarr_mode = kwargs.pop('zarr_mode', "r")
+    expand_dim = kwargs.pop('expand_img_dim', True)
     tiff = tifffile.TiffFile(img_path, *args, **kwargs)
     zarray = zarr.open(tiff.series[idx_serie].aszarr(), mode=zarr_mode)
     zarr_img = (zarray[idx_level] if idx_level is not None and tiff.series[idx_serie].is_pyramidal else zarray)
-    if zarr_img.ndim == 2:
+    if expand_dim and zarr_img.ndim == 2:
         zarr_img = wrong_ndim(zarr_img)
     return zarr_img, OmeTifffile(tiff.pages[0])
 

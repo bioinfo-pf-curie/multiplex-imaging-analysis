@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 
 import argparse
+from pathlib import Path
 from spatialdata.models import Image2DModel, Labels2DModel, TableModel
 from spatialdata import SpatialData
 from anndata import AnnData
 import pandas as pd
-
-from utils import read_tiff_orion
+from dask_image.imread import imread
 
 
 COORDS_X = "X_centroid"
@@ -14,36 +14,62 @@ COORDS_Y = "Y_centroid"
 INSTANCE_KEY = "CellID"
 
 
-def ome2spatial_data(ome_path, out_path, mask_path=None, marker_info=None, quantif=None):
-    return SpatialData(images=_get_images(), labels=_get_labels(mask_path), tables=_get_tables(quantif, marker_info))
+def ome2spatial_data(ome_path, mask_path=None, marker_info=None, quantif=None):
+    img_name = ome_path.stem
+    if img_name.endswith('.ome'): img_name = img_name[:-4]
 
-def _get_images(ome_path):
-    img, mtd = read_tiff_orion(ome_path)
-    return Image2DModel.parse(img)
+    kwargs = dict(images={img_name: _get_image(ome_path)})
 
-def _get_labels(mask_path):
-    labels = read_tiff_orion(mask_path)
-    return Labels2DModel.parse(labels)
+    if mask_path is not None:
+        kwargs['labels'] = {mask_path.stem: _get_label(mask_path)}
 
-def _get_tables(quantif, marker_info):
-    tables_dict = {}
-    markers = pd.read_csv(marker_info) if marker_info is not None else None
-    markers.index = markers["marker_name"]
+    if quantif is not None:
+        kwargs['tables'] = {quantif.stem: _get_table(quantif, marker_info)}
+    
+    return SpatialData(**kwargs)
+
+def _get_image(ome_path):
+    return Image2DModel.parse(imread(ome_path))
+
+def _get_label(mask_path):
+    return Labels2DModel.parse(imread(mask_path).squeeze())
+
+def _get_table(quantif, marker_info):
+    if marker_info is not None:
+        markers = pd.read_csv(marker_info)
+        markers.index = markers["marker_name"]
+    else:
+        markers = None
     coords = ["X_centroid", "Y_centroid"]
+    
+    if quantif is None:
+        return
+    
+    table = pd.read_csv(quantif)
+    adata = AnnData(
+        table.to_numpy(),
+        obs=table[INSTANCE_KEY],
+        var=[col for col in table.columns if col not in [INSTANCE_KEY, COORDS_X, COORDS_Y]],
+        obsm={"spatial": table[coords].to_numpy()},
+        dtype=float,
+    )
+    adata.obs["region"] = pd.Categorical([quantif.stem] * len(adata))
 
-    for table_path in quantif:
-        table_name = table_path.stem
-        table = pd.read_csv(table_path)
-        adata = AnnData(
-            table[markers.index].to_numpy(),
-            obs=table.drop(columns=markers.marker_name.tolist() + coords),
-            var=markers,
-            obsm={"spatial": table[coords].to_numpy()},
-            dtype=float,
-        )
-        adata.obs["region"] = pd.Categorical([table_name] * len(adata))
+    return TableModel.parse(
+        adata, region=quantif.stem, region_key="region", instance_key=INSTANCE_KEY
+    )
 
-        tables_dict[table_name] = TableModel.parse(
-            adata, region=table_name, region_key="region", instance_key=INSTANCE_KEY
-        )
-    return tables_dict
+
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--image', type=Path, required=True, help="Ome Tiff file")
+    parser.add_argument('--mask', type=Path, required=False, help="mask (output of segmentation) in tiff format")
+    parser.add_argument('--out', type=str, help="Output directory")
+    parser.add_argument('--quantification', type=Path, required=False, help="path to the quantification file")
+    parser.add_argument('--panel', type=Path, required=False, help="path to the panel.csv")
+    args = parser.parse_args()
+
+    sp = ome2spatial_data(ome_path=args.image, mask_path=args.mask, marker_info=args.panel, quantif=args.quantification)
+    sp.write(args.out)
