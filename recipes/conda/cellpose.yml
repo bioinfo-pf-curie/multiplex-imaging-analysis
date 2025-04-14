@@ -1,4 +1,7 @@
 name: cellpose
+channels:
+  - conda-forge
+  - bioconda
 dependencies:
   - python=3.11.8=h955ad1f_0
   - wheel=0.44.0=py311h06a4308_0

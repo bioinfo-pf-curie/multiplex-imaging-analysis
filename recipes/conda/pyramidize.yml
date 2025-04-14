@@ -1,4 +1,7 @@
 name: pyramidize
+channels:
+  - conda-forge
+  - bioconda
 dependencies:
   - python=3.11.5=h955ad1f_0
   - scikit-image=0.19.3=py311h6a678d5_2

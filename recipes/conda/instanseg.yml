@@ -1,6 +1,7 @@
 name: instanseg
 channels:
-  - default
+  - conda-forge
+  - bioconda
 dependencies:
   - python=3.11.5=h955ad1f_0
   - pip=23.3=py311h06a4308_0

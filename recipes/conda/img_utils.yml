@@ -2,7 +2,6 @@ name: img_utils
 channels:
   - bioconda
   - conda-forge
-  - default
 dependencies:
   - python=3.11.5=h955ad1f_0
   - h5py=3.9.0=py311hdd6beaf_0
