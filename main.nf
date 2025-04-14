@@ -111,11 +111,12 @@ include { displayOutline } from './nf-modules/common/process/displayOutline'
 include { quantification } from './nf-modules/common/process/quantification'
 include { pyramidize } from './nf-modules/common/process/pyramidize'
 include { mergeMasks } from './nf-modules/common/process/mergeMasks'
-include { segmentation } from './nf-modules/common/workflow/segmentation'
 include { mask2geojson } from './nf-modules/common/process/mask2geojson'
 include { qc } from './nf-modules/common/process/qc'
-include { qcFlow } from './nf-modules/common/workflow/qcReport'
+include { spatialData } from './nf-modules/common/process/spatialData'
 
+include { segmentation } from './nf-modules/common/workflow/segmentation'
+include { qcFlow } from './nf-modules/common/workflow/qcReport'
 
 /*
 =====================================
@@ -185,8 +186,8 @@ workflow {
 
     outline = displayOutline(maskJoin.join(merged))
     pyramidizeCh = Channel.empty()
-    .mix(NFTools.setTag(merged, "merge_channels"))
-    .mix(NFTools.setTag(outline, "outlines"))
+      .mix(NFTools.setTag(merged, "merge_channels"))
+      .mix(NFTools.setTag(outline, "outlines"))
     
     finalImage = pyramidize(pyramidizeCh)
 
@@ -211,6 +212,8 @@ workflow {
     }, by: 0).collect()
 
     report = qcFlow(info2Report, params)
+
+    spatialData(maskJoin.join(quant))
 
     //*******************************************
     // Warnings that will be printed in the mqc report
