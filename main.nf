@@ -207,13 +207,16 @@ workflow {
     } else {
       data2Report = quant
     }
-    info2Report = finalImage.combine(data2Report.map{
+
+    data2Report = data2Report.map{
       meta, csv -> tuple(meta.subMap("originalName", "imagePath", "markersPath", "imgSize"), csv)
-    }, by: 0).collect()
+    }
+    
+    info2Report = finalImage.combine(data2Report, by: 0).collect()
 
     report = qcFlow(info2Report, params)
-
-    spatialData(maskJoin.join(quant))
+    spd = maskJoin.join(data2Report)
+    spatialData(spd)
 
     //*******************************************
     // Warnings that will be printed in the mqc report

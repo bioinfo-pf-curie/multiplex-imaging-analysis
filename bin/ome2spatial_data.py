@@ -47,8 +47,8 @@ def _get_table(quantif, marker_info):
     
     table = pd.read_csv(quantif)
     adata = AnnData(
-        table.to_numpy(),
-        obs=table[INSTANCE_KEY],
+        table[[col for col in table.columns if col not in [INSTANCE_KEY, COORDS_X, COORDS_Y]]].to_numpy(),
+        obs=table[[INSTANCE_KEY]].astype(str),
         var=[col for col in table.columns if col not in [INSTANCE_KEY, COORDS_X, COORDS_Y]],
         obsm={"spatial": table[coords].to_numpy()},
         dtype=float,
