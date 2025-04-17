@@ -39,6 +39,7 @@ def split_img(img_path, out_dir, height=224, overlap=0.1, memory=0, scaling=1):
             tiff_out.write(
                 data=strip_gen(img_zarr, cur_height, strip_shape[1]),
                 shape=strip_shape,
+                tile=strip_shape[1:],
                 **metadata.to_dict()
             )
         if not (i % 10):
