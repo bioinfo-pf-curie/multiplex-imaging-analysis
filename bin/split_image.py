@@ -28,6 +28,10 @@ def split_img(img_path, out_dir, height=224, overlap=0.1, memory=0, scaling=1):
         #                     memory_per_cpu * re-scaling of the image / (size_of_pixel_in_bytes * nb_bit_per_byte * width * channel + 2 to get some margin)
         height = min(height, computed_max_height) if height else computed_max_height
 
+    if height % 16:
+        height = (int(height / 16) + 1) * 16
+        # tifffile impose tile shape to be multiple of 16
+
     strip_shape = list(img_zarr.shape)
 
     for i, cur_height in enumerate(range(0, total_height, int(height * (1 - overlap))), 1):
@@ -37,16 +41,11 @@ def split_img(img_path, out_dir, height=224, overlap=0.1, memory=0, scaling=1):
             #tmp_arr = img_zarr[:, cur_height: cur_height+height, :]
             metadata.pix.size_y = strip_shape[1] # last one is not height unless total_height % height = 0
             tiff_out.write(
-                data=strip_gen(img_zarr, cur_height, strip_shape[1]),
+                data=strip_gen(img_zarr, cur_height, strip_shape[1], 4096),
                 shape=strip_shape,
-                tile=strip_shape[1:],
+                tile=(strip_shape[1], 4096),
                 **metadata.to_dict()
             )
-        if not (i % 10):
-            with open(f'log_{i}.txt', 'a') as out:
-                out.write("\nbefore : \n")
-                out.write(str(psutil.virtual_memory()))
-                out.write(f"\n{locals()}\n\n{img_zarr.info}")
 #            del tmp_arr
 #            img_zarr, metadata = read_tiff_orion(img_path) # need this to clear memory usage (I hope)
 
