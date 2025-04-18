@@ -28,4 +28,5 @@ dependencies:
     - psutil==6.0.0
     - pydantic==2.5.3
     - xsdata==23.8
+    - numcodecs==0.15.0
 
