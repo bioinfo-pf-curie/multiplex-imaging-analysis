@@ -28,11 +28,15 @@ def split_img(img_path, out_dir, height=224, overlap=0.1, memory=0, scaling=1):
         #                     memory_per_cpu * re-scaling of the image / (size_of_pixel_in_bytes * nb_bit_per_byte * width * channel + 2 to get some margin)
         height = min(height, computed_max_height) if height else computed_max_height
 
-    if height % 16:
+    if height > total_height:
+        tile_shape = None
+        height = total_height
+    elif height % 16:
         height = (int(height / 16) + 1) * 16
+        tile_shape = height, 4096
+    else:
+        tile_shape = height, 4096
         # tifffile impose tile shape to be multiple of 16
-
-    strip_shape = list(img_zarr.shape)
 
     for i, cur_height in enumerate(range(0, total_height, int(height * (1 - overlap))), 1):
         out_path = os.path.join(out_dir, img_name + f"_{cur_height}" + ext)
@@ -40,11 +44,11 @@ def split_img(img_path, out_dir, height=224, overlap=0.1, memory=0, scaling=1):
             cur_height = total_height - height # force height to be the same even for last strip
         with TiffWriter(out_path, bigtiff=True, shaped=False) as tiff_out:
             #tmp_arr = img_zarr[:, cur_height: cur_height+height, :]
-            metadata.pix.size_y = strip_shape[1] # last one is not height unless total_height % height = 0
+            metadata.pix.size_y = height # last one is not height unless total_height % height = 0
             tiff_out.write(
-                data=strip_gen(img_zarr, cur_height, strip_shape[1], 4096),
-                shape=strip_shape,
-                tile=(strip_shape[1], 4096),
+                data=strip_gen(img_zarr, cur_height, height, 4096),
+                shape=(ch, height, total_width),
+                tile=tile_shape,
                 **metadata.to_dict()
             )
 #            del tmp_arr
