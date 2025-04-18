@@ -36,7 +36,8 @@ def split_img(img_path, out_dir, height=224, overlap=0.1, memory=0, scaling=1):
 
     for i, cur_height in enumerate(range(0, total_height, int(height * (1 - overlap))), 1):
         out_path = os.path.join(out_dir, img_name + f"_{cur_height}" + ext)
-        strip_shape[1] = height if cur_height+height < total_height else total_height - cur_height
+        if (cur_height+height) > total_height:
+            cur_height = total_height - height # force height to be the same even for last strip
         with TiffWriter(out_path, bigtiff=True, shaped=False) as tiff_out:
             #tmp_arr = img_zarr[:, cur_height: cur_height+height, :]
             metadata.pix.size_y = strip_shape[1] # last one is not height unless total_height % height = 0
