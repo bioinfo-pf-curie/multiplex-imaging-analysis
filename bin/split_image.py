@@ -36,28 +36,22 @@ def split_img(img_path, out_dir, height=224, overlap=0.1, memory=0, scaling=1):
         tile_shape = height, 4096
     else:
         tile_shape = height, 4096
-        # tifffile impose tile shape to be multiple of 16
+        # tifffile impose tile shape to be multiple of 16 (when setting tile_shape)
 
     for i, cur_height in enumerate(range(0, total_height, int(height * (1 - overlap))), 1):
-        out_path = os.path.join(out_dir, img_name + f"_{cur_height}" + ext)
         if (cur_height+height) > total_height:
-            cur_height = total_height - height # force height to be the same even for last strip
+            cur_height = total_height - height # force height to be the same even for last strip (more overlap)
+        out_path = os.path.join(out_dir, img_name + f"_{cur_height}" + ext)
+        if os.path.exists(out_path):
+            continue
         with TiffWriter(out_path, bigtiff=True, shaped=False) as tiff_out:
-            #tmp_arr = img_zarr[:, cur_height: cur_height+height, :]
-            metadata.pix.size_y = height # last one is not height unless total_height % height = 0
+            metadata.pix.size_y = height
             tiff_out.write(
                 data=strip_gen(img_zarr, cur_height, height, 4096),
                 shape=(ch, height, total_width),
                 tile=tile_shape,
                 **metadata.to_dict()
             )
-#            del tmp_arr
-#            img_zarr, metadata = read_tiff_orion(img_path) # need this to clear memory usage (I hope)
-
-#            with open(f'log_{i}.txt', 'a') as out:
-#                out.write("\nafter : \n")
-#                out.write(str(psutil.virtual_memory()))
-#                out.write(f"\n{locals()}\n\n{img_zarr.info}")
     print(i) # needed for nextflow to be aware of the number of file
 
 
