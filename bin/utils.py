@@ -198,10 +198,11 @@ class OmeTifffile(object):
     direct_props = {'PhotometricInterpretation': "photometric",  
                     "PlanarConfiguration": "planarconfig", 
                     'Compression': "compress", 
-                    "Software": "software"}
+                    "Software": "software", 
+                    "ResolutionUnit": "resolutionunit"}
 
     def __init__(self, tifffile_metadata=None, **kwargs):
-        self.tags = {"resolution": [None, None, None], "extratags": []}
+        self.tags = {"resolution": [None, None], "extratags": []}
         self.ome = None
         self.size = [None, None]
         self._dtype = ""
@@ -226,8 +227,8 @@ class OmeTifffile(object):
                 except AttributeError:
                     self.tags[self.direct_props[tag.name]] = tag.value
 
-            elif tag.name in ("XResolution", "YResolution", "ResolutionUnit"):
-                self.tags["resolution"][("XResolution", "YResolution", "ResolutionUnit").index(tag.name)] = tag.value
+            elif tag.name in ("XResolution", "YResolution"):
+                self.tags["resolution"][("XResolution", "YResolution").index(tag.name)] = tag.value
 
             elif tag.code in (50838, 50839):
                     continue # remove imageJ custom tags (could be used to convert it to ome tiff)
