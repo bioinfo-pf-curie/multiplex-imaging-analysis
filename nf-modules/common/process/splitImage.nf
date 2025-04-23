@@ -4,7 +4,6 @@ process splitImage {
   label 'img_utils'
   label 'lowCpu'
   label 'medMem'
-  label 'infiniteTime'
 
   input:
     tuple val(meta), path(image)
