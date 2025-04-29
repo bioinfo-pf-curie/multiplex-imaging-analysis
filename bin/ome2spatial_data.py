@@ -46,12 +46,12 @@ def _get_table(quantif, marker_info):
         return
     
     table = pd.read_csv(quantif)
+    var = pd.DataFrame([col for col in table.columns if col not in [INSTANCE_KEY, COORDS_X, COORDS_Y]], columns=["marker_name"])
     adata = AnnData(
         table[[col for col in table.columns if col not in [INSTANCE_KEY, COORDS_X, COORDS_Y]]].to_numpy(),
         obs=table[[INSTANCE_KEY]].astype(str),
-        var=[col for col in table.columns if col not in [INSTANCE_KEY, COORDS_X, COORDS_Y]],
-        obsm={"spatial": table[coords].to_numpy()},
-        dtype=float,
+        var=var,
+        obsm={"spatial": table[coords].to_numpy()}
     )
     adata.obs["region"] = pd.Categorical([quantif.stem] * len(adata))
 
