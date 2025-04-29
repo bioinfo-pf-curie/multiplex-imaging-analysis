@@ -27,5 +27,5 @@ From: python:3.11
     plotly==5.24.1 \
     multiqc==1.25.2 \
     readimc==0.8.0 \
-    spatialdata==0.2.1
+    spatialdata==0.4.0
   python -m pip install fastremap==1.13.4 --no-binary :all:
