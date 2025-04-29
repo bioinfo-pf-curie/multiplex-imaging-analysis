@@ -2,8 +2,9 @@ name: python
 channels:
   - conda-forge
   - bioconda
+  - nodefaults
 dependencies:
   # Add required software dependencies here
-  - python=3.7.6=cpython_h8356626_6
+  - python=3.11.8=hab00c5b_0_cpython
   - pymdown-extensions=7.1=pyh9f0ad1d_0
-  - markdown=3.4.1=py37h06a4308_0
+  - markdown=3.4.1=pyhd8ed1ab_0

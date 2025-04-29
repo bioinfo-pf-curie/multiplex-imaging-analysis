@@ -2,21 +2,22 @@ name: cellpose
 channels:
   - conda-forge
   - bioconda
+  - nodefaults
 dependencies:
-  - python=3.11.8=h955ad1f_0
-  - wheel=0.44.0=py311h06a4308_0
-  - pytorch=2.2.0=cpu_py311h6d93b4c_0
-  - numpy=1.26.4=py311h08b1b3b_0
-  - matplotlib=3.8.4=py311h06a4308_0
-  - numba=0.59.0=py311ha02d727_0
-  - scipy=1.12.0=py311h08b1b3b_0
-  - scikit-image=0.22.0=py311ha02d727_0
-  - scikit-learn=1.4.2=py311ha02d727_1
-  - pandas=2.0.3=py311ha02d727_0
-  - tqdm=4.66.2=py311h92b7b1e_0
-  - dask=2024.5.0=py311h06a4308_0
-  - distributed=2024.5.0=py311h06a4308_0
-  - pip=24.0=py311h06a4308_0
+  - python=3.11.8=hab00c5b_0_cpython
+  - wheel=0.44.0=pyhd8ed1ab_0
+  - pytorch=2.3.1=cpu_mkl_py311hcb16b95_100
+  - numpy=1.26.4=py311h64a7726_0
+  - matplotlib=3.8.4=py311h38be061_0
+  - numba=0.59.0=py311h96b013e_0
+  - scipy=1.12.0=py311h64a7726_0
+  - scikit-image=0.22.0=py311h320fe9a_2
+  - scikit-learn=1.4.2=py311hc009520_0
+  - pandas=2.0.3=py311h320fe9a_0
+  - tqdm=4.66.2=pyhd8ed1ab_0
+  - dask=2024.7.0=pyhd8ed1ab_0
+  - distributed=2024.7.0=pyhd8ed1ab_0
+  - pip=24.0=pyhd8ed1ab_0
   - pip:
     - tifffile==2024.2.12
     - natsort==8.4.0
