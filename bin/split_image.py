@@ -37,8 +37,8 @@ def split_img(img_path, out_dir, height=224, overlap=0.1, memory=0, scaling=1):
     else:
         tile_shape = height, 4096
         # tifffile impose tile shape to be multiple of 16 (when setting tile_shape)
-
-    for i, cur_height in enumerate(range(0, total_height, int(height * (1 - overlap))), 1):
+    i = 0
+    for cur_height in range(0, total_height, int(height * (1 - overlap))):
         if (cur_height+height) > total_height:
             cur_height = total_height - height # force height to be the same even for last strip (more overlap)
         out_path = os.path.join(out_dir, img_name + f"_{cur_height}" + ext)
@@ -52,6 +52,7 @@ def split_img(img_path, out_dir, height=224, overlap=0.1, memory=0, scaling=1):
                 tile=tile_shape,
                 **metadata.to_dict()
             )
+        i += 1
     print(i) # needed for nextflow to be aware of the number of file
 
 
