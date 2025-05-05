@@ -12,6 +12,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--in', type=str, required=True, nargs='+', help="list of Image Path (cropped) to merge")
     parser.add_argument('--original', type=str, required=True, help="File path of original image (to get metadata from)")
+    parser.add_argument('--overlap', type=float, required=False, help="Not used")
     args = parser.parse_args()
     t0 = time.process_time()
     list_npy = vars(args)['in']
