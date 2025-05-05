@@ -49,9 +49,10 @@ workflow segmentation {
       
       // Update segmenterConfig with values from params.segmentation
       params.segmentation.each { key, value ->
-        segmenterConfig[key] = value
+        if (!(key in segmenterConfig) || value) {
+          segmenterConfig[key] = value
+        }
       }
-
       splittedImg = splitImage(metaAndImagesCh, segmenterConfig.diameter)
       splittedImgResult = splittedImg.transpose().map{nb, meta, splitted -> 
         def newMeta = [
