@@ -53,7 +53,7 @@ workflow segmentation {
           segmenterConfig[key] = value
         }
       }
-      splittedImg = splitImage(metaAndImagesCh, segmenterConfig.diameter)
+      splittedImg = splitImage(metaAndImagesCh, segmenterConfig)
       splittedImgResult = splittedImg.transpose().map{nb, meta, splitted -> 
         def newMeta = [
           originalName: meta.originalName, 
