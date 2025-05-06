@@ -18,11 +18,11 @@ process dataQC {
   script:
   def args = task.ext.args ?: ''
   def convertedMap = params.qualityControl.collectEntries { key, value ->
-          // Vérifier si la valeur est compatible JSON, sinon la convertir en chaîne
+          // Vérifier si la valeur est compatible JSON, sinon la convertir en str
           if (value instanceof String || value instanceof Boolean || value instanceof Number || value == null) {
               [key, value]  // Valeur compatible avec JSON
           } else {
-              [key, value.toString()]  // Valeur non compatible avec JSON, convertie en String
+              [key, value.toString()]  // Valeur non compatible avec JSON, convertie en str
           }
       }
   def jsonQC = JsonOutput.toJson(convertedMap)

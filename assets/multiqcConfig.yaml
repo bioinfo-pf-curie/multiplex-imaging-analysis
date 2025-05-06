@@ -15,10 +15,6 @@ custom_data:
     thumbnail:
        section_name: "Thumbnail"
 
-    cell_data:
-       section_name: 'Markers distribution'
-       description: ''
-
     correlation:
        file_format: 'csv'
        section_name: 'Markers pairwise correlation'
@@ -28,20 +24,15 @@ custom_data:
           min: -1
           max: 1
 
-    my_methods:
-      section_name: "Methods"
-
 sp:
    my_stats:
       fn: '*_stats.csv'
    thumbnail:
       fn: '*_thumbnail.png'
-   cell_data:
-      fn: '*box.html'
+  #  cell-data:
+  #     fn: '*_markers_distribution.html'
    correlation:
       fn: '*_heatmap.csv'
-   my_methods:
-      fn: '*_methods.html'
 
 
 ################################
@@ -59,9 +50,9 @@ fn_clean_exts:
 module_order:
   - my_stats
   - thumbnail
-  - cell_data
+  - cell-data
   - correlation
-  - my_methods
+  - method-explanation
 
 custom_table_header_config:
   my_stats:

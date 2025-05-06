@@ -330,7 +330,17 @@ def main(image_path, csv_path, parms, out_dir):
 
         # create violin plot
         fig = plot_box(info.df)
-        fig.write_html(out_dir / f"{img_name}_markers_distribution_mqc.html", full_html=False, include_plotlyjs=False)
+        html_fig = """
+            <!--
+            id: 'cell-data'
+            section_name: 'Markers distribution'
+            description: ''
+            -->
+        """
+        html_fig += fig.to_html(full_html=False, include_plotlyjs=False)
+        
+        with open(out_dir / f"{img_name}_markers_distribution_mqc.html", 'w') as out:
+            out.write(html_fig)
 
         # create thumbnail
         tiff2rgb(info.thumbnail, info.mask, out_path= out_dir / f"{img_name}_thumbnail.png")
