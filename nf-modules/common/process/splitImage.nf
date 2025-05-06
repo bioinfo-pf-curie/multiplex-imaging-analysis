@@ -18,13 +18,16 @@ process splitImage {
   script:
     // if params.segmentation.tileHeight is set, it will be passed into args
     // availableMem need to be scaled down if diameter if lower than 30 because of rescaling tile...
-    def availableMem = segmenterConfig.tileHeight ? 0 : (segmenterConfig.memory instanceof MemoryUnit ? segmenterConfig.memory : MemoryUnit.of(segmenterConfig.memory)) 
-    if (availableMem instanceof MemoryUnit) {
-      availableMem = availableMem.getBytes()
-    }
-    def args = task.ext.args ?: ''
     def scaling = (segmenterConfig.diameter / 30) ** 2 // default is 1
+    def args = "--overlap $segmenterConfig.overlap --scaling $scaling --memory "
+    if (segmenterConfig.tileHeight) {
+      args += "0 --height $segmenterConfig.tileHeight "
+    } else {
+      def availableMem = (segmenterConfig.memory instanceof MemoryUnit ? segmenterConfig.memory : MemoryUnit.of(segmenterConfig.memory)).getBytes()
+      args += "$availableMem "
+    }
+    args += task.ext.args ?: ''
     """
-    split_image.py --file_in $image --memory $availableMem --scaling $scaling $args
+    split_image.py --file_in $image $args
     """
 }
