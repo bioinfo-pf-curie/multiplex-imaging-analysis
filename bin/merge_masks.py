@@ -111,6 +111,7 @@ def ensure_polygon(cell: Polygon | MultiPolygon | GeometryCollection) -> Polygon
 #     )
 
 #     return cells
+import time
 
 
 def solve_conflicts(
@@ -138,18 +139,23 @@ def solve_conflicts(
         warnings.warn("No cells was segmented, cannot resolve conflicts")
         return cells
 
+    t0 = time.process_time()
     tree = shapely.STRtree(cells)
+    t1 = time.process_time()
 
     try:
         conflicts = tree.query(cells, predicate="intersects")
     except:
         return cells
+    t3 = time.process_time()
 
     if patch_indices is not None:
         conflicts = conflicts[:, patch_indices[conflicts[0]] != patch_indices[conflicts[1]]].T
     else:
         conflicts = conflicts[:, conflicts[0] != conflicts[1]].T
 
+    t4 = time.process_time()
+    t2 = []
     for i1, i2 in conflicts:
         resolved_i1: int = resolved_indices[i1]
         resolved_i2: int = resolved_indices[i2]
@@ -161,9 +167,13 @@ def solve_conflicts(
 
             resolved_indices[np.isin(resolved_indices, [resolved_i1, resolved_i2])] = len(cells)
             cells.append(cell)
+        t2.append(time.process_time() - t4)
 
     unique_indices = np.unique(resolved_indices)
     unique_cells = np.array(cells)[unique_indices]
+
+    t6 = time.process_time()
+    print(f'tree : {t1-t0:.02f}, query : {t3 - t1:.02f}, path_indice : {t4-t3:.02f}, iterations : {t2}, end : {t6-(t2[-1] + t4):.02f}')
 
     if return_indices:
         return unique_cells, np.where(unique_indices < n_cells, unique_indices, -1)
