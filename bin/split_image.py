@@ -24,8 +24,8 @@ def split_img(img_path, out_dir, height=224, overlap=0.1, memory=0, scaling=1):
     ch, total_height, total_width = img_zarr.shape
 
     if memory or not height:
-        computed_max_height = int(int(memory) * scaling / (img_zarr.dtype.itemsize * 8 * total_width * (ch+2)))
-        #                     memory_per_cpu * re-scaling of the image / (size_of_pixel_in_bytes * nb_bit_per_byte * width * channel + 2 to get some margin)
+        computed_max_height = int(int(memory) * scaling / (img_zarr.dtype.itemsize * 8 * total_width * (ch + 1)))
+        #                     memory_per_cpu * re-scaling of the image / (size_of_pixel_in_bytes * nb_bit_per_byte * width * channel)
         height = min(height, computed_max_height) if height else computed_max_height
 
     if height > total_height:

@@ -16,10 +16,12 @@ process splitImage {
     task.ext.when == null || task.ext.when
 
   script:
-    // if params.segmentation.tileHeight is set, it will be passed into args
     // availableMem need to be scaled down if diameter if lower than 30 because of rescaling tile...
-    def scaling = (segmenterConfig.diameter / 30) ** 2 // default is 1
+    def scaling = (segmenterConfig.diameter / 30) ** 2
+    // default is 1
     def args = "--overlap $segmenterConfig.overlap --scaling $scaling --memory "
+    
+    // if params.segmentation.tileHeight is set, it will be passed into args
     if (segmenterConfig.tileHeight) {
       args += "0 --height $segmenterConfig.tileHeight "
     } else {
