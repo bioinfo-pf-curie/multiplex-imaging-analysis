@@ -151,7 +151,7 @@ def solve_conflicts(
 
     if patch_indices is not None:
         try:
-            conflicts = conflicts[:, patch_indices[conflicts[0].astype(int)] != patch_indices[conflicts[1].astype(int)]].T
+            conflicts = conflicts[:, patch_indices[conflicts[0]] != patch_indices[conflicts[1]]].T
         except TypeError as e:
             print(conflicts[0])
             print(conflicts[1].astype(int))

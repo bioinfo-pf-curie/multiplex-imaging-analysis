@@ -6,6 +6,7 @@ from pathlib import Path
 
 from merge_masks import solve_conflicts, recreate_mask, extract_cell_geoms
 from utils import get_current_height, OmeTifffile
+from numpy import array
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -29,7 +30,7 @@ if __name__ == '__main__':
         total_cells += new_cells
         # total_cells = solve_conflicts(total_cells + new_cells, patch_indices=[0] * len(total_cells) + [1] * len(new_cells), threshold=0.1)
 
-    unique_cells = solve_conflicts(total_cells, patch_indices=patch_indices, threshold=0.1)
+    unique_cells = solve_conflicts(total_cells, patch_indices=array(patch_indices), threshold=0.1)
     result = recreate_mask(unique_cells, original_shape, 1)
 
     try:
