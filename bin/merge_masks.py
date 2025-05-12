@@ -150,7 +150,12 @@ def solve_conflicts(
     t3 = time.process_time()
 
     if patch_indices is not None:
-        conflicts = conflicts[:, patch_indices[conflicts[0]] != patch_indices[conflicts[1]]].T
+        try:
+            conflicts = conflicts[:, patch_indices[conflicts[0].astype(int)] != patch_indices[conflicts[1].astype(int)]].T
+        except TypeError as e:
+            print(conflicts[0])
+            print(conflicts[1].astype(int))
+            raise e
     else:
         conflicts = conflicts[:, conflicts[0] != conflicts[1]].T
 
