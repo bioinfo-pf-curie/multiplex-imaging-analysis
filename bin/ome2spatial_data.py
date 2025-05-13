@@ -14,11 +14,11 @@ COORDS_Y = "Y_centroid"
 INSTANCE_KEY = "CellID"
 
 
-def ome2spatial_data(ome_path, mask_path=None, marker_info=None, quantif=None):
+def ome2spatial_data(ome_path, mask_path=None, marker_info=None, quantif=None, **kwargs):
     img_name = ome_path.stem
     if img_name.endswith('.ome'): img_name = img_name[:-4]
 
-    kwargs = dict(images={img_name: _get_image(ome_path)})
+    kwargs['images'] = {img_name: _get_image(ome_path)}
 
     if mask_path is not None:
         kwargs['labels'] = {mask_path.stem: _get_label(mask_path)}

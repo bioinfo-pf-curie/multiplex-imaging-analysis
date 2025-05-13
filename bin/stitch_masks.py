@@ -1,12 +1,37 @@
 #!/usr/bin/env python
 
 import argparse
+from geopandas import GeoDataFrame
 import tifffile
 from pathlib import Path
-
-from merge_masks import solve_conflicts, recreate_mask, extract_cell_geoms
 from utils import get_current_height, OmeTifffile
 from numpy import array
+import dask.array as da
+
+from merge_masks import solve_conflicts, recreate_mask, extract_cell_geoms
+
+def generate_mask_chunk():
+    pass
+
+def stitch_mask(tiles_names, original_shape, out_path):
+    """
+    Create spatial data for each tile.
+    """
+    total_cells = []
+    for i, tile in enumerate(tiles_names):
+        cur_height = get_current_height(tile)
+        img = tifffile.imread(tile)
+        total_cells.extend(extract_cell_geoms(img, transform=(0, cur_height)))
+    gdf = GeoDataFrame(geometry=total_cells)
+    for x in range(0, original_shape[0], 2048):
+        for y in range(0, original_shape[1], 2048):
+            chunk = gdf.cx[x:x+2048, y:y+2048]
+            if not chunk.empty:
+                resolved_chunk = solve_conflicts(chunk.geometry, threshold=0.1)
+    # z1 = zarr.create_array(store=out_path, shape=original_shape, chunks=(2048, 2048), dtype='uint32')
+    output = da.from_zarr(z1)
+    da.map_overlap(generate_mask_chunk, output, depth=100, boundary=0, dtype='uint32')
+    return spatial_data
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
