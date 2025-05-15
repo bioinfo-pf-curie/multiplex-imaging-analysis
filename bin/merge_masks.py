@@ -178,7 +178,11 @@ def solve_conflicts(
     unique_cells = np.array(cells)[unique_indices]
 
     t6 = time.process_time()
-    print(f'tree : {t1-t0:.02f}, query : {t3 - t1:.02f}, path_indice : {t4-t3:.02f}, iterations : {t2}, end : {t6-(t2[-1] + t4):.02f}')
+    try:
+        tg = t6-(t2[-1] + t4)
+    except IndexError:
+        tg = t6 - t4
+    print(f'tree : {t1-t0:.02f}, query : {t3 - t1:.02f}, path_indice : {t4-t3:.02f}, iterations : {t2}, end : {tg:.02f}')
 
     if return_indices:
         return unique_cells, np.where(unique_indices < n_cells, unique_indices, -1)
@@ -197,8 +201,8 @@ def recreate_mask(cells, shape, idx_start=1):
         list of shape to be draw into the mask
     shape: tuple of int
         image size (same as the size of original masks)
-    idx_start: int
-        index to start from
+    idx_start: int or list of int
+        index to start from or 'index'. If list, same length as cells, each cell will be attributed an id at same index
 
     Return
     ------
@@ -207,7 +211,12 @@ def recreate_mask(cells, shape, idx_start=1):
         Merged mask
     """
     result = np.zeros(shape=shape)
-    for i, cell in enumerate(cells, idx_start):
+    if isinstance(idx_start, int):
+        iteritems = enumerate(cells,  idx_start)
+    else:
+        iteritems = zip(idx_start, cells)
+        
+    for i, cell in iteritems:
         result = cv2.fillConvexPoly(result, np.rint(cell.exterior.xy).astype("int32").T, color=i)
     return result
 

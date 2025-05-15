@@ -6,32 +6,60 @@ import tifffile
 from pathlib import Path
 from utils import get_current_height, OmeTifffile
 from numpy import array
-import dask.array as da
+import dask
+import numpy as np
+import datashader as ds
 
 from merge_masks import solve_conflicts, recreate_mask, extract_cell_geoms
 
-def generate_mask_chunk():
-    pass
+def rasterize(cells, height, width):
+    cnv = ds.Canvas(plot_height=height, plot_width=width)
+    return cnv.polygons(cells, "geometry", agg=ds.count())
 
-def stitch_mask(tiles_names, original_shape, out_path):
+def create_mask_chunk(cells_in_chunk, chunk_pos, chunk_size, threshold=0.1):
+    unique_cells = solve_conflicts(cells_in_chunk, threshold=threshold)
+    unique_cells = GeoDataFrame(geometry=unique_cells,index=cells_in_chunk.index[:len(unique_cells)])
+    x, y = chunk_pos
+    # res = rasterize(unique_cells, *chunk_size)
+    res = recreate_mask(unique_cells.geometry.values, chunk_size, unique_cells.index)
+    with open(f"log_pos_{x}_{y}.txt", "a") as log:
+        log.write(f"{res.shape} and {np.unique(res)}\n\n")
+    return res
+
+def stitch_mask(tiles_names, tiles_height, original_shape, out_path, chunk_size=2048):
     """
     Create spatial data for each tile.
     """
     total_cells = []
-    for i, tile in enumerate(tiles_names):
-        cur_height = get_current_height(tile)
+    for tile, cur_height in zip(tiles_names, tiles_height):
+        # cur_height = get_current_height(tile)
         img = tifffile.imread(tile)
         total_cells.extend(extract_cell_geoms(img, transform=(0, cur_height)))
-    gdf = GeoDataFrame(geometry=total_cells)
-    for x in range(0, original_shape[0], 2048):
-        for y in range(0, original_shape[1], 2048):
-            chunk = gdf.cx[x:x+2048, y:y+2048]
-            if not chunk.empty:
-                resolved_chunk = solve_conflicts(chunk.geometry, threshold=0.1)
+    gdf = GeoDataFrame(geometry=total_cells, index=range(1, len(total_cells)+1))
     # z1 = zarr.create_array(store=out_path, shape=original_shape, chunks=(2048, 2048), dtype='uint32')
-    output = da.from_zarr(z1)
-    da.map_overlap(generate_mask_chunk, output, depth=100, boundary=0, dtype='uint32')
-    return spatial_data
+
+    def gen_chunks():
+        for x in range(0, original_shape[0], chunk_size):
+            for y in range(0, original_shape[1], chunk_size):
+                chunk = gdf.cx[x:x+chunk_size, y:y+chunk_size]
+                if not chunk.empty:
+                    ert = create_mask_chunk(chunk.geometry, (x,y), (chunk_size, chunk_size), threshold=0.1).astype('uint32')
+                    tifffile.imwrite(f"res_pos_{x}_{y}.tiff", ert)
+                    yield ert
+                else:
+                    yield np.zeros((chunk_size, chunk_size), dtype='uint32')
+
+    with tifffile.TiffWriter(out_path, bigtiff=True, shaped=False) as tiff_out:
+        tiff_out.write(
+            data=gen_chunks(),
+            shape=original_shape,
+            tile=(chunk_size, chunk_size),
+            dtype='uint32'
+        )
+    # dask.compute(*resolving_chunks)
+    # output = da.from_zarr(z1)
+    # da.map_overlap(generate_mask_chunk, output, depth=100, boundary=0, dtype='uint32')
+    # return spatial_data
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -83,5 +111,11 @@ list_npy = [tifffile.imread(test_path + f"img{i}.tiff") for i in range(5)]
 result = np.zeros((1024,1024))
 img = np.pad(list_npy[0], [(0,768), (0,0)])
 a = merge_masks([result, img], threshold=0.1, remap=False)
+
+import shapely
+from stitch_masks import stitch_mask
+test_path = '/data/users/mcorbe/orion/fichier_test/instanseg_test/'
+list_msk = [test_path + f"img_{i}.tiff" for i in [0,250,500,750,1000]]
+stitch_mask(list_msk, (0,250,500,750,1000), (1024,1024), "result_mask_new_test.tiff", chunk_size=256)
 
 """
