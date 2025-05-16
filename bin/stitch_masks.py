@@ -19,6 +19,7 @@ def rasterize(cells, height, width):
 def create_mask_chunk(cells_in_chunk, chunk_pos, chunk_size, threshold=0.1):
     unique_cells = solve_conflicts(cells_in_chunk, threshold=threshold)
     unique_cells = GeoDataFrame(geometry=unique_cells,index=cells_in_chunk.index[:len(unique_cells)])
+    unique_cells.geometry = unique_cells.geometry.translate(xoff=-chunk_pos[0], yoff=chunk_pos[1])
     x, y = chunk_pos
     # res = rasterize(unique_cells, *chunk_size)
     res = recreate_mask(unique_cells.geometry.values, chunk_size, unique_cells.index)
