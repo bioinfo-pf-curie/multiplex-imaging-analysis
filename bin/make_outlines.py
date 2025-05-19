@@ -154,7 +154,7 @@ def make_outline(merged_file, png_file, mask_path, out_path, nuclei_channel=0, c
             metadata.update_info(tiff, channel_name=channel_csv)
         metadata.add_channel_metadata(channel_name="Outline")
 
-        def tile_gen(original, outline, c, x, y, chunk_size=(256,256)):
+        def tile_gen(original, outline, c, x, y, chunk_size=(4096,4096)):
             for c_cur in range(c):
                 yield from _tile_generator(original, c_cur, x, y, *chunk_size)
             for tile in _tile_generator(outline, None, x, y, *chunk_size):
@@ -165,7 +165,7 @@ def make_outline(merged_file, png_file, mask_path, out_path, nuclei_channel=0, c
             tiff_out.write(
                 data=tile_gen(tiff, outline, c=c, x=x, y=y), 
                 shape=[c+1, x, y], 
-                tile=(256, 256), 
+                tile=(4096, 4096), 
                 **metadata.to_dict()
             )
 

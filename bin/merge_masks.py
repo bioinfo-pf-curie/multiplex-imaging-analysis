@@ -179,10 +179,12 @@ def solve_conflicts(
 
     t6 = time.process_time()
     try:
-        tg = t6-(t2[-1] + t4)
+        final_it = t2[-1]
+        li = len(t2)
     except IndexError:
-        tg = t6 - t4
-    print(f'tree : {t1-t0:.02f}, query : {t3 - t1:.02f}, path_indice : {t4-t3:.02f}, iterations : {t2}, end : {tg:.02f}')
+        final_it = 0
+        li = 1
+    print(f'tree : {t1-t0:.02f}, query : {t3 - t1:.02f}, path_indice : {t4-t3:.02f}, iterations (means): {final_it / li} on {li}, end : {t6-(final_it+t4):.02f}')
 
     if return_indices:
         return unique_cells, np.where(unique_indices < n_cells, unique_indices, -1)
@@ -259,15 +261,7 @@ def on_chunk(chunk, threshold, block_info=None, transform=None, diameter=30):
     """
     cells = []
     for i in range(chunk.shape[0]):
-        # mask = chunk[i].astype('float32')
-        # t = Affine.identity() if transform is None else Affine.translation(*transform[i])
-        # for cell in rasterio.features.shapes(mask, mask=mask > 0, connectivity=8, transform=t):
-        #     if len(cell[0]['coordinates'][0]) > 5:
-        #         polygon = ensure_polygon(Polygon(cell[0]['coordinates'][0]))
-        #         if polygon.area > 10:
-        #             cells.append(polygon)
         cells += extract_cell_geoms(chunk[i], transform=transform)
-    # del mask
     chunk_shape = chunk.shape[1:]
     del chunk
     results = solve_conflicts(cells, threshold=threshold)
