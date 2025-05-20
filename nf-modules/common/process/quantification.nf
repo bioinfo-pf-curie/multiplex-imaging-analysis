@@ -3,7 +3,8 @@ process quantification {
   label "minCpu"
   label "infiniteTime"
 
-  memory {MemoryUnit.of(Math.max(Math.min((mask.size() as Float) * 5, params.maxMemory.size), params.minMemory.size).toLong())}
+  // memory {MemoryUnit.of(Math.max(Math.min((mask.size() as Float) * 5, params.maxMemory.size), params.minMemory.size).toLong())}
+  memory {NFTools.computeRoundedMemoryGb((mask.size() as Float) * 5, task.attempt, params.minMemory, params.maxMemory)}
 
   input:
       tuple val(meta), path(mask)

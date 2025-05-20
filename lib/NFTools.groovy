@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory
 import org.slf4j.Logger
 import nextflow.Nextflow
 import nextflow.Channel
+import nextflow.util.MemoryUnit
 
 
 class NFTools {
@@ -626,4 +627,17 @@ Available Profiles
     return m.group(1) as Integer
   }
 
+  public static Object computeRoundedMemoryGb(float requestedMem, int attempt, MemoryUnit minMemory, MemoryUnit maxMemory) {
+    // Estimation brute de la mémoire
+    def estimatedMem = requestedMem * attempt
+
+    // Encadrement de la mémoire estimée
+    def boundedBytes = Math.max(Math.min(estimatedMem, maxMemory.size), minMemory.size)
+
+    // Conversion en Go et arrondi à l'entier supérieur (PBS doesnt like decimal gb)
+    def roundedGb = Math.ceil(boundedBytes / (1024.0 * 1024 * 1024)) as long
+
+    // Retourne un MemoryUnit compatible avec Nextflow
+    return MemoryUnit.of("${roundedGb} GB")
+  }
 }

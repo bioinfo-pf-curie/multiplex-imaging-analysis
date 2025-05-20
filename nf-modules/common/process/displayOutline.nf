@@ -3,8 +3,10 @@ process displayOutline {
   label 'minCpu'
   label 'infiniteTime'
 
-  memory {MemoryUnit.of(Math.max(Math.min((merge.size() as Float), params.maxMemory.size), params.minMemory.size).toLong())}
-  
+  // memory {MemoryUnit.of(Math.max(Math.min((merge.size() as Float), params.maxMemory.size), params.minMemory.size).toLong())}
+  memory {NFTools.computeRoundedMemoryGb((merge.size() as Float), task.attempt, params.minMemory, params.maxMemory)}
+
+
   input:
     tuple val(meta), path(mask), path(merge)
 
