@@ -3,7 +3,7 @@ process mergeMasks {
   label 'medCpu'
 
   // memory {MemoryUnit.of(Math.max(Math.min(meta.flowSize * 2, params.maxMemory.size), params.minMemory.size).toLong())}
-  memory {NFTools.computeRoundedMemoryGb(meta.flowSize * 2, task.attempt, params.minMemory, params.maxMemory)}
+  memory {NFTools.computeRoundedMemoryGb((Float)(meta.flowSize * 2), task.attempt, params.minMemory, params.maxMemory)}
 
   input:
       tuple val(meta), path(partialMask, stageAs: "?/*"), val(diameters)
