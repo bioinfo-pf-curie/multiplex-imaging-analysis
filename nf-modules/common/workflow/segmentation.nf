@@ -33,6 +33,7 @@ process seg {
     """
     export diameter="$segmenterConfig.diameter" # there is maybe a better way....
     export INSTANSEG_BIOIMAGEIO_PATH="${params.condaCacheDir}/bioimageio_models/" 
+    unset CELLPOSE_LOCAL_MODELS_PATH
     $segmenterConfig.cmd $segmenterConfig.input $image $segmenterConfig.baseParms $customParms $segmenterConfig.additionalParms
     """
 }
