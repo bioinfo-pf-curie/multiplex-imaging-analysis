@@ -318,7 +318,7 @@ def ExtractSingleCells(masks,image,channel_names,output, mask_props=None, intens
         # export the csv for this mask name
         
         csv_name = im_name[:-len("_checked")] if im_name.endswith("_checked") else im_name
-        csv_name = csv_name + f"_{k}" if (k not in csv_name) or (k[:-len('_masks')] not in csv_name) else csv_name
+        csv_name = csv_name + f"_{k}" if (k not in csv_name) and (k[:-len('_masks')] not in csv_name) else csv_name
         csv_name += "_data.csv"
         scdata_z[k].to_csv(str(output / csv_name), index=False)
         
