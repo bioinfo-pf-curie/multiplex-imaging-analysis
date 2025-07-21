@@ -175,4 +175,4 @@ if __name__ == "__main__":
         kwargs = metadata.to_dict(dtype=False)
         if args.compression:
             kwargs.update(compression=args.compression)
-        write_pyramid(mosaics, out_path, downscale_factor=2, kwargs_tifffile=kwargs)
+        write_pyramid(mosaics, out_path, downscale_factor=2, save_RAM=True, kwargs_tifffile=kwargs)
