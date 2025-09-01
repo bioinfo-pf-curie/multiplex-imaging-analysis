@@ -25,7 +25,7 @@ dependencies:
     - ome_types==0.4.2
     - zarr==2.16.1
     - opencv-python-headless==4.9.0.80
-    - cellpose==3.0.7
+    - cellpose==4.0.6
     - psutil==6.0.0
     - pydantic==2.5.3
     - xsdata==23.8
