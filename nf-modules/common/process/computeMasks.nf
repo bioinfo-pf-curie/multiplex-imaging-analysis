@@ -24,7 +24,11 @@ process computeMasks {
   script:
     def args = task.ext.args ?: ''
     def availableMem = Math.max(Math.min(meta.imgSize * 0.6, params.maxMemory.size), params.minMemory.size).toLong() / 1e9
-    def specificParms = params.segmentation.name == "cellpose" ? "--mean_cell_diam $meta.diameter --max_mem $availableMem " : ""
+    def specificParms = ""
+    if (params.segmentation.name == "cellpose"){
+      specificParms += meta.diameter ? " --mean_cell_diam $meta.diameter" : ""
+      specificParms += " --max_mem $availableMem"
+    }
     specificParms += task.ext.useSingularity ? "--singularity " : ""
     if (segmenterConfig.compute){
       """

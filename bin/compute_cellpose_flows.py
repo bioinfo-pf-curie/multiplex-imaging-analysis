@@ -5,8 +5,9 @@ from pathlib import Path
 
 import numpy as np
 from tifffile import TiffFile, imwrite
-from cellpose.dynamics import steps2D_interp, get_masks, remove_bad_flow_masks
+from cellpose.dynamics import remove_bad_flow_masks, follow_flows
 from cellpose.transforms import resize_image
+import torch
 from cv2 import INTER_NEAREST
 
 from utils import OmeTifffile
@@ -19,6 +20,66 @@ import dask.array as da
 
 # a lot of those function are from https://github.com/MouseLand/cellpose/blob/main/cellpose/dynamics.py
 # but were adaptated to be used in a memory efficient way when dealing with large images
+
+def steps2D_interp(p, dP, niter, device=None):
+    """ Run dynamics of pixels to recover masks in 2D, with interpolation between pixel values.
+
+    Euler integration of dynamics dP for niter steps.
+
+    Args:
+        p (numpy.ndarray): Array of shape (n_points, 2) representing the initial pixel locations.
+        dP (numpy.ndarray): Array of shape (2, Ly, Lx) representing the flow field.
+        niter (int): Number of iterations to perform.
+        device (torch.device, optional): Device to use for computation. Defaults to None.
+
+    Returns:
+        numpy.ndarray: Array of shape (n_points, 2) representing the final pixel locations.
+
+    Raises:
+        None
+
+    """
+
+    shape = dP.shape[1:]
+    if device is not None and (device.type == "cuda" or device.type == "mps"):
+        shape = np.array(shape)[[
+            1, 0
+        ]].astype("float") - 1  # Y and X dimensions (dP is 2.Ly.Lx), flipped X-1, Y-1
+        pt = torch.from_numpy(p[[1, 0]].T).float().to(device).unsqueeze(0).unsqueeze(
+            0)  # p is n_points by 2, so pt is [1 1 2 n_points]
+        im = torch.from_numpy(dP[[1, 0]]).float().to(device).unsqueeze(
+            0)  #covert flow numpy array to tensor on GPU, add dimension
+        # normalize pt between  0 and  1, normalize the flow
+        for k in range(2):
+            im[:, k, :, :] *= 2. / shape[k]
+            pt[:, :, :, k] /= shape[k]
+
+        # normalize to between -1 and 1
+        pt = pt * 2 - 1
+
+        #here is where the stepping happens
+        for t in range(niter):
+            # align_corners default is False, just added to suppress warning
+            dPt = torch.nn.functional.grid_sample(im, pt, align_corners=False)
+            for k in range(2):  #clamp the final pixel locations
+                pt[:, :, :, k] = torch.clamp(pt[:, :, :, k] + dPt[:, k, :, :], -1., 1.)
+
+        #undo the normalization from before, reverse order of operations
+        pt = (pt + 1) * 0.5
+        for k in range(2):
+            pt[:, :, :, k] *= shape[k]
+
+        p = pt[:, :, :, [1, 0]].cpu().numpy().squeeze().T
+        return p
+
+    else:
+        dPt = np.zeros(p.shape, np.float32)
+
+        for t in range(niter):
+            map_coordinates(dP.astype(np.float32), p[0], p[1], dPt)
+            for k in range(len(p)):
+                p[k] = np.minimum(shape[k] - 1, np.maximum(0, p[k] + dPt[k]))
+        return p
 
 
 def get_masks(p, iscell=None, rpad=20, cell_id=0):
@@ -134,7 +195,7 @@ def get_masks(p, iscell=None, rpad=20, cell_id=0):
     M0 = np.reshape(M0, shape0)
     return M0
 
-def follow_flows(dP, niter=200, device=None, block_info=None):
+def follow_flows_old(dP, niter=200, device=None, block_info=None):
     """ define pixels and run dynamics to recover masks in 2D
     
     Pixels are meshgrid. Only pixels with non-zero cell-probability
@@ -266,7 +327,7 @@ if __name__ == '__main__':
     parser.add_argument('--original', type=str, required=True, help="File path of original image (to get metadata from)")
     parser.add_argument('--chunks', type=int, nargs=2, required=False, default=(4096, 4096), help="Size of chunk for dask")
     parser.add_argument('--overlap', type=int, required=False, default=60, help="Overlap (in pixel) for dask to perform computing of masks on chunks")
-    parser.add_argument('--mean_cell_diam', type=float, required=False, default=60, help="mean diameter (in pixels) of cells")
+    parser.add_argument('--mean_cell_diam', type=float, required=False, default=30, help="mean diameter (in pixels) of cells")
     parser.add_argument('--max_mem', type=float, required=False, default=40, help="Max memory (in GiB) available for dask (issue with singularity not showing correct value) ")
     parser.add_argument('--mem_per_worker', type=float, required=False, default=4, help="Memory allocated to each worker (in GiB) available for dask (issue with singularity not showing correct value) ")
     parser.add_argument('--singularity', required=False, action="store_true", help="Use special memory management if this is True")

@@ -80,7 +80,7 @@ workflow segmentation {
         if (meta['diameter']) {
           meta['diameter'] = meta['diameter'][0][1] as Float
         } else {
-          meta['diameter'] = null
+          meta['diameter'] = 30 // default and not used with cp = 4.0
         }
         tuple(groupKey(meta.subMap("originalName", "imagePath", "markersPath", "imgSize", 'model', 'diameter'), meta.nbSplittedFile.toInteger()), meta, segmentedImg)
       }.groupTuple().map{groupedkey, old_meta, segmentedImg -> 
