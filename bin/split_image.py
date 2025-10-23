@@ -24,8 +24,8 @@ def split_img(img_path, out_dir, height=224, overlap=0.1, memory=0, scaling=1):
     ch, total_height, total_width = img_zarr.shape
 
     if memory or not height:
-        computed_max_height = int(int(memory) * scaling / (img_zarr.dtype.itemsize * 8 * total_width * (ch + 1)))
-        #                     memory_per_cpu * re-scaling of the image / (size_of_pixel_in_bytes * nb_bit_per_byte * width * channel)
+        computed_max_height = int(int(memory) * scaling / (img_zarr.dtype.itemsize * total_width * (ch + 1)))
+        #                     memory_per_cpu * re-scaling of the image / (size_of_pixel_in_bytes * width * channel)
         height = min(height, computed_max_height) if height else computed_max_height
 
     if height > total_height:
@@ -38,6 +38,7 @@ def split_img(img_path, out_dir, height=224, overlap=0.1, memory=0, scaling=1):
         tile_shape = height, 4096
         # tifffile impose tile shape to be multiple of 16 (when setting tile_shape)
     i = 0
+
     for cur_height in range(0, total_height, int(height * (1 - overlap))):
         if (cur_height+height) > total_height:
             cur_height = total_height - height # force height to be the same even for last strip (more overlap)
