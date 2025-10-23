@@ -1,12 +1,8 @@
 Bootstrap: docker
-From: python:3.11
+From: biocontainers/cellpose:3.0.1_cv1
 
 %post
-  apt-get -y update
-  apt-get install -y python3-opencv gcc g++ python3-dev python3-pip libblas-dev liblapack-dev libatlas-base-dev
   python -m pip install --no-cache-dir \
-    numpy numba>=0.43.1 wheel scipy PyQt5 PyQt5.sip torch>=1.6 opencv-python-headless pyqtgraph>=0.11.0rc0 natsort \
-    scikit-image matplotlib scikit-learn tqdm tifffile fastremap \
     pandas==2.0.3 \
     ome_types==0.4.2 \
     zarr==2.16.1 \
@@ -15,10 +11,10 @@ From: python:3.11
     cellpose==3.0.7 \
     dask==2024.5.0 \
     distributed==2024.5.0 \
+    fastremap==1.14.1 \
     psutil==6.0.0
   wget https://www.cellpose.org/models/cyto2_cp3 -P ~/.cellpose/models/
   wget https://www.cellpose.org/models/tissuenet_cp3 -P ~/.cellpose/models/
   wget https://www.cellpose.org/models/denoise_cyto3 -P ~/.cellpose/models/
   wget https://www.cellpose.org/models/upsample_cyto3 -P ~/.cellpose/models/
-  wget https://huggingface.co/mouseland/cellpose-sam/blob/main/cpsam -P ~/.cellpose/models/
   unset CELLPOSE_LOCAL_MODELS_PATH
