@@ -4,7 +4,12 @@ process pyramidize {
   label "infiniteTime"
 
   memory {
-    NFTools.computeRoundedMemoryGb((Float)(image.size() * ((tag == "merged") ? 0.3 : 0.6)), task.attempt, params.minMemory, params.maxMemory)
+    NFTools.computeRoundedMemoryGb((Float)(image.size() * 0.3), task.attempt, params.minMemory, params.maxMemory)
+    // def rawMem =  * task.attempt
+    // def boundedMem = Math.max(Math.min(rawMem, params.maxMemory.size), params.minMemory.size * 2)
+    // def memInGb = boundedMem / (1024 * 1024 * 1024)
+    // def roundedMem = Math.ceil(memInGb) as long
+    // MemoryUnit.of("${roundedMem} GB")
   }
 
   input:
