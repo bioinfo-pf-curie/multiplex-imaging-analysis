@@ -24,7 +24,9 @@ def ome2spatial_data(ome_path, mask_path=None, marker_info=None, quantif=None, *
         kwargs['labels'] = {mask_path.stem: _get_label(mask_path)}
 
     if quantif is not None:
-        kwargs['tables'] = {quantif.stem: _get_table(quantif, marker_info)}
+        table = _get_table(quantif, marker_info)
+        if table is not None:
+            kwargs['tables'] = {quantif.stem: table}
     
     return SpatialData(**kwargs)
 
@@ -46,6 +48,10 @@ def _get_table(quantif, marker_info):
         return
     
     table = pd.read_csv(quantif)
+
+    if not len(table):
+        return
+
     var = pd.DataFrame([col for col in table.columns if col not in [INSTANCE_KEY, COORDS_X, COORDS_Y]], columns=["marker_name"])
     adata = AnnData(
         table[[col for col in table.columns if col not in [INSTANCE_KEY, COORDS_X, COORDS_Y]]].to_numpy(),
@@ -54,7 +60,7 @@ def _get_table(quantif, marker_info):
         obsm={"spatial": table[coords].to_numpy()}
     )
     adata.obs["region"] = pd.Categorical([quantif.stem] * len(adata))
-
+    print(adata)
     return TableModel.parse(
         adata, region=quantif.stem, region_key="region", instance_key=INSTANCE_KEY
     )
