@@ -17,7 +17,7 @@ def create_mask_chunk(cells_in_chunk, chunk_pos, chunk_size, threshold=0.1):
     unique_cells.geometry = unique_cells.geometry.translate(xoff=-chunk_pos[0], yoff=-chunk_pos[1])
     return recreate_mask(unique_cells.geometry.values, chunk_size, unique_cells.index)
 
-def stitch_mask(tiles_names, tiles_height, original_shape, out_path, additional_mtd=None, chunk_size=2048, overlap=64):
+def stitch_mask(tiles_names, tiles_height, original_shape, out_path, additional_mtd=None, chunk_size=2048, overlap=0.1):
     """
     Create spatial data for each tile.
     """
@@ -26,6 +26,7 @@ def stitch_mask(tiles_names, tiles_height, original_shape, out_path, additional_
         img = tifffile.imread(tile)
         total_cells.extend(extract_cell_geoms(img, transform=(0, cur_height)))
     gdf = GeoDataFrame(geometry=total_cells, index=range(1, len(total_cells)+1))
+    overlap = int(original_shape[0] * overlap)
 
     def gen_chunks():
         for y in range(0, original_shape[0], chunk_size):
@@ -61,8 +62,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--in', type=str, required=True, nargs='+', help="list of Image Path (cropped) to merge")
     parser.add_argument('--original', type=str, required=True, help="File path of original image (to get metadata from)")
-    parser.add_argument('--overlap', type=int, required=False, help="Overlap in pixels to compute cell conflicts, if some cells are " \
-    "divided into multiple masks try raising this value (computation will be longer)", default=64)
+    parser.add_argument('--overlap', type=float, required=False, help="Overlap in percentage of image size to compute cell conflicts, if some cells are " \
+    "divided into multiple masks try raising this value (computation will be longer)", default=0.1)
     parser.add_argument('--chunksize', type=int, required=False, help="chunk size", default=2048)
     args = parser.parse_args()
     list_npy = vars(args)['in']
