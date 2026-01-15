@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import argparse
+from warnings import warn
 from pathlib import Path
 
 import numpy as np
@@ -266,7 +267,7 @@ if __name__ == '__main__':
     parser.add_argument('--original', type=str, required=True, help="File path of original image (to get metadata from)")
     parser.add_argument('--chunks', type=int, nargs=2, required=False, default=(4096, 4096), help="Size of chunk for dask")
     parser.add_argument('--overlap', type=int, required=False, default=60, help="Overlap (in pixel) for dask to perform computing of masks on chunks")
-    parser.add_argument('--mean_cell_diam', type=float, required=False, default=60, help="mean diameter (in pixels) of cells")
+    parser.add_argument('--mean_cell_diam', type=str, required=False, default="30", help="mean diameter (in pixels) of cells")
     parser.add_argument('--max_mem', type=float, required=False, default=40, help="Max memory (in GiB) available for dask (issue with singularity not showing correct value) ")
     parser.add_argument('--mem_per_worker', type=float, required=False, default=4, help="Memory allocated to each worker (in GiB) available for dask (issue with singularity not showing correct value) ")
     parser.add_argument('--singularity', required=False, action="store_true", help="Use special memory management if this is True")
@@ -275,7 +276,14 @@ if __name__ == '__main__':
     flows = np.lib.format.open_memmap(vars(args)['in'])
     flows_da = da.from_array(flows, chunks=[3, *args.chunks])
 
-    masks_graph = da.map_overlap(compute_masks, flows_da, dtype=np.uint32, depth={0: 0, 1: args.overlap, 2: args.overlap}, drop_axis=0, diameter=args.mean_cell_diam)
+    try:
+        mean_cell_diam = float(args.mean_cell_diam)
+    except ValueError:
+        mean_cell_diam = float(parser.get_default("mean_cell_diam"))
+        if args.mean_cell_diam != "null":
+            warn(f"mean diameter not recognized : '{args.mean_cell_diam}'. Set to default value ({mean_cell_diam}).")
+
+    masks_graph = da.map_overlap(compute_masks, flows_da, dtype=np.uint32, depth={0: 0, 1: args.overlap, 2: args.overlap}, drop_axis=0, diameter=mean_cell_diam)
     mask_memmap = np.lib.format.open_memmap(".tmp_masks.npy", mode='w+', dtype=np.uint32, shape=flows.shape[1:])
 
     store_args = dict(compute=True)
