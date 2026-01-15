@@ -5,6 +5,6 @@ channels:
   - nodefaults
 dependencies:
   # Add required software dependencies here
-  - python=3.11.8=hab00c5b_0_cpython
+  - python=3.11.14=hfe2f287_1_cpython
   - pymdown-extensions=7.1=pyh9f0ad1d_0
   - markdown=3.4.1=pyhd8ed1ab_0

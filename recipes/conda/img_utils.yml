@@ -4,7 +4,7 @@ channels:
   - conda-forge
   - nodefaults
 dependencies:
-  - python=3.11.8=hab00c5b_0_cpython
+  - python=3.11.14=hfe2f287_1_cpython
   - h5py=3.9.0=mpi_openmpi_py311hb0a7373_0
   - pandas=2.1.1=py311h320fe9a_0
   - numpy=1.25.2=py311h64a7726_0

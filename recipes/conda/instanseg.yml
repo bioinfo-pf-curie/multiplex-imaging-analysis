@@ -4,7 +4,7 @@ channels:
   - bioconda
   - nodefaults
 dependencies:
-  - python=3.11.8=hab00c5b_0_cpython
+  - python=3.11.14=hfe2f287_1_cpython
   - pip=24.0=pyhd8ed1ab_0
   - pip:
     - instanseg-torch==0.0.6
