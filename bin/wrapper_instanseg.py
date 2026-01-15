@@ -92,7 +92,7 @@ def main(image_path, out_path, model_name="fluorescence_nuclei_and_cells", reade
     # display = instanseg_brightfield.display(image_tensor, labeled_output)
     if isinstance(labeled_output, torch.Tensor):
             labeled_output = labeled_output.cpu().detach().numpy()
-    labeled_output = labeled_output.astype('uint16').squeeze()
+    labeled_output = fastremap.renumber(labeled_output.squeeze()).astype('uint32')
 
     # maybe remove this when a proper pipeline for both masks is implemented
     if only_cells:
