@@ -8,6 +8,7 @@ from pathlib import Path
 import torch
 import numpy as np
 from tifffile import TiffFile, imwrite
+import fastremap
 
 from utils import OmeTifffile
 
