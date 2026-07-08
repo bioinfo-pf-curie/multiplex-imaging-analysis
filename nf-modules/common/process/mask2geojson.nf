@@ -1,7 +1,9 @@
 process mask2geojson {
   label 'img_utils'
   label 'medCpu'
-  label 'highMem'
+
+  // memory {MemoryUnit.of(Math.max(Math.min(meta.imgSize * 1.2, params.maxMemory.size), params.minMemory.size).toLong())}
+  memory {NFTools.computeRoundedMemoryGb((Float)(meta.imgSize * 1.2), task.attempt, params.minMemory, params.maxMemory)}
 
   input:
     tuple val(meta), path(image)
@@ -14,6 +16,6 @@ process mask2geojson {
 
   script:
     """
-    mask2geojson.py --mask $image --out ${meta.originalName}.geojson
+    mask2geojson.py --mask $image --out "${meta.originalName}.geojson"
     """
 }

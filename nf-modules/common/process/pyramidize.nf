@@ -1,15 +1,22 @@
 process pyramidize {
   label 'pyramidize'
-  label 'minCpu'
-  label "highTime"
+  label 'lowCpu'
+  label "infiniteTime"
 
-  memory {MemoryUnit.of(Math.max(Math.min((image.size() as Float) * 0.2, params.maxMemory.size), params.minMemory.size * 2).toLong()) * task.attempt}
+  memory {
+    NFTools.computeRoundedMemoryGb((Float)(image.size() * 0.3), task.attempt, params.minMemory, params.maxMemory)
+    // def rawMem =  * task.attempt
+    // def boundedMem = Math.max(Math.min(rawMem, params.maxMemory.size), params.minMemory.size * 2)
+    // def memInGb = boundedMem / (1024 * 1024 * 1024)
+    // def roundedMem = Math.ceil(memInGb) as long
+    // MemoryUnit.of("${roundedMem} GB")
+  }
 
   input:
      tuple val(tag), val(meta), path(image)
 
   output:
-    path("*.ome.tif")
+    tuple val(tag), val(meta), path("*.ome.tif")
 
   when:
   task.ext.when == null || task.ext.when

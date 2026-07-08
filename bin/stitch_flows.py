@@ -1,9 +1,9 @@
 #!/usr/bin/env python
-from utils import get_current_height
+from utils import get_current_height, read_tiff_orion
 
 import argparse
 import numpy as np
-from tifffile import TiffFile
+from pathlib import Path
 
 def get_weight(tile, edge=False):
     """
@@ -75,6 +75,12 @@ def load_npy(npy_path):
     """Helper to load npy files"""
     return np.load(npy_path, allow_pickle=True).item()['flows']
 
+def resize_tile(flow, original_shape):
+    from skimage.transform import resize
+    scale_factor = original_shape[2] / flow.shape[2]
+    original_tile_shape = (3, flow.shape[1] * scale_factor, flow.shape[2] * scale_factor)
+    return resize(flow, output_shape=original_tile_shape)
+
 def stich_flow(list_npy, input_img_path, overlap, out_path):
     """
     Merge a list of flows (in npy format) into a flows for the complete image
@@ -97,17 +103,29 @@ def stich_flow(list_npy, input_img_path, overlap, out_path):
     total_flow: np.array
         the flow for complete image
     """
-    original_tiff = TiffFile(input_img_path)
-    flow_shape = (3, *original_tiff.series[0].shape[1:])
+    original_tiff, _ = read_tiff_orion(input_img_path)
+    flow_shape = (3, *original_tiff.shape[1:])
     # init memmap
     total_flow = np.lib.format.open_memmap(out_path, dtype='float32', mode="w+", shape=flow_shape)
 
     tiles_height = []
-    
+
+    if len(list_npy) == 1:
+        flows = load_npy(list_npy[0])[4]
+        if flows.shape[2] != flow_shape[2]:
+            # an upscaling was performed in cellpose
+            flows = resize_tile(flows, flow_shape)
+        np.save(out_path, flows)
+        return
+
     for i, npy in enumerate(list_npy):
         cur_height = get_current_height(npy)
         flow = load_npy(npy)
-        weight = get_weight(flow[4].shape[1], edge=("f" if not i else "l" if i == len(list_npy) - 1 else None))
+        if flow[4].shape[2] != flow_shape[2]:
+            # an upscaling was performed in cellpose
+            flow[4] = resize_tile(flow[4], flow_shape)
+
+        weight = get_weight(flow[4].shape[1], edge=("f" if not cur_height else "l" if cur_height + flow[4].shape[1] == flow_shape[1] else None))
         weighted_flow = np.ascontiguousarray(np.array(flow[4]) * weight[np.newaxis, :, np.newaxis]) # accelerate writing operation
         tiles_height.append(weighted_flow.shape[1])
         total_flow[:, cur_height:cur_height+weighted_flow.shape[1], :] += weighted_flow
@@ -119,7 +137,7 @@ def stich_flow(list_npy, input_img_path, overlap, out_path):
     total_flow = np.lib.format.open_memmap(out_path, dtype='float32', shape=flow_shape)
     del flow # can be collected
     tile_height = int(np.median(tiles_height)) # last one may be cut
-    y_weight = sum_of_weight_on_axis(tile_height, overlap, original_tiff.series[0].shape[1])
+    y_weight = sum_of_weight_on_axis(tile_height, overlap, flow_shape[1])
     chunk_count = 0
 
     for chunk in range(0, flow_shape[2], tile_height):
@@ -135,14 +153,21 @@ def stich_flow(list_npy, input_img_path, overlap, out_path):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--in', type=str, required=True, nargs='+', help="list of Image Path (cropped) to merge")
-    parser.add_argument('--out', type=str, required=True, help="Output path for resulting image")
     parser.add_argument('--original', type=str, required=True, help="File path of original image (to get metadata from)")
     parser.add_argument('--overlap', type=float, required=False, default=0.1, help="value of overlap used for splitting images")
     args = parser.parse_args()
 
     list_npy = vars(args)['in']
-    if len(list_npy) == 1:
-        flows = load_npy(list_npy[0])[4]
-        np.save(args.out, flows)
+    stich_flow(list_npy, args.original, overlap=args.overlap, out_path=f"{Path(args.original).stem}.npy")
+
+"""
+x_val = np.array([])
+y_val = np.array([])
+for key, arr in weights.items():
+    if key != 'total':
+        y_val = np.concatenate((y_val, arr))
+        x_val = np.concatenate((x_val, np.arange(int(key), int(key) + len(arr))))
     else:
-        stich_flow(list_npy, args.original, overlap=args.overlap, out_path=args.out)
+        x_tot = np.arange(len(arr))
+        y_tot = arr
+"""

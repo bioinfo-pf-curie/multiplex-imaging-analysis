@@ -5,20 +5,26 @@
 # ==================== #
 
 import sys
+import os
 import pathlib
 import argparse
 import numpy as np
+import pandas as pd
 import geojson
 from collections import namedtuple
 import io
 import fastremap
 import random
-from skimage.draw import polygon, polygon_perimeter
+from skimage.draw import polygon
 from skimage.io import imsave
 import tifffile
 from shapely import geometry, STRtree, GeometryCollection
+from PIL import Image
 
 from mask2geojson import mask2geojson
+from single_cell_data_extraction import MultiExtractSingleCells
+from ome2panel import generate
+from compatibility_checker import convert2ometiff
 
 def get_outline_image(gj, height, width):
     """
@@ -40,19 +46,14 @@ def get_outline_image(gj, height, width):
 
     An image of dimension height x width
     """
-    n = len(gj)
+    n = len(gj['features'])
     best_dtype = np.min_scalar_type(n)
-    img = np.zeros((height, width), dtype=np.double) # heigth x width
-    for idx, roi in enumerate(gj):
+    img = np.zeros((height, width), dtype=best_dtype) # heigth x width
+    for idx, roi in enumerate(gj['features']):
         if (idx in [0, 1]):
             pass
-            # print(roi)
         try:
-            poly = np.array(roi["geometry"]["coordinates"])
-            a, b, c = poly.shape
-            poly = np.reshape(poly, (b, c))
-            rr, cc = polygon_perimeter(poly[:, 0], poly[:, 1])
-            img[cc, rr] = 255
+            draw_cell(np.array(roi["geometry"]["coordinates"]), img, 255)
         except:
             pass
 
@@ -78,20 +79,21 @@ def get_mask_image(gj, height, width):
 
     An image of dimension height x width
     """
-    n = len(gj)
+    n = len(gj['features'])
     best_dtype = np.min_scalar_type(n)
     img = np.zeros((height, width), dtype=best_dtype) # heigth x width
     for idx, roi in enumerate(gj['features']):
         try:
-            poly = np.array(roi["geometry"]["coordinates"])
-            a, b, c = poly.shape
-            poly = np.reshape(poly, (b, c))
-            rr, cc = polygon(poly[:, 0], poly[:, 1], img.shape)
-            img[cc, rr] = idx
+            draw_cell(np.array(roi["geometry"]["coordinates"]), img, idx)
         except:
            pass
-
     return(img)
+
+def draw_cell(cell_coord, arr, color):
+    a, b, c = cell_coord.shape
+    poly = np.reshape(cell_coord, (b, c))
+    rr, cc = polygon(poly[:, 0], poly[:, 1], arr.shape)
+    arr[cc, rr] = color
 
 def g2o(args):
     gj_path = pathlib.Path(args.gjfile).expanduser()
@@ -167,6 +169,16 @@ def geojson2shapely(geojson):
         raise ValueError("Unkwown type for geojson file")
     return result
 
+def compare_dataset(args):
+    result = []
+    list_img = [None] * len(args.geojson) if args.original_image is None else args.original_image
+    for gt, geo, img in zip(args.ground_truth, args.geojson, list_img):
+        current_args = namedtuple('args', ['ground_truth', 'images', 'outpath', 'verbose', 'do_quantif', 'original_image'])
+        result.append(compare(current_args(gt, [geo], None, False, True, img)))
+    result = pd.DataFrame(result)
+    print(result.describe())
+    result.to_csv(args.outpath)
+
 def compare(args):
     gt = args.ground_truth
 
@@ -179,8 +191,24 @@ def compare(args):
     gt_tree = STRtree(gt_cells)
     gt_cells_nb = len(gt_cells)
 
+    if args.do_quantif:
+        img = tifffile.TiffFile(args.original_image)
+        height, width = img.pages[0].shape[-2:]
+        markers_filepath = ".markers_panel.tmp.csv"
+        try:
+            generate(tiff_path=args.original_image, out_path=markers_filepath)
+            ometiff_name = None
+        except ValueError:
+            img, mtd = convert2ometiff(args.original_image)
+            ometiff_name = ".converted.tmp.ome.tiff"
+            with tifffile.TiffWriter(ometiff_name, bigtiff=True, shaped=False) as tif:
+                tif.write(data=img, shape=img.shape, **mtd.to_dict())
+            generate(tiff_path=ometiff_name, out_path=markers_filepath)
+
     total = GeometryCollection(gt_cells).bounds
     total = total[2] * total[3]
+    
+    result = []
 
     for gj_files in args.images:
         if not gj_files.endswith('.geojson'):
@@ -221,10 +249,17 @@ def compare(args):
         tpcp = 0
         fpcp = len(not_cells)
         fncp = len(not_found)
+        if args.do_quantif:
+            gt_mask = np.zeros((height, width), dtype=np.min_scalar_type(len(common.T)))
+            other_mask = np.zeros((height, width), dtype=np.min_scalar_type(len(common.T)))
         
-        for paired_cells in common.T:
+        for i, paired_cells in enumerate(common.T, 1):
             gtc = gt_cells[paired_cells[1]]
             oc = other_cells[paired_cells[0]]
+
+            if args.do_quantif:
+                draw_cell(np.transpose(np.array([gtc.exterior.xy]), (0,2,1)), gt_mask, i)
+                draw_cell(np.transpose(np.array([oc.exterior.xy]), (0,2,1)), other_mask, i)
 
             intersect = gtc.intersection(oc).area
             too_much = oc.difference(gtc).area
@@ -245,26 +280,86 @@ def compare(args):
             ap_common.append(ap)
             iou_mean.append(iou)
 
-            
-        print(f"{pathlib.Path(gj_files).stem}\n")
-        print(f"\tfound {nb_cell} (with {len(not_cells)} false cells and {len(not_found)} cells not found) cells out of {gt_cells_nb} in ground truth\n")
-        if len(ap_common):
-            print(f"\tavg prec = {sum(ap_common) / len(ap_common):.4f}\n")
+        if args.do_quantif:        
+            gt_mask_name = "gt_mask.tmp.tif"
+            other_mask_name = "other_mask.tmp.tif"
+            correlation = []
+            # record arr into file
+            tifffile.imwrite(other_mask_name, other_mask)
+            tifffile.imwrite(gt_mask_name, gt_mask)
+
+            # launch single_cell_data_extraction on it    
+            quantif = MultiExtractSingleCells(
+                image=args.original_image, 
+                masks=[gt_mask_name, other_mask_name], channel_names=markers_filepath,
+                output=None,
+            ) # do on gt every time cause we want same ID for same cell
+            ignored_columns = ["CellID", "X_centroid", "Y_centroid", "Area", 
+                                "MajorAxisLength", "MinorAxisLength", "Eccentricity", 
+                                "Solidity", "Extent", "Orientation"]
+            mask_name = list(quantif.keys())
+            for col in quantif[mask_name[0]].columns:
+                if col not in ignored_columns:
+                    correlation.append(quantif[mask_name[0]][col].corr(quantif[mask_name[1]][col]))
+            correlation = sum(correlation) / len(correlation)
+        else:
+            correlation = None
+
+        # filename | ground truth cell count | cell count | false cells | cells not found | avg precision | cellpose avg precision | IoU mean | true positive (pixel) | true negative (pixel) | false positive (pixel) | false negative (pixel) | F1 score (pixel)
+        
+        if args.verbose:
+            print(f"{pathlib.Path(gj_files).stem}\n")
+            print(f"\tfound {nb_cell} (with {len(not_cells)} false cells and {len(not_found)} cells not found) cells out of {gt_cells_nb} in ground truth\n")
+            if len(ap_common):
+                print(f"\tavg prec = {sum(ap_common) / len(ap_common):.4f}\n")
         if (tpcp + fpcp + fncp):
             ap_cellpose = tpcp / (tpcp + fpcp + fncp)
-            print(f"\tcellpose avg prec = {ap_cellpose:.4f}\n")
-        print(f"\tiou mean = {sum(iou_mean) / len(iou_mean)}\n")
+            if args.verbose:
+                print(f"\tcellpose avg prec = {ap_cellpose:.4f}\n")
+                print(f"\tiou mean = {sum(iou_mean) / len(iou_mean)}\n")
+
         tn = (total - (tp + fp + fn)) / total
         tp /= total
         fp /= total
         fn /= total
-        print(f"\ttotal pixel classification = \n")
-        print("\t+--------+------+------+")
-        print("\t|        |  POS |  NEG |")
-        print(f"\t| TRUE   | {tp:.02f} | {tn:.02f} |")
-        print(f"\t| FALSE  | {fp:.02f} | {fn:.02f} |")
-        print("\t+--------+------+------+")
-        print(f'\n\t F1 score = {2*tp / (2*tp + fp + fn):.02f}\n\n')
+
+        if args.verbose:
+            print(f"\ttotal pixel classification = \n")
+            print("\t+--------+------+------+")
+            print("\t|        |  POS |  NEG |")
+            print(f"\t| TRUE   | {tp:.02f} | {tn:.02f} |")
+            print(f"\t| FALSE  | {fp:.02f} | {fn:.02f} |")
+            print("\t+--------+------+------+")
+            print(f'\n\t F1 score = {2*tp / (2*tp + fp + fn):.02f}\n')
+            print(f"\tAveraged correlation by marker = {correlation:.02f}\n\n")
+
+        result.append({
+            "filename": pathlib.Path(gj_files).stem,
+            "ground truth cell count": gt_cells_nb,
+            "cell count": nb_cell,
+            "false cells": len(not_cells),
+            "cells not found": len(not_found),
+            "avg precision": sum(ap_common) / len(ap_common) if len(ap_common) else 0,
+            "cellpose avg precision": tpcp / (tpcp + fpcp + fncp) if (tpcp + fpcp + fncp) else 0,
+            "IoU mean": sum(iou_mean) / len(iou_mean) if len(iou_mean) else 0,
+            "true positive (pixel)": tp,
+            "true negative (pixel)": tn,
+            "false positive (pixel)": fp,
+            "false negative (pixel)": fn,
+            "F1 score (pixel)": 2*tp / (2*tp + fp + fn),
+            "Averaged correlation by marker": correlation
+        })
+    if args.outpath:
+        pd.DataFrame(result).to_csv(args.outpath)
+
+    if args.do_quantif:
+        os.unlink(gt_mask_name)
+        os.unlink(other_mask_name)
+        os.unlink(markers_filepath)
+        if ometiff_name:
+            os.unlink(ometiff_name)
+
+    return result
             
 
 def compare_img(args):
@@ -333,7 +428,12 @@ def compare_img(args):
         print(f"\tiou mean = {sum(iou_mean.values()) / len(iou_mean)}\n")
 
 def m2g(args):
-    gjson = mask2geojson(mask=tifffile.imread(args.mask), object_type=args.object_type, 
+    if args.mask.endswith('tiff'):
+        mask = tifffile.imread(args.mask)
+    else:
+        mask = np.array(Image.open(args.mask))
+    mask = mask.astype('float32')
+    gjson = mask2geojson(mask=mask, object_type=args.object_type, 
                            connectivity=args.connectivity, transform=args.transform,
                            downsample=args.downsample, include_labels=args.include_labels,
                            classification=args.classification)
@@ -341,6 +441,29 @@ def m2g(args):
         args.out = pathlib.Path(args.mask).stem + ".geojson"
     with open(args.out, "w") as out:
        geojson.dump(gjson, out)
+
+def sumarize(df):
+    cols_name = [
+        "filename", gtcc := "ground truth cell count", cc := "cell count",
+        fc := "false cells", nfc := "cells not found", avg := "avg precision", cpavg := "cellpose avg precision",
+        iou := "IoU mean", tp := "true positive (pixel)", tn := "true negative (pixel)",
+        fp := "false positive (pixel)", fn := "false negative (pixel)", f1 := "F1 score (pixel)"
+    ]
+    result = {
+        "mean cell count by images": df[gtcc].mean(),
+        "mean correct cell percentage found": ((df[cc] - df[fc]) / df[gtcc]).mean(),
+        "mean false cell percentage": (df[fc] / df[gtcc]).mean(),
+        "avg precision": df[avg].mean(),
+        "cellpose avg precision": df[cpavg].mean(),
+        "IoU": df[iou].mean(),
+        tp: df[tp].mean(),
+        tn: df[tn].mean(),
+        fp: df[fp].mean(),
+        fn: df[fn].mean(),
+        f1: df[f1].mean()
+    }
+    print(result)
+    return result
     
 
 # ==========
@@ -390,6 +513,14 @@ def parse_args(args=None):
                              help='Ground truth file (geojson or mask)')
     parser_compare.add_argument('--images', type=str, nargs="+",
                              help='list of image (or geojson) to compare to gt')
+    parser_compare.add_argument('--outpath', type=str, default="result_compare.csv",
+                             help='file path for output in csv format')
+    parser_compare.add_argument('--do_quantif', type=bool, default=False,
+                             help='perform quantification on both masks and compare results')
+    parser_compare.add_argument('--original_image', type=str,
+                             help='original image to perform quantification on (based on both masks)')
+    parser_compare.add_argument('--verbose', type=bool, default=True,
+                             help='will output result in stdout')
     parser_compare.set_defaults(func=compare)
 
     parser_m2g = subparsers.add_parser('m2g')
@@ -402,6 +533,18 @@ def parse_args(args=None):
     parser_m2g.add_argument("--classification", type=str, default=None)
     parser_m2g.add_argument('-o', "--out", type=str, default=None, help="path for geojson file")
     parser_m2g.set_defaults(func=m2g)
+
+    parser_compare_dataset = subparsers.add_parser('compare_dataset')
+    parser_compare_dataset.add_argument('-gt', '--ground_truth', type=str, nargs="+",
+                             help='Ground truth file geojson')
+    parser_compare_dataset.add_argument('--geojson', type=str, nargs="+",
+                             help='list of geojson to compare to gt')
+    parser_compare_dataset.add_argument('--outpath', type=str, default="result_compare.csv",
+                             help='file path for output in csv format')
+    parser_compare_dataset.add_argument('--original_image', type=str, nargs="+",
+                             help='original image to perform quantification on (based on both masks)')
+    parser_compare_dataset.set_defaults(func=compare_dataset)
+
     return parser.parse_args(args)
 
 # ==================== #
@@ -415,3 +558,16 @@ def main(args=None):
 
 if __name__ == '__main__':
     sys.exit(main())
+
+"""
+# transform a geojson into a mask
+python orion/MIA/bin/manual_segmentation.py g2m --gjfile compare_segmentation/gt/autre_tile_manual_final.geojson --height 1024 --width 1024 -o compare_segmentation/gt/autre_tile_manual.tif
+
+
+from orion.MIA.bin.manual_segmentation import compare_quantif
+compare_quantif("test-orion/test-mcmicro/registration/autre_tile.ome.tif", "compare_segmentation/gt/autre_tile_manual.tif", "compare_segmentation/instanseg/autre_tile_mask.tif", "test-orion/test-mcmicro/markers_autre_tile.csv")
+
+compare datasets
+python orion/MIA/bin/manual_segmentation.py compare_dataset -gt orion/CPDMI23/dataset/geojson/* --geojson orion/CPDMI23/result/Instanseg/* --original_image orion/CPDMI23/dataset/crop/*
+
+"""

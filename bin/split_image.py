@@ -5,32 +5,55 @@ from tifffile import TiffWriter
 import argparse
 
 from utils import read_tiff_orion
+import psutil
+
+
+def strip_gen(arr, y, y_size, x_chunk=4096):
+    for channel in range(arr.shape[0]):
+        for x_cur in range(0, arr.shape[2], x_chunk):
+            yield arr[channel, y:y+y_size, x_cur: x_cur+x_chunk]
 
 
 def split_img(img_path, out_dir, height=224, overlap=0.1, memory=0, scaling=1):
     """Will split an image into height x image_width crop (with some overlap) to get a better memory footprint """
     img_name, ext = os.path.splitext(os.path.basename(img_path))
-    img_zarr, metadata = read_tiff_orion(img_path, zarr_mode='a', mode='r+b')
+    img_zarr, metadata = read_tiff_orion(img_path)
 
     if out_dir is None:
         out_dir = os.path.dirname(img_path)
     ch, total_height, total_width = img_zarr.shape
 
     if memory or not height:
-        computed_max_height = int(int(memory) * scaling / (img_zarr.dtype.itemsize * 8 * total_width * (ch+2)))
-        #                     memory_per_cpu * re-scaling of the image / (size_of_pixel_in_bytes * nb_bit_per_byte * width * channel + 2 to get some margin)
+        computed_max_height = int(int(memory) * scaling / (img_zarr.dtype.itemsize * total_width * (ch + 1)))
+        #                     memory_per_cpu * re-scaling of the image / (size_of_pixel_in_bytes * width * channel)
         height = min(height, computed_max_height) if height else computed_max_height
 
-    for i, cur_height in enumerate(range(0, total_height, int(height * (1 - overlap))), 1):
+    if height > total_height:
+        tile_shape = None
+        height = total_height
+    elif height % 16:
+        height = (int(height / 16) + 1) * 16
+        tile_shape = height, 4096
+    else:
+        tile_shape = height, 4096
+        # tifffile impose tile shape to be multiple of 16 (when setting tile_shape)
+    i = 0
+
+    for cur_height in range(0, total_height, int(height * (1 - overlap))):
+        if (cur_height+height) > total_height:
+            cur_height = total_height - height # force height to be the same even for last strip (more overlap)
         out_path = os.path.join(out_dir, img_name + f"_{cur_height}" + ext)
+        if os.path.exists(out_path):
+            continue
         with TiffWriter(out_path, bigtiff=True, shaped=False) as tiff_out:
-            tmp_arr = img_zarr[:, cur_height: cur_height+height, :]
-            metadata.pix.size_y = tmp_arr.shape[1] # last one is not height unless total_heigh % height = 0
+            metadata.pix.size_y = height
             tiff_out.write(
-                data=tmp_arr,
-                shape=tmp_arr.shape,
+                data=strip_gen(img_zarr, cur_height, height, 4096),
+                shape=(ch, height, total_width),
+                tile=tile_shape,
                 **metadata.to_dict()
             )
+        i += 1
     print(i) # needed for nextflow to be aware of the number of file
 
 

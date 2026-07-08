@@ -1,0 +1,31 @@
+<!--
+id: 'method-explanation'
+section_name: 'Methods'
+description: ''
+-->
+<p>The image processing pipeline was implemented using Nextflow and primarily composed of Python scripts. The pipeline consists of the following steps:
+  <ul>
+    <li>
+        <b>Merge Channel (Optional)</b>: This step involves merging multiple image channels into a two-channels composite image, which is mandatory for most segmenters. 
+        The first channel of the composite image represents the nuclear channel, while the second channel is a merge of cytoplasm and membrane markers. 
+        Each channel is normalized before merging to ensure consistency and accuracy. 
+        This merge is computed using maximum intensity projection, allowing the creation of a two-channel image that provides better information about the real contour of each cell. 
+    </li>
+    <li><b>Split Image in Tiles</b>: The composite image is divided into smaller tiles to facilitate parallel processing and improve computational efficiency.</li>
+    <li>
+        <b>Segmentation</b>: Each tile undergoes segmentation using multiple specialized Cellpose models, each trained on different cellular populations. 
+        This approach yields better results by leveraging the strengths of each model. 
+        The segmented outputs from these models are then merged to create a comprehensive segmentation mask.
+    </li>
+    <li>
+        <b>Merge Mask</b>: The coordinates of each mask are computed and checked for conflicts (intersections of two or more masks). 
+        If the intersection is significant (Intersection over Union > 0.5), the masks are merged into one. 
+        If not, one mask is amputated of the conflicting area. 
+        The masks are weighted by their distance to the edge of their tiles, with masks closer to the edge given lower weight due to the higher chance of incomplete cells.
+    </li>
+    <li>
+        <b>Quantification</b>: Quantification is performed on the merged masks to extract relevant metrics and features from the segmented cells. 
+        The features extracted include average marker intensities and physical properties such as area, eccentricity, and orientation.
+    </li>
+  </ul>
+</p>

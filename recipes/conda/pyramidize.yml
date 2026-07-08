@@ -1,12 +1,17 @@
 name: pyramidize
+channels:
+  - conda-forge
+  - bioconda
+  - nodefaults
 dependencies:
-  - python=3.11.5=h955ad1f_0
-  - scikit-image=0.19.3=py311h6a678d5_2
-  - pandas=2.1.1=py311ha02d727_0
-  - pip=23.3=py311h06a4308_0
-  - tifffile=2023.4.12=py311h06a4308_0
+  - python=3.11.14=hfe2f287_1_cpython
+  - scikit-image=0.19.3=py311h8b32b4d_2
+  - pandas=2.1.1=py311h320fe9a_0
+  - pip=24.0=pyhd8ed1ab_0
+  - tifffile=2023.4.12=pyhd8ed1ab_0
   - pip:
     - ome_types==0.4.2
     - palom==2024.4.1
     - pydantic==2.5.3
     - xsdata==23.8
+    - numcodecs==0.15.0

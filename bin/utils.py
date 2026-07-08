@@ -1,15 +1,14 @@
 import tifffile
 import zarr
-import os
 from ome_types import OME, model
 import copy
 import warnings
-import xml.etree.ElementTree as ET
 import numpy as np
+import pathlib
 
 def get_current_height(npy_path):
     """Helper to parse filename to get position in height for the corresponding tile"""
-    npy_name = os.path.basename(npy_path)
+    npy_name = pathlib.Path(npy_path).stem
     while True:
         npy_name, height = npy_name.rsplit('_', 1)
         try:
@@ -23,7 +22,10 @@ def _tile_generator(arr, channel, x, y, chunk_x, chunk_y):
     """Generate chunk of arr"""
     for x_cur in range(0, x, chunk_x):
         for y_cur in range(0, y, chunk_y):
-            yield arr[channel, x_cur: x_cur + chunk_x, y_cur: y_cur + chunk_y]
+            if channel is None:
+                yield arr[x_cur: x_cur + chunk_x, y_cur: y_cur + chunk_y]
+            else:
+                yield arr[channel, x_cur: x_cur + chunk_x, y_cur: y_cur + chunk_y]
 
 
 def min_max_norm(a, min_, max_, output_max=(2**16 - 1)):
@@ -101,73 +103,6 @@ def compute_hist(img, channel, x, y, chunk_x, chunk_y, img_min=None, img_max=Non
 
     return res
 
-def get_info_qptiff(qptiff):
-    qptiff_data = ET.fromstring(qptiff)
-    version = qptiff_data.find('DescriptionVersion').text
-    if version == "2":
-        return qptiff2ome_v2(qptiff_data.find("ScanProfile")[0])
-    elif version == "4":
-        return qptiff2ome_v4(qptiff_data.find("ScanProfile"))
-
-def qptiff2ome_v2(root):
-    # PX = 0.325, PXU = µm, PY = 0.325, PYU = µm, PZ = 1, PZU=µm, size_c, size_t=1, size_z=1, size_x, size_y, dtype=uint16
-
-    result = dict(
-        PXU = "µm", PYU = "µm", PZU = "µm",
-        PZ = 1, size_t=1, size_z=1,
-        dtype="uint16"
-    )
-
-    for child in root:
-        if "Resolution" in child.tag:
-            result['PX'] = float(child.text)
-            result['PY'] = result['PX']
-            result["PXU"] = result['PYU'] = child.tag.rsplit('_', 1)[1]
-
-    channels = []
-    planes = []
-    current_idx = 0
-    for cycle in root.find('Cycles').findall('Cycle'):
-        for channel in cycle.find('Channels').findall("Channel"):
-            if channel.find('MarkerName').text.lower() not in ('empty', 'blank', ''):
-                if "dapi" in channel.find('MarkerName').text.lower() and cycle.find('Index') != "1":
-                    continue # do not add more than one dapi channel (other are used for alignment)
-                channels.append(model.Channel(id=f"Channel:{current_idx}", name=channel.find('MarkerName').text, 
-                                              samples_per_pixel=1, light_path=model.LightPath()))
-                planes.append(model.Plane(the_c=current_idx, the_t=0, the_z=0))
-                current_idx += 1
-
-    result["size_c"] = len(channels)
-    result['channels'] = channels
-    result["planes"] = planes
-    # when make_annotations is finished one should add "<AnnotationRef ID="Annotation:Stitcher:0"/>" before </Image>
-    return result
-
-def qptiff2ome_v4(root):
-    result = dict(
-        PXU = "µm", PYU = "µm", PZU = "µm",
-        PZ = 1, size_t=1, size_z=1,
-        dtype="uint16"
-    )
-    import json
-    # !!!! Vulnerability !!!!
-    wells = json.loads(root.text)['experimentDescription']['wells'] # new version (WIP)
-    idx = 0
-    channels = {}
-    for well in wells:
-        for item in well['items']:
-            if item['markerName'] not in ('empty', 'blank', '', '--') and item['markerName'] not in channels: # do not add multiple channel with same name
-                channels[item['markerName']] = idx
-                idx += 1
-    planes = [model.Plane(the_c=i, the_t=0, the_z=0) for i in channels.values()]
-    channels = [model.Channel(id=f"Channel:{v}", name=k, samples_per_pixel=1, light_path=model.LightPath()) 
-                for k, v in channels.items()]
-    result["size_c"] = len(channels)
-    result['channels'] = channels
-    result["planes"] = planes
-    # when make_annotations is finished one should add "<AnnotationRef ID="Annotation:Stitcher:0"/>" before </Image>
-    return result
-
 def make_ome_data(size_x, size_y, size_c, dtype="uint16", **kwargs):
     nominal_magnification = kwargs.pop("nominal_magnification", 20.0)
     dimension_order = kwargs.pop("dimension_order", "XYZCT")
@@ -203,6 +138,19 @@ def make_ome_data(size_x, size_y, size_c, dtype="uint16", **kwargs):
         structured_annotations=kwargs.pop('structured_annotations', [])
     )
 
+class wrong_ndim(object):
+    def __init__(self, z):
+        self._z = z
+        self.shape = (1, *self._z.shape)
+        self.ndim = self._z.ndim + 1
+
+    def __getitem__(self, selection):
+        return self._z.__getitem__(selection[1:])
+    
+    def __getattribute__(self, name: str):
+        if name.startswith('_') or name == 'shape' or name == 'ndim':
+            return super().__getattribute__(name)
+        return self._z.__getattribute__(name)
 
 def read_tiff_orion(img_path, idx_serie=0, idx_level=0, *args, **kwargs):
     """
@@ -231,10 +179,14 @@ def read_tiff_orion(img_path, idx_serie=0, idx_level=0, *args, **kwargs):
     metadata: OmeTifffile
         metadata from ome tiff arranged in a pythonnic way (see OmeTifffile)
     """
-    zarr_mode = kwargs.pop('zarr_mode', "r") 
+    zarr_mode = kwargs.pop('zarr_mode', "r")
+    expand_dim = kwargs.pop('expand_img_dim', True)
     tiff = tifffile.TiffFile(img_path, *args, **kwargs)
     zarray = zarr.open(tiff.series[idx_serie].aszarr(), mode=zarr_mode)
-    return (zarray[idx_level] if idx_level is not None and tiff.series[idx_level].is_pyramidal else zarray), OmeTifffile(tiff.pages[0])
+    zarr_img = (zarray[idx_level] if idx_level is not None and tiff.series[idx_serie].is_pyramidal else zarray)
+    if expand_dim and zarr_img.ndim == 2:
+        zarr_img = wrong_ndim(zarr_img)
+    return zarr_img, OmeTifffile(tiff.pages[0])
 
 class OmeTifffile(object):
     """
@@ -246,22 +198,28 @@ class OmeTifffile(object):
     direct_props = {'PhotometricInterpretation': "photometric",  
                     "PlanarConfiguration": "planarconfig", 
                     'Compression': "compress", 
-                    "Software": "software"}
+                    "Software": "software", 
+                    "ResolutionUnit": "resolutionunit"}
 
-    def __init__(self, tifffile_metadata, **kwargs):
-        self.tags = {"resolution": [None, None, None], "extratags": []}
+    def __init__(self, tifffile_metadata=None, **kwargs):
+        self.tags = {"resolution": [None, None], "extratags": []}
         self.ome = None
         self.size = [None, None]
-        qptiff_xml = None
         self._dtype = ""
+
+        # allow to create instance without data
+        if tifffile_metadata is None:
+            try:
+                self.ome = make_ome_data(**kwargs) 
+                # use mandatory arg size_c, size_x, size_y, and default from orion image unless specified
+            except:
+                self.ome = make_ome_data(1,1,1) # purely default value
+                # self need to be adapted to the corresponding image afterward
+            return
 
         for tag in tifffile_metadata.tags:
             if tag.name == "ImageDescription":
-                try:
-                    self.ome = OME.from_xml(tag.value, **kwargs)
-                except ValueError:
-                    # qptiff format (from CODEX, WIP)
-                    qptiff_xml = tag.value
+                self.ome = OME.from_xml(tag.value, **kwargs)
 
             elif tag.name in self.direct_props.keys():
                 try:
@@ -269,8 +227,8 @@ class OmeTifffile(object):
                 except AttributeError:
                     self.tags[self.direct_props[tag.name]] = tag.value
 
-            elif tag.name in ("XResolution", "YResolution", "ResolutionUnit"):
-                self.tags["resolution"][("XResolution", "YResolution", "ResolutionUnit").index(tag.name)] = tag.value
+            elif tag.name in ("XResolution", "YResolution"):
+                self.tags["resolution"][("XResolution", "YResolution").index(tag.name)] = tag.value
 
             elif tag.code in (50838, 50839):
                     continue # remove imageJ custom tags (could be used to convert it to ome tiff)
@@ -285,19 +243,7 @@ class OmeTifffile(object):
         self.dtype = tifffile_metadata.dtype
 
         if self.ome is None:
-            try:
-                default = get_info_qptiff(qptiff_xml)
-            except BaseException:
-                default = {}
-
-            default['size_x'] = self.size[1]
-            default['size_y'] = self.size[0]
-            default['dtype'] = self.dtype
-            default.update(kwargs)
-            if "size_c" not in default:
-                default['size_c'] = 1
-            self.ome = make_ome_data(**default)
-            # self.ome = make_ome_data(1,1,1) # better default ? i don't want to fail when there is 0 metadata
+            raise TypeError('Unrecognized format, need a compatible ome tiff file')
             
         if self.tags.get('planarconfig', None) == 1 and kwargs.get('force_planarconfig', True):
             warnings.warn("Planar Configuration read as 1 (contigue) will be removed from metadata."
@@ -309,11 +255,19 @@ class OmeTifffile(object):
 
     @property
     def dtype(self):
+        if not self._dtype:
+            self._dtype = self.pix.type
         return self._dtype
     
     @dtype.setter
     def dtype(self, value):
         self._dtype = str(value) # force numpy dtype into str
+        corr = self._dtype
+        if corr == 'float64':
+            corr = "double"
+        if corr == 'float32':
+            corr = 'float'
+        self.pix.type = corr # need to be updated here also
 
     @classmethod
     def from_path(cls, tiff_path):
@@ -349,20 +303,26 @@ class OmeTifffile(object):
         c = self.pix.size_c
         if len(self.pix.channels) != c: # mismatch between channels metadata and image shape
             self.remove_all_channels() # can't trust old info
+            if channel_name is None:
+                channel_name = [f"Channel {i}" for i in range(c)]
+        if channel_name is not None and len(channel_name) == c:
+            self.remove_all_channels() # channel_name is updated
             for i in range(c):
-                try:
-                    self.add_channel_metadata(channel_name[i])
-                except (IndexError, TypeError):
-                    self.add_channel_metadata(f"Channel {i}")
+                self.add_channel_metadata(channel_name[i])
 
-    def to_dict(self, dtype=True, shape=None):
+    def to_dict(self, dtype=True, tifffile_invalid_extra_tags=False):
         """transform this class to a dict of parameters, each of them can be passed to tifffile.write and assimilated"""
         this_dict = self.tags.copy()
-        this_dict['compression'] = this_dict.pop('compress')
+        if not tifffile_invalid_extra_tags:
+            this_dict['extratags'] = [extratag for extratag in this_dict['extratags'] if extratag[0] not in (256,257,258,273,277,278,279)]
 
-        if shape is not None:
-            self.pix.size_y=shape[0]
-            self.pix.size_x=shape[1]
+        # args and attr don't have the same name...
+        if 'compress' in this_dict:
+            this_dict['compression'] = this_dict.pop('compress')
+
+        # if shape is not None:
+        #     self.pix.size_y=shape[0]
+        #     self.pix.size_x=shape[1]
 
         elif self.pix.size_x == 1 or self.pix.size_y == 1:
             raise ValueError(f"About to write an image with shape (x={self.pix.size_x}, y={self.pix.size_y})." 

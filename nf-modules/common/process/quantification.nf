@@ -3,13 +3,14 @@ process quantification {
   label "minCpu"
   label "infiniteTime"
 
-  memory {MemoryUnit.of(Math.max(Math.min((mask.size() as Float) * 1.5, params.maxMemory.size), params.minMemory.size).toLong())}
+  // memory {MemoryUnit.of(Math.max(Math.min((mask.size() as Float) * 5, params.maxMemory.size), params.minMemory.size).toLong())}
+  memory {NFTools.computeRoundedMemoryGb((mask.size() * 5.0) as Float, task.attempt, params.minMemory, params.maxMemory)}
 
   input:
       tuple val(meta), path(mask)
 
   output:
-    path("*.csv")
+    tuple val(meta), path("*.csv")
 
   when:
     task.ext.when == null || task.ext.when
@@ -17,6 +18,6 @@ process quantification {
   script:
     def args = task.ext.args ?: ''
     """
-    single_cell_data_extraction.py --image $meta.imagePath --masks $mask --output . --channel_names $meta.markersPath $args
+    single_cell_data_extraction.py --image "$meta.imagePath" --masks $mask --output . --channel_names "$meta.markersPath" $args
     """
 }

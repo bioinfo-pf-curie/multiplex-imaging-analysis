@@ -21,5 +21,6 @@ From: python:3.11
     distributed==2023.6.0 \
     psutil==5.9.6 \
     rasterio==1.3.10 \
-    imagecodecs==2024.9.22
+    imagecodecs==2024.9.22 \
+    geopandas==1.1.2
   python -m pip install fastremap==1.13.4 --no-binary :all:

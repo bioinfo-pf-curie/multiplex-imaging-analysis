@@ -84,4 +84,4 @@ def compute_current_cell_id(block_info, mean_cell_area=300):
         current_cell_id = int((row_chunk +  col_chunk * row_total) * mean_cells_per_chunk)
     except:
         current_cell_id = 1
-    return current_cell_id
+    return current_cell_id or 1

@@ -82,6 +82,8 @@ Use this to specify the location of your input markers files. For example:
 --markers 'path/to/markers_directory/'
 ```
 
+If you don't specify it, one will be created by reading image metadata.
+
 ## Nextflow profiles
 
 Different Nextflow profiles can be used. See [Profiles](profiles.md) for details.
@@ -93,34 +95,71 @@ For most of the steps in the pipeline, if the job exits with an error code of `1
 
 ## Configuration options
 
-  #### `minMemory`
+  #### `--minMemory`
 
   Minimum ram used by each process. default='2.GB'
 
-  #### `summaryDir`
+  #### `--maxMemory`
+
+  Maximum ram used by each process. default=null
+
+  #### `--outDir`
+  
+  path for output directory. default = "./results"
+
+  #### `--summaryDir`
   
   path for summary directory. default = "${params.outDir}/summary"
 
-  #### `clusterOptions`
+  #### `--queue`
   
-  Options for cluster (not used in local). default for abacus = " --account dev"
+  Options for cluster (not used in local).
 
+  #### `--clusterOptions`
+  
+  Options for cluster (not used in local).
+
+  #### `--channelNotSegmented`
+  
+  If no panel file is specified, this options can be used to defined channels index that will not be segmented. Start at 0 et space separated (default = "0 1")
+  
+## Output configuration
+
+  #### `--compression`
+
+  name of the compression algorithm for output image
+
+  #### `--compressionArgs`
+
+  argument to be passed to tifffile for compression (see tifffile doc)
+
+  #### `--outline`
+
+  Which image to use for adding outline. either 'merged', 'original' or 'none' if you don't want the outline computed.
+
+  #### `--keepChannelName`
+
+  If True, it will keep channel name in image metadata (default = False, they will be replaced by those in the panel file)
+
+  #### `--makeGeoJson`
+
+  If True, a [GeoJson](https://geojson.org/) file will be generated. It's a file format compatible with QuPath that contains the resulting segmentation in polygons.
 
 ### Masks
 
-  #### `masks.overlap`
+  #### `--masks.overlap`
 
   overlap used by dask to compute mask from cellpose's flows. In pixels. default = 120 
 
 ### Normalization
 
-  #### `normalization.mode`
+  #### `--normalization.mode`
   
   Mode used for image normalization before segmentation and before quantification. Accepted values are : ['auto', 'custom', 'hist', 'gaussian', 'equalize']. Default = "auto".
 
 - auto : act as 'custom' if normalization values are given else act as 'hist'
 
-- custom : Perform a normalization based on min/max values given by the user, in markers.csv file (otherwise nothing will be done).
+- custom : Perform a normalization based on min/max values given by the user, in panel.csv file (otherwise nothing will be done).
     
 - hist : Compute min/max values for normalization based on an histogram of intensities values (100 bins, min = 2 + argmax and max = 90bin)
 
@@ -129,40 +168,70 @@ For most of the steps in the pipeline, if the job exits with an error code of `1
 - equalize : Perform a [CLAHE](https://en.wikipedia.org/wiki/Adaptive_histogram_equalization)
 
 ### Segmentation 
-  #### `segmentation.name`
+  #### `--segmentation.name`
 
-  Change segmenter (only cellpose is correctly implemented as of now). default = "cellpose"
+  Change segmenter (only cellpose and mesmer are correctly implemented as of now). default = "cellpose"
 
-  #### `segmentation.tileHeight`
+  #### `--segmentation.tileHeight`
      
   Fix height tile in image segmentation. An instance of the segmenter will be launched on each tiles. A null value will compute a good value in respect of available memory. Default = null
 
-  #### `segmentation.overlap`
+  #### `--segmentation.overlap`
   
   Overlap of the segmenter. Tiles will be further cut into chunk of 224 * 224 pixels (for cellpose by example). In percentage of chunk length. Default = 0.1 (~22 pixels for cellpose)
 
-  #### `segmentation.additionalParms`
+### Cellpose
+
+  #### `--cellpose.models`
   
-  A string of additional parameters to add to segmenter command. Default = "--restore_type denoise_cyto3"
+  a list of different pre-trained cellpose models to be combined for segmentation (default = ["tissuenet_cp3", "cyto2_cp3"])
 
+  #### `--cellpose.additionalParms`
+  
+  A string of additional parameters to add to segmenter command. Default = "--restore_type denoise_cyto3 --no_norm"
 
+### Mesmer
+  #### `--mesmer.models`
+
+  Not used by mesmer
+
+### Merge Masks
+    
+  #### `--mergeMasks.chunksize`
+  
+  Size of chunks to compute the merging (used by dask) (default = 8192)
+
+  #### `--mergeMasks.threshold`
+  
+  percentage of common area between two segmented cells to be merge into one (default = 0.5)
+  
 ### Quantification
     
-  #### `quantification.normalization`
+  #### `--quantification.normalization`
   
-  Wether or not perform normalization of channels before quantification. Default = true
+  Wether or not perform normalization of channels before quantification. Default = same as normalization.mode
   
-
-### Outline
-
-  #### `outline` 
+### Quality Control
+    
+  #### `--qualityControl.areaMin`
   
-  Which image will be used for displaying outline. Accepted value are ["merged", "original"]. Default = "merged"
+  Minimal area for a cell to be kept (default = null)
+    
+  #### `--qualityControl.areaMax`
+  
+  Maximal area for a cell to be kept (default = null)
+    
+  #### `--qualityControl.necroticIntensityTreshold`
+  
+  Percentage of intensity across all markers that a cell need to pass to be considered as necrotic (and remove from downstream analysis) (default = null)
 
+### Graph Report
+  
+  #### `--graphReport.make`
+
+  Will make a graphical report about result (WIP)
+  
 ## Other command line parameters
-
-### `--outDir`
-The output directory where the results will be saved.
 
 ### `-name`
 Name for the pipeline run. If not specified, Nextflow will automatically generate a random mnemonic.

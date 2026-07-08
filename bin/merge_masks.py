@@ -11,6 +11,7 @@ import fastremap
 import warnings
 # from skimage.segmentation import find_boundaries
 import rasterio.features
+from affine import Affine
 
 # import pandas as pd
 
@@ -19,7 +20,7 @@ from utils import OmeTifffile
 
 # optimized from SOPA https://github.com/gustaveroussy/sopa/blob/master/sopa/segmentation/shapes.py
 
-def _ensure_polygon(cell: Polygon | MultiPolygon | GeometryCollection) -> Polygon:
+def ensure_polygon(cell: Polygon | MultiPolygon | GeometryCollection) -> Polygon:
     """Ensures that the provided cell becomes a Polygon
 
     Args:
@@ -58,7 +59,7 @@ def _ensure_polygon(cell: Polygon | MultiPolygon | GeometryCollection) -> Polygo
 #     """
 #     cell = cell.buffer(-smooth_radius).buffer(2 * smooth_radius).buffer(-smooth_radius)
 #     cell = cell.simplify(tolerance)
-#     return None if cell.is_empty else _ensure_polygon(cell)
+#     return None if cell.is_empty else ensure_polygon(cell)
 
 
 # def _default_tolerance(mean_radius: float) -> float:
@@ -110,6 +111,7 @@ def _ensure_polygon(cell: Polygon | MultiPolygon | GeometryCollection) -> Polygo
 #     )
 
 #     return cells
+import time
 
 
 def solve_conflicts(
@@ -137,18 +139,28 @@ def solve_conflicts(
         warnings.warn("No cells was segmented, cannot resolve conflicts")
         return cells
 
+    t0 = time.process_time()
     tree = shapely.STRtree(cells)
+    t1 = time.process_time()
 
     try:
         conflicts = tree.query(cells, predicate="intersects")
     except:
         return cells
+    t3 = time.process_time()
 
     if patch_indices is not None:
-        conflicts = conflicts[:, patch_indices[conflicts[0]] != patch_indices[conflicts[1]]].T
+        try:
+            conflicts = conflicts[:, patch_indices[conflicts[0]] != patch_indices[conflicts[1]]].T
+        except TypeError as e:
+            print(conflicts[0])
+            print(conflicts[1].astype(int))
+            raise e
     else:
         conflicts = conflicts[:, conflicts[0] != conflicts[1]].T
 
+    t4 = time.process_time()
+    t2 = []
     for i1, i2 in conflicts:
         resolved_i1: int = resolved_indices[i1]
         resolved_i2: int = resolved_indices[i2]
@@ -156,13 +168,23 @@ def solve_conflicts(
 
         intersection = cell1.intersection(cell2).area
         if intersection >= threshold * min(cell1.area, cell2.area):
-            cell = _ensure_polygon(cell1.union(cell2))
+            cell = ensure_polygon(cell1.union(cell2))
 
             resolved_indices[np.isin(resolved_indices, [resolved_i1, resolved_i2])] = len(cells)
             cells.append(cell)
+        t2.append(time.process_time() - t4)
 
     unique_indices = np.unique(resolved_indices)
     unique_cells = np.array(cells)[unique_indices]
+
+    t6 = time.process_time()
+    try:
+        final_it = t2[-1]
+        li = len(t2)
+    except IndexError:
+        final_it = 0
+        li = 1
+    print(f'tree : {t1-t0:.02f}, query : {t3 - t1:.02f}, path_indice : {t4-t3:.02f}, iterations (means): {final_it / li} on {li}, end : {t6-(final_it+t4):.02f}')
 
     if return_indices:
         return unique_cells, np.where(unique_indices < n_cells, unique_indices, -1)
@@ -181,8 +203,8 @@ def recreate_mask(cells, shape, idx_start=1):
         list of shape to be draw into the mask
     shape: tuple of int
         image size (same as the size of original masks)
-    idx_start: int
-        index to start from
+    idx_start: int or list of int
+        index to start from or 'index'. If list, same length as cells, each cell will be attributed an id at same index
 
     Return
     ------
@@ -191,12 +213,29 @@ def recreate_mask(cells, shape, idx_start=1):
         Merged mask
     """
     result = np.zeros(shape=shape)
-    for i, cell in enumerate(cells, idx_start):
+    if isinstance(idx_start, int):
+        iteritems = enumerate(cells,  idx_start)
+    else:
+        iteritems = zip(idx_start, cells)
+        
+    for i, cell in iteritems:
         result = cv2.fillConvexPoly(result, np.rint(cell.exterior.xy).astype("int32").T, color=i)
     return result
 
+def extract_cell_geoms(mask, transform=None, connectivity=8, min_points=5, min_area=10):
+    """"""
+    mask = mask.astype('float32')
+    t = Affine.identity() if transform is None else Affine.translation(*transform)
+    cells = []
+    for cell in rasterio.features.shapes(mask, mask=mask > 0, connectivity=connectivity, transform=t):
+        if len(cell[0]['coordinates'][0]) > min_points:
+            polygon = ensure_polygon(Polygon(cell[0]['coordinates'][0]))
+            if polygon.area > min_area:
+                cells.append(polygon)
+    return cells
 
-def on_chunk(chunk, threshold, block_info=None, diameter=30):
+
+def on_chunk(chunk, threshold, block_info=None, transform=None, diameter=30):
     """
     Convert each masks into a list of shape (cells), concat these lists, solve intersection and then reconvert it to mask image.
 
@@ -207,6 +246,12 @@ def on_chunk(chunk, threshold, block_info=None, diameter=30):
         array of number_of_masks * image_width * image_height
     threshold: float
         Intersection over union value for which cells are to be merged
+    block_info: 
+        data send by dask to get info on current chunk
+    transform: list of 2-tuple
+        An optionnal list of translation of (xoff, yoff) for the corresponding mask
+    diameter: int
+        Estimated cell size
 
     Return
     ------
@@ -216,21 +261,25 @@ def on_chunk(chunk, threshold, block_info=None, diameter=30):
     """
     cells = []
     for i in range(chunk.shape[0]):
-        mask = chunk[i].astype('float32')
-        for cell in rasterio.features.shapes(mask, mask=mask > 0, connectivity=8):
-            if len(cell[0]['coordinates'][0]) > 5:
-                polygon = _ensure_polygon(Polygon(cell[0]['coordinates'][0]))
-                if polygon.area > 10:
-                    cells.append(polygon)
-
+        cells += extract_cell_geoms(chunk[i], transform=transform)
+    chunk_shape = chunk.shape[1:]
+    del chunk
     results = solve_conflicts(cells, threshold=threshold)
-
+    del cells
     current_cell_id = compute_current_cell_id(block_info, mean_cell_area=np.pi * (diameter / 2) ** 2)
 
-    return recreate_mask(results, chunk.shape[1:], current_cell_id)
+    return recreate_mask(results, chunk_shape, current_cell_id)
 
+def compute_pad(shape, original_shape, transform=None):
+    # original_shape must be greater then shape and transform must be lower than the difference between them
+    res = [j - i for i, j in zip(shape, original_shape)]
+    
+    if any([r < 0 for r in res]) or any([(r - t) < 0 for r, t in zip(res, transform)]):
+        raise ValueError('Wrong dpad parameters')
 
-def merge_masks(list_of_masks, chunk_size=1024, overlap=120, threshold=0.5, diameter=30):
+    return [(transform[i], (int(k) - transform[i])) for i, k in enumerate(res)] # add after
+
+def merge_masks(list_of_masks, chunk_size=1024, overlap=120, threshold=0.5, diameter=30, transform=None):
     """
     Merge a list of masks (cells labels images) into one, based on a threshold of percentage of intersection
     (see SOPA for a more detailed implementation of solve conflict)
@@ -253,7 +302,11 @@ def merge_masks(list_of_masks, chunk_size=1024, overlap=120, threshold=0.5, diam
     None
 
     """
-    masks = [da.from_zarr(tifffile.TiffFile(mask).series[0].aszarr(), chunks=(chunk_size, chunk_size)) for mask in list_of_masks]
+    masks = [da.from_zarr(tifffile.TiffFile(mask).series[0].aszarr(), chunks=(chunk_size, chunk_size)) if isinstance(mask, str) else da.from_array(mask, chunks=(chunk_size, chunk_size)) for mask in list_of_masks]
+    mshape0 = np.array([m.shape for m in masks]).max(axis=0)
+    if transform is None:
+        transform = [(0, 0)] * len(masks)
+    masks = [da.pad(m, compute_pad(m.shape, mshape0, transform[i])) for i, m in enumerate(masks)]
     masks = da.stack(masks)
     final_mask = da.map_overlap(on_chunk, masks, dtype=np.uint32, depth={0: 0, 1: overlap, 2: overlap}, drop_axis=0, threshold=threshold, diameter=diameter).compute()
 
@@ -274,15 +327,17 @@ if __name__ == '__main__':
     parser.add_argument('--original', type=str, required=False, help="path to original image (metadata except dtype and channels info will be copied)")
     parser.add_argument('--diameter', type=float, default=30, required=False, help="mean diameter (in pixels) of cells")
     args = parser.parse_args()
-    # merge_masks_wo_dask(args.list_of_mask, args.out, threshold=args.threshold)
+    
     mask = merge_masks(args.list_of_mask, overlap=args.overlap, chunk_size=args.chunk_size, threshold=args.threshold, diameter=args.diameter)
 
     kwargs = {}
     if args.original:
         metadata = OmeTifffile(tifffile.TiffFile(args.original).pages[0])
+        metadata.update_shape(mask.shape)
         metadata.remove_all_channels()
         metadata.add_channel_metadata(channel_name="masks")
         metadata.dtype = mask.dtype
-        kwargs.update(metadata.to_dict(shape=mask.shape))
+        kwargs.update(metadata.to_dict())
+    kwargs['compression'] = 1
 
     tifffile.imwrite(args.out, mask, bigtiff=True, shaped=False, **kwargs)

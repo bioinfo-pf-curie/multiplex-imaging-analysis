@@ -12,8 +12,23 @@ import argparse
 import os
 from scipy.ndimage import gaussian_filter
 from skimage.exposure import equalize_adapthist
+from dask import array as da
 
 from utils import read_tiff_orion, _tile_generator, parse_normalization_values, compute_hist, min_max_norm
+
+def norm_nuclei_chan(chunk, norm, norm_val, kernel_size, clip_limit, nbins):
+    if norm == "gaussian":
+        chunk = gaussian_filter(chunk, 1)
+    elif norm_val is not None:
+        chunk = chunk.astype('float')
+        chunk = min_max_norm(chunk, *norm_val, output_max=1)
+    else:
+        raise ValueError(f"Unknown normalization method : {norm} with values '{norm_val}'")
+    return equalize_adapthist(chunk,
+                              kernel_size=kernel_size,
+                              clip_limit=clip_limit, 
+                              nbins=nbins)
+
 
 def tile_generator(arr, nuclei_chan, to_merge_chan, x, y, chunk_x, chunk_y, agg=np.max, norm='hist', norm_val=None, nbins=2**14, kernel_size=64, clip_limit=0.01):
     """
@@ -49,36 +64,30 @@ def tile_generator(arr, nuclei_chan, to_merge_chan, x, y, chunk_x, chunk_y, agg=
     tile of the nuclei channel untouched and tile merged and normalized for others
 
     """
-    for ci in [nuclei_chan, to_merge_chan]:
-        if norm == 'hist':
-            # first pass for normalisation
-            norm_val = {}
-            for c in (ci if not isinstance(ci, int) else [ci]):
-                norm_val[c] = compute_hist(arr, c, x, y, chunk_x, chunk_y)
+    if norm == 'hist':
+        # first pass for normalisation
+        norm_val = {nuclei_chan: compute_hist(arr, nuclei_chan, x, y, chunk_x, chunk_y)}
+        for c in to_merge_chan:
+            norm_val[c] = compute_hist(arr, c, x, y, chunk_x, chunk_y)
 
-        elif norm == "equalize":
-            copied_arr = np.zeros_like(arr)
-            for i in range(arr.shape[0]):
-                copied_arr[i] = equalize_adapthist(arr[i], kernel_size=kernel_size, clip_limit=clip_limit, nbins=nbins)
-        
-        for tmp_arr in _tile_generator(arr, ci, x, y, chunk_x, chunk_y):
-            if norm == "gaussian":
-                tmp_arr = gaussian_filter(tmp_arr, 1)
-            elif norm_val is not None:
-                tmp_arr = tmp_arr.astype('float')
-                # tmp_arr = gaussian_filter(tmp_arr, 0.2)
-                if not isinstance(ci, int):
-                    for i, c in enumerate(ci):
-                        tmp_arr[i] = min_max_norm(tmp_arr[i], *norm_val[c], output_max=1)
-                else:
-                    tmp_arr = min_max_norm(tmp_arr, *norm_val[ci], output_max=1)
-            else:
-                raise ValueError(f"Unknown normalization method : {norm} with values '{norm_val}'")
+    for tile in _tile_generator(arr, nuclei_chan, x, y, chunk_x, chunk_y):
+        yield norm_nuclei_chan(
+            tile, norm=norm, norm_val=norm_val[nuclei_chan],
+            kernel_size=kernel_size, clip_limit=clip_limit, 
+            nbins=nbins
+        )
 
-            if ci != to_merge_chan:
-                yield tmp_arr
-            else:
-                yield agg(tmp_arr, axis=0)
+    for tmp_arr in _tile_generator(arr, to_merge_chan, x, y, chunk_x, chunk_y):
+        if norm == "gaussian":
+            tmp_arr = gaussian_filter(tmp_arr, 1)
+        elif norm_val is not None:
+            tmp_arr = tmp_arr.astype('float')
+            for i, c in enumerate(to_merge_chan):
+                tmp_arr[i] = min_max_norm(tmp_arr[i], *norm_val[c], output_max=1)
+        else:
+            raise ValueError(f"Unknown normalization method : {norm} with values '{norm_val}'")
+
+        yield agg(tmp_arr, axis=0)
     tmp_arr = None # don't wait for next iteration to flush this
 
 
@@ -122,6 +131,7 @@ def merge_channels(in_path, out_path, nuclei_chan=0, channels_to_merge=None, chu
     except IndexError:
         nuclei_chan_metadata = None
 
+    metadata.update_shape(img_level.shape[1:])
     metadata.remove_all_channels()
 
     if nuclei_chan_metadata is not None:
@@ -136,8 +146,7 @@ def merge_channels(in_path, out_path, nuclei_chan=0, channels_to_merge=None, chu
     if channels_to_merge is None:
         channels_to_merge = list(range(2, img_level.shape[0]))
 
-    supp_args = metadata.to_dict(shape=img_level.shape[1:])
-    supp_args['compression'] = 1
+    supp_args = metadata.to_dict()
 
     with tifffile.TiffWriter(out_path, bigtiff=True, shaped=False) as tiff_out:
             tiff_out.write(

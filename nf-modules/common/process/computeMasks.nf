@@ -5,25 +5,34 @@ process computeMasks {
   label 'onlyLinux' // only for geniac lint...
 
   // label 'extraMem'
-  memory {params.segmentation.name == 'cellpose'? MemoryUnit.of(Math.max(Math.min(meta.flowSize * 2, params.maxMemory.size), params.minMemory.size).toLong()) : Math.min(params.maxMemory.size, (128.GB).getBytes())}
+  memory {params.segmentation.name == 'cellpose'? NFTools.computeRoundedMemoryGb((Float)(meta.flowSize * 2), task.attempt, params.minMemory, params.maxMemory) : Math.min(params.maxMemory.size, (128.GB).getBytes())
+  }
+  //MemoryUnit.of(Math.max(Math.min(meta.flowSize * 2, params.maxMemory.size), params.minMemory.size).toLong()) : Math.min(params.maxMemory.size, (128.GB).getBytes())
   // take 60% of the size of image input with a minimum of 2GB and a max of 190GB 
 
-  input:
+   input:
       tuple val(meta), path(flow)
+      val segmenterConfig
 
   output:
-    tuple val(meta), path('*_masks.tiff')
+    tuple(val(meta), path('*_masks.tiff', includeInputs:true))
+    // when stitch produce directly mask we can omit this process
 
   when:
   task.ext.when == null || task.ext.when
 
   script:
     def args = task.ext.args ?: ''
-    def script = params.segmentation.name == 'cellpose' ? "compute_masks.py" : "compute_mesmer.py"
     def availableMem = Math.max(Math.min(meta.imgSize * 0.6, params.maxMemory.size), params.minMemory.size).toLong() / 1e9
     def specificParms = params.segmentation.name == "cellpose" ? "--mean_cell_diam $meta.diameter --max_mem $availableMem " : ""
     specificParms += task.ext.useSingularity ? "--singularity " : ""
-    """
-    $script --in $flow --out ${meta.originalName}_masks.tiff --original $meta.imagePath $specificParms $args
-    """
+    if (segmenterConfig.compute){
+      """
+      $segmenterConfig.compute --in $flow --out "${meta.originalName}_masks.tiff" --original "$meta.imagePath" $specificParms $args
+      """
+    } else {
+      """
+      echo Not doing anything in this process
+      """
+    }
 }

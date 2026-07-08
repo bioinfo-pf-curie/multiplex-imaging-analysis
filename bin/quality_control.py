@@ -2,11 +2,52 @@
 
 import argparse
 import pandas as pd
+import json
+from shapely import Polygon, make_valid, geometry
 
 CELLID = "CellID"
 AREA = "Area"
+SIZE_MIN = "minimal size"
+SIZE_MAX = "maximal size"
+NECROTIC = "Necrotic area"
+AOI_IN = "RoI"
+AOI_OUT = "Excluded Area"
 
-def perform_filtering(csv, out_name, size_min=None, size_max=None, necrotic_intensity_treshold=0.9):
+def position_filter(points, geojson_path):
+    with open(geojson_path, 'r') as gjfile:
+        gj = json.load(gjfile)
+
+    res = pd.Series(index=points.index, dtype="str")
+
+    if gj['type'] == "FeatureCollection":
+        features = gj['features']
+    elif gj['type'] == 'Feature':
+        features = [gj]
+    else:
+        raise ValueError(f'Unrecognize type in geojson {geojson_path}')
+
+    for i, roi in enumerate(features, 1):
+        coords = roi['geometry']['coordinates']
+        if len(coords) == 1:
+            coords = coords[0]
+        shapely_roi = make_valid(Polygon(coords))
+        if not isinstance(shapely_roi, Polygon): # if multipolygon, select the biggest
+            max_ = 0
+            for g in shapely_roi.geoms:
+                if max_ < g.area:
+                    inter = g
+                    max_ = g.area
+            shapely_roi = inter
+        roi_name = roi['properties'].get('classification', roi['properties']).get('name', str(i))
+
+        inter = points.apply(shapely_roi.contains) 
+
+        res.loc[inter & ~res.isna()] += f", {roi_name}"
+        res.loc[inter & res.isna()] = roi_name
+    return res
+
+def perform_filtering(csv, out_name, size_min=None, size_max=None, 
+                      necrotic_intensity_treshold=None, roi_path=None, excluded_path=None):
     df = pd.read_csv(csv)
 
     form_cols = (
@@ -26,12 +67,26 @@ def perform_filtering(csv, out_name, size_min=None, size_max=None, necrotic_inte
     markers_cols = [c for c in df.columns if (c not in form_cols) and (c != CELLID)]
 
     # size filtering
-    df = df.loc[(size_min or 0) < df[AREA] <= (size_max or df[AREA].max())]
+    if size_max is not None:
+        df[f'{SIZE_MAX} ({int(size_max)})'] = (df[AREA] <= size_max).astype(int)
+    if size_min is not None:
+        df[f'{SIZE_MIN} ({int(size_min)})'] = (size_min < df[AREA]).astype(int)
 
     # necrotic filtering
-    df = df.loc[~(df[markers_cols] > df[markers_cols].quantile(necrotic_intensity_treshold)).all(axis=1)]
+    if necrotic_intensity_treshold is not None:
+        df[f'{NECROTIC} ({necrotic_intensity_treshold*100}% intensity)'] = ~(
+            df[markers_cols] > df[markers_cols].quantile(necrotic_intensity_treshold)
+        ).all(axis=1).astype(int)
 
-    df.to_csv(out_name)
+    if roi_path is not None or excluded_path is not None:
+        points = df[['X_centroid', 'Y_centroid']].apply(geometry.Point, axis=1)
+        if roi_path is not None:
+            df[AOI_IN] = position_filter(points, roi_path)
+        if excluded_path is not None:
+            df[AOI_OUT] = position_filter(points, excluded_path)
+
+
+    df.to_csv(out_name, index=False)
 
 
 if __name__ == "__main__":
@@ -45,7 +100,12 @@ if __name__ == "__main__":
     parser.add_argument('--necrotic_intensity_treshold', type=float, required=False, 
                         help="treshold of intensity (normalized between 0 and 1) "
                              "for a cell to be considered as necrotic (in every markers)")
+    parser.add_argument('--region_of_interest_geojson_path', type=str, required=False, 
+                        help="path to a geojson describing a region of interest  or a list of (can be the contour of a tumor for example)")
+    parser.add_argument('--excluded_region_geojson_path', type=str, required=False, 
+                        help="path to a geojson describing a (or a list of) region to exclude (dificult to segment for example)")
     args = parser.parse_args()
 
     perform_filtering(csv=args.csv_path, out_name=args.out_path, size_min=args.area_min, size_max=args.area_max, 
-                      necrotic_intensity_treshold=args.necrotic_intensity_treshold)
+                      necrotic_intensity_treshold=args.necrotic_intensity_treshold,
+                      roi_path=args.region_of_interest_geojson_path, excluded_path=args.excluded_region_geojson_path)

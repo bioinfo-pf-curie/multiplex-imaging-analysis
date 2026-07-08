@@ -197,5 +197,6 @@ if __name__ == '__main__':
     metadata.add_channel_metadata(channel_name="masks")
 
     metadata.dtype = label_img.dtype
+    metadata.update_shape(label_img.shape)
 
-    imwrite(args.out, label_img, bigtiff=True, **metadata.to_dict(shape=label_img.shape))
+    imwrite(args.out, label_img, bigtiff=True, **metadata.to_dict())

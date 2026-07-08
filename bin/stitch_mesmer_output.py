@@ -6,6 +6,7 @@ import argparse
 import numpy as np
 import tifffile 
 from scipy.signal import windows
+from pathlib import Path
 
 
 def spline_window(window_size, overlap_left, overlap_right, power=2):
@@ -92,13 +93,14 @@ def stich_masks(list_mask_chunks, input_img_path, overlap, out_path):
 
     original_tiff = tifffile.TiffFile(input_img_path)
     original_shape = original_tiff.series[0].shape[1:]
-    result = tifffile.memmap(out_path, dtype=float, shape=(2, *original_shape))
+    img = tifffile.imread(list_mask_chunks[0])
+    result = tifffile.memmap(out_path, dtype=img.dtype, shape=(1 + (img.ndim == 3), *original_shape))
 
     # previous_cells = None
     for chunk in list_mask_chunks:
         cur_height = get_current_height(chunk)
         img = tifffile.imread(chunk) # img.shape = 2 x w x h
-        window_size = img.shape[1:]
+        window_size = img.shape[1:] if img.ndim != 2 else img.shape # I use this for simple masks
         w = window_2D(window_size, overlap_x=[int(window_size[0] * overlap)] * 2, overlap_y=(0, 0))
 
         if (min_tile_size <= window_size[0] < original_shape[1]):
@@ -114,10 +116,9 @@ def stich_masks(list_mask_chunks, input_img_path, overlap, out_path):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--in', type=str, required=True, nargs='+', help="list of Image Path (cropped) to merge")
-    parser.add_argument('--out', type=str, required=True, help="Output path for resulting image")
     parser.add_argument('--original', type=str, required=True, help="File path of original image (to get metadata from)")
     parser.add_argument('--overlap', type=float, required=False, default=0.1, help="value of overlap used for splitting images")
     args = parser.parse_args()
 
     list_chunks = vars(args)['in']
-    stich_masks(list_chunks, args.original, args.overlap, args.out)
+    stich_masks(list_chunks, args.original, args.overlap, f"{Path(args.original).stem}.tiff")

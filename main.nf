@@ -67,6 +67,13 @@ outputDocsImagesCh = file("$projectDir/docs/images/", checkIfExists: true)
 if (!params.images){
   exit 1, "Missing input image (use --images to indicate image path directory)" 
 }
+if (params.qualityControl.ROIPath) {
+  params.qualityControl.ROIPath = file(params.qualityControl.ROIPath, checkIfExists: true).toAbsolutePath()
+}
+
+if (params.qualityControl.excludedPath) {
+  params.qualityControl.excludedPath = file(params.qualityControl.excludedPath, checkIfExists: true).toAbsolutePath()
+} 
 
 /*
 ===========================
@@ -98,15 +105,18 @@ workflowSummaryCh = NFTools.summarize(summary, workflow, params)
 include { getSoftwareVersions } from './nf-modules/common/process/utils/getSoftwareVersions'
 include { outputDocumentation } from './nf-modules/common/process/utils/outputDocumentation'
 include { ome2panel } from './nf-modules/common/process/ome2panel'
+include { compatibilityChecker } from './nf-modules/common/process/compatibilityChecker'
 include { mergeChannels } from './nf-modules/common/process/mergeChannels'
 include { displayOutline } from './nf-modules/common/process/displayOutline'
 include { quantification } from './nf-modules/common/process/quantification'
 include { pyramidize } from './nf-modules/common/process/pyramidize'
 include { mergeMasks } from './nf-modules/common/process/mergeMasks'
-include { segmentation } from './nf-modules/common/workflow/segmentation'
 include { mask2geojson } from './nf-modules/common/process/mask2geojson'
 include { qc } from './nf-modules/common/process/qc'
-include { makeReport } from './nf-modules/common/process/makeReport'
+include { spatialData } from './nf-modules/common/process/spatialData'
+
+include { segmentation } from './nf-modules/common/workflow/segmentation'
+include { qcFlow } from './nf-modules/common/workflow/qcReport'
 
 /*
 =====================================
@@ -121,17 +131,18 @@ workflow {
   main:
 
     def tiffPattern = ~/tiff?$/
-    def modelList = params.segmentation.name == "cellpose" ? params.cellpose.models : [""]
-    modelList = modelList instanceof List ? modelList : modelList.tokenize(",")
+
     // Init Channels
     imgCh = Channel.fromPath((params.images =~ tiffPattern) ? params.images : "${params.images}/*ti{f,ff}")
-    imgId = imgCh.map{img -> tuple(NFTools.getImageID(img), img)}
+    checkedImg = compatibilityChecker(imgCh)
+
+    imgId = checkedImg.map{img -> tuple(NFTools.getImageID(img), img)}
 
     if (file("${params.markers}").exists()) {
       markersCh = Channel.fromPath("${params.markers}".endsWith(".csv") ? "${params.markers}" : "${params.markers}/*.csv")
     }
     else {
-      markersCh = ome2panel(imgCh)
+      markersCh = ome2panel(checkedImg)
     } 
 
     mrkId = markersCh.map{img -> tuple(NFTools.getImageID(img), img)}
@@ -146,7 +157,7 @@ workflow {
       imgId.join(mrkId)
     )).map{count, name, ipath, mpath -> 
       tuple([
-        originalName: name, 
+        originalName: name - ~/_checked$/, 
         imagePath: ipath, 
         markersPath: mpath,
         imgSize: ipath.size() as Float
@@ -159,8 +170,14 @@ workflow {
     )
 
     // PROCESS
-    merged = mergeChannels(inputsOriginal)
-    mask = segmentation(merged, modelList)
+    
+    ipts = inputsOriginal.branch{
+      toMerge: (it[0].markersPath.readLines().size() > 3) & (params.segmentation.name != "instanseg")
+      noMerge: true
+    }
+    merged = mergeChannels(ipts.toMerge).mix(ipts.noMerge.map{meta, img, ch -> tuple(meta, img)})
+
+    mask = segmentation(merged)
 
     maskJoin = mask.map{
       meta, m ->
@@ -169,18 +186,37 @@ workflow {
 
     outline = displayOutline(maskJoin.join(merged))
     pyramidizeCh = Channel.empty()
-    .mix(NFTools.setTag(merged, "merge_channels"))
-    .mix(NFTools.setTag(outline, "outlines"))
+      .mix(NFTools.setTag(merged, "merge_channels"))
+      .mix(NFTools.setTag(outline, "outlines"))
     
-    pyramidize(pyramidizeCh)
+    finalImage = pyramidize(pyramidizeCh)
 
     geojson = mask2geojson(mask)
   
     quant = quantification(mask)
 
     filtered_quant = qc(quant)
+    
+    finalImage = finalImage.filter{ it -> it[0] == 'outlines' }.map{
+      tag, meta, i ->
+      tuple(meta, i)
+    }
+    
+    if (params.qualityControl.any { it.value != null }) {
+      data2Report = filtered_quant
+    } else {
+      data2Report = quant
+    }
 
-    report = makeReport(filtered_quant.mix(quant))
+    data2Report = data2Report.map{
+      meta, csv -> tuple(meta.subMap("originalName", "imagePath", "markersPath", "imgSize"), csv)
+    }
+    
+    info2Report = finalImage.combine(data2Report, by: 0).collect()
+
+    report = qcFlow(info2Report, params)
+    spd = maskJoin.join(data2Report)
+    spatialData(spd)
 
     //*******************************************
     // Warnings that will be printed in the mqc report

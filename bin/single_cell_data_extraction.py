@@ -14,6 +14,7 @@ import numpy as np
 import os
 from skimage.measure._regionprops import PROP_VALS, regionprops_table
 import tifffile
+import time
 
 from pathlib import Path
 
@@ -46,13 +47,18 @@ def MaskChannel(mask_loaded, image_loaded_z, intensity_props=["intensity_mean"])
     builtin_props = set(intensity_props).intersection(PROP_VALS)
     # Otherwise look for them in this module
     extra_props = set(intensity_props).difference(PROP_VALS)
-    print(mask_loaded.shape)
+
+    t0 = time.process_time()
+    logger.debug(f'Main point : ')
     dat = regionprops_table(
         mask_loaded, image_loaded_z,
         properties = tuple(builtin_props),
         extra_properties = [globals()[n] for n in extra_props],
         cache=False
     )
+
+    t1 = time.process_time()
+    logger.debug(f'finish region props : { t1 - t0}')
     return dat
 
 
@@ -140,7 +146,7 @@ def PrepareData(image,z, normalization=None, norm_val=None):
             nv = norm_val[z]
         else:
             nv = [-1, -1] # do not do normalization (wrong usage of parms) 
-        print(f"{nv=}")
+
         image_loaded_z[image_loaded_z < nv[0]] = int(nv[0]) # for me it should be min_max_norm(image_loaded_z, *nv) but hey idc
 
     #Return the objects
@@ -161,9 +167,16 @@ def MaskZstack(masks_loaded,image,channel_names_loaded, mask_props=None, intensi
     #Create empty dictionary to store channel results per mask
     dict_of_chan = {m_name: [] for m_name in mask_names}
     #Get the z channel and the associated channel name from list of channel names
+
+    t0 = t2 = time.process_time()
+    logger.debug(f'in M::')
+
     for z in range(len(channel_names_loaded)):
         #Run the data Prep function
         image_loaded_z = PrepareData(image,z, normalization, norm_val)
+
+        t1 = time.process_time()
+        logger.debug(f'M:: load channel {z} : { t1 - t2}')
 
         #Iterate through number of masks to extract single cell data
         for nm in mask_names:
@@ -171,8 +184,11 @@ def MaskZstack(masks_loaded,image,channel_names_loaded, mask_props=None, intensi
             dict_of_chan[nm].append(
                 MaskChannel(masks_loaded[nm],image_loaded_z, intensity_props=intensity_props)
             )
+        t2 = time.process_time()
+        logger.debug(f'M:: perform extract : { t2 - t1}')
         #Print progress
         print("Finished "+str(z))
+    logger.debug(f'finished all {z} in {t2 - t0}')
 
     # Column order according to histoCAT convention (Move xy position to end with spatial information)
     last_cols = (
@@ -197,6 +213,7 @@ def MaskZstack(masks_loaded,image,channel_names_loaded, mask_props=None, intensi
             return -1
 
     #Iterate through the masks and format quantifications for each mask and property
+    t3 = t2
     for nm in mask_names:
         mask_dict = {}
         # Mean intensity is default property, stored without suffix
@@ -208,11 +225,21 @@ def MaskZstack(masks_loaded,image,channel_names_loaded, mask_props=None, intensi
             mask_dict.update(
                 zip([f"{n}_{prop_n}" for n in channel_names_loaded], [x[prop_n] for x in dict_of_chan[nm]])
             )
+        t4 = time.process_time()
+        logger.debug(f'{nm} dict creation : { t4 - t3}')
         # Get the cell IDs and mask properties
-        mask_properties = pd.DataFrame(MaskIDs(masks_loaded[nm], mask_props=mask_props))
+        mask_properties = MaskIDs(masks_loaded[nm], mask_props=mask_props)
+        t35 = time.process_time()
+        logger.debug(f"time after maskid {t35-t4}")
         mask_dict.update(mask_properties)
-        dict_of_chan[nm] = pd.DataFrame(mask_dict).reindex(columns=sorted(mask_dict.keys(), key=col_sort))
+        col_sorted = sorted(mask_dict.keys(), key=col_sort)
+        t36 = time.process_time()
+        logger.debug(f'time after sorting (and updating dict) {t36-t35}')
+        dict_of_chan[nm] = pd.DataFrame(mask_dict).reindex(columns=col_sorted)
+        t3 = time.process_time()
+        logger.debug(f'{nm} df creation : { t3 - t4}')
 
+    logger.debug(f'total time data format : { t3 - t2}')
     # Return the dict of dataframes for each mask
     return dict_of_chan
 
@@ -221,7 +248,8 @@ def ExtractSingleCells(masks,image,channel_names,output, mask_props=None, intens
     path containing single-cell masks, z_stack path, and channel_names path."""
 
     #Create pathlib object for output
-    output = Path(output)
+    if output is not None:
+        output = Path(output)
 
     #Read csv channel names
     channel_names_loaded = pd.read_csv(channel_names)
@@ -261,12 +289,20 @@ def ExtractSingleCells(masks,image,channel_names,output, mask_props=None, intens
     for m in masks:
         m_full_name = os.path.basename(m)
         m_name = m_full_name.split('.')[0]
-        masks_loaded.update({str(m_name):skimage.io.imread(m,plugin='tifffile')})
+        mask = skimage.io.imread(m,plugin='tifffile')
+        if not np.issubdtype(mask.dtype, np.integer):
+            mask = mask.astype('uint32')
+        masks_loaded.update({str(m_name):mask})
+    del mask
+
+    t3 = time.process_time()
 
     scdata_z = MaskZstack(masks_loaded,image,channel_names_loaded_checked, mask_props=mask_props, 
                           intensity_props=intensity_props, normalization=normalization, norm_val=norm_val)
     #Write the singe cell data to a csv file using the image name
 
+    t4 = time.process_time()
+    logger.debug(f'compute for mask : { t4 - t3}')
     # Determine the image name by cutting off its extension
     im_full_name = os.path.basename(image)
     im_tokens = im_full_name.split(os.extsep)
@@ -274,29 +310,36 @@ def ExtractSingleCells(masks,image,channel_names,output, mask_props=None, intens
     elif im_tokens[-2] == "ome": im_name = os.extsep.join(im_tokens[0:-2])
     else: im_name = os.extsep.join(im_tokens[0:-1])
 
+    if output is None:
+        return scdata_z
+
     # iterate through each mask and export csv with mask name as suffix
     for k,v in scdata_z.items():
         # export the csv for this mask name
-        scdata_z[k].to_csv(
-                            str(Path(os.path.join(str(output),
-                            str(im_name+"_{}"+".csv").format(k)))),
-                            index=False
-                            )
+        
+        csv_name = im_name[:-len("_checked")] if im_name.endswith("_checked") else im_name
+        csv_name = csv_name + f"_{k}" if (k not in csv_name) and (k[:-len('_masks')] not in csv_name) else csv_name
+        csv_name += "_data.csv"
+        scdata_z[k].to_csv(str(output / csv_name), index=False)
+        
+    t5 = time.process_time()
+    logger.debug(f'export csv : { t5 - t4}')
 
 
 def MultiExtractSingleCells(masks,image,channel_names,output, mask_props=None, intensity_props=["intensity_mean"], normalization=None):
     """Function for iterating over a list of z_stacks and output locations to
     export single-cell data from image masks"""
-
+    
     print("Extracting single-cell data for "+str(image)+'...')
 
     #Run the ExtractSingleCells function for this image
-    ExtractSingleCells(masks,image,channel_names,output, mask_props=mask_props, intensity_props=intensity_props, normalization=normalization)
+    res = ExtractSingleCells(masks,image,channel_names,output, mask_props=mask_props, intensity_props=intensity_props, normalization=normalization)
 
     #Print update
     im_full_name = os.path.basename(image)
     im_name = im_full_name.split('.')[0]
     print("Finished "+str(im_name))
+    return res
 
 
 #Functions for parsing command line arguments for ome ilastik prep
@@ -344,6 +387,10 @@ def ParseInputDataExtract():
    #Return the dictionary
    return dict
 
+import logging
+logger = logging.getLogger(__name__)
+logging.basicConfig(filename='log.txt', encoding='utf-8', level=logging.DEBUG)
+
 
 if __name__ == "__main__":
     #Parse the command line arguments
@@ -351,4 +398,6 @@ if __name__ == "__main__":
     args = ParseInputDataExtract()
 
     #Run the MultiExtractSingleCells function
+    
+    
     MultiExtractSingleCells(**args)
