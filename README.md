@@ -5,11 +5,12 @@
 [![Install with](https://anaconda.org/conda-forge/vsc-install/badges/version.svg)](https://conda.anaconda.org/anaconda)
 [![Singularity Container available](https://img.shields.io/badge/singularity-available-7E4C74.svg)](https://singularity.lbl.gov/)
 [![Docker Container available](https://img.shields.io/badge/docker-available-003399.svg)](https://www.docker.com/)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21264009.svg)](https://doi.org/10.5281/zenodo.21264009)
 
 ## Introduction
 
 The pipeline is built using [Nextflow](https://www.nextflow.io), a workflow manager to run tasks across multiple compute infrastructures in a very portable manner.
-It supports [conda](https://docs.conda.io) package manager and  [singularity](https://sylabs.io/guides/3.6/user-guide/) / [Docker](https://www.docker.com/) containers making installation easier and results highly reproducible.
+It supports [conda](https://docs.conda.io) package manager and  [singularity](https://sylabs.io/guides/3.6/user-guide/) / [Docker](https://www.docker.com/) containers making installation easier and results highly reproducible. (DOI : https://doi.org/10.5281/zenodo.21264009)
 
 ## Pipeline summary
 
